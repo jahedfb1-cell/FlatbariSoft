@@ -4,8 +4,10 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BuildingController;
 use App\Http\Controllers\Api\FlatController;
 use App\Http\Controllers\Api\FlatOwnerController;
+use App\Http\Controllers\Api\OwnerDocumentController;
 use App\Http\Controllers\Api\PersonController;
 use App\Http\Controllers\Api\TenantController;
+use App\Http\Controllers\Api\TenantDocumentController;
 use Illuminate\Support\Facades\Route;
 
 // Public health check — lets the frontend (and infra monitoring later)
@@ -51,4 +53,12 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
     Route::get('/persons/{person}', [PersonController::class, 'show'])->middleware('permission:person.view');
     Route::put('/persons/{person}', [PersonController::class, 'update'])->middleware('permission:person.manage');
     Route::delete('/persons/{person}', [PersonController::class, 'destroy'])->middleware('permission:person.manage');
+
+    Route::get('/persons/{person}/documents', [OwnerDocumentController::class, 'index'])->middleware('permission:document.view');
+    Route::post('/persons/{person}/documents', [OwnerDocumentController::class, 'store'])->middleware('permission:document.manage');
+    Route::delete('/owner-documents/{ownerDocument}', [OwnerDocumentController::class, 'destroy'])->middleware('permission:document.manage');
+
+    Route::get('/tenants/{tenant}/documents', [TenantDocumentController::class, 'index'])->middleware('permission:document.view');
+    Route::post('/tenants/{tenant}/documents', [TenantDocumentController::class, 'store'])->middleware('permission:document.manage');
+    Route::delete('/tenant-documents/{tenantDocument}', [TenantDocumentController::class, 'destroy'])->middleware('permission:document.manage');
 });

@@ -42,4 +42,9 @@ class Person extends Model
     {
         return $this->hasOne(User::class);
     }
+
+    public function ownerDocuments(): HasMany
+    {
+        return $this->hasMany(OwnerDocument::class);
+    }
 }

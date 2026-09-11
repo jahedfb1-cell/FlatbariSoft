@@ -5,12 +5,16 @@ import type { Flat } from '../api/flats';
 import AssignOwnerModal from '../components/AssignOwnerModal';
 import AssignTenantModal from '../components/AssignTenantModal';
 import FlatFormModal from '../components/FlatFormModal';
+import DocumentManagerModal from '../components/DocumentManagerModal';
+
+type DocTarget = { kind: 'owner'; personId: number } | { kind: 'tenant'; tenantId: number };
 
 export default function FlatDetailPage() {
   const { id } = useParams();
   const flatId = Number(id);
   const [flat, setFlat] = useState<Flat | null>(null);
   const [modal, setModal] = useState<'owner' | 'tenant' | 'edit' | null>(null);
+  const [docTarget, setDocTarget] = useState<DocTarget | null>(null);
 
   function load() {
     flatsApi.getFlat(flatId).then(setFlat);
@@ -86,9 +90,17 @@ export default function FlatDetailPage() {
                   {party.is_billing_contact && ' · বিলিং কন্টাক্ট'}
                 </p>
               </div>
-              <button onClick={() => handleEndOwnership(party.id)} className="text-status-due hover:underline">
-                মালিকানা শেষ করুন
-              </button>
+              <div className="flex shrink-0 gap-3">
+                <button
+                  onClick={() => setDocTarget({ kind: 'owner', personId: party.person.id! })}
+                  className="text-brand-700 hover:underline"
+                >
+                  ডকুমেন্ট
+                </button>
+                <button onClick={() => handleEndOwnership(party.id)} className="text-status-due hover:underline">
+                  মালিকানা শেষ করুন
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -117,9 +129,17 @@ export default function FlatDetailPage() {
                   {tenant.monthly_rent ? Number(tenant.monthly_rent).toLocaleString('en-BD') : '—'}
                 </p>
               </div>
-              <button onClick={() => handleVacate(tenant.id)} className="text-status-due hover:underline">
-                ভ্যাকেট করুন
-              </button>
+              <div className="flex shrink-0 gap-3">
+                <button
+                  onClick={() => setDocTarget({ kind: 'tenant', tenantId: tenant.id })}
+                  className="text-brand-700 hover:underline"
+                >
+                  ডকুমেন্ট
+                </button>
+                <button onClick={() => handleVacate(tenant.id)} className="text-status-due hover:underline">
+                  ভ্যাকেট করুন
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -155,6 +175,17 @@ export default function FlatDetailPage() {
             load();
           }}
         />
+      )}
+      {docTarget?.kind === 'owner' && (
+        <DocumentManagerModal
+          kind="owner"
+          personId={docTarget.personId}
+          flatId={flat.id}
+          onClose={() => setDocTarget(null)}
+        />
+      )}
+      {docTarget?.kind === 'tenant' && (
+        <DocumentManagerModal kind="tenant" tenantId={docTarget.tenantId} onClose={() => setDocTarget(null)} />
       )}
     </div>
   );
