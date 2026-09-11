@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BankAccountController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\BuildingController;
 use App\Http\Controllers\Api\FlatController;
 use App\Http\Controllers\Api\GasController;
@@ -75,6 +77,17 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
 Route::prefix('billing')->middleware('auth:sanctum')->group(function () {
     Route::post('/generate', [BillingController::class, 'generate'])->middleware('permission:billing.manage');
     Route::get('/{year}/{month}', [BillingController::class, 'show'])->middleware('permission:billing.view');
+});
+
+Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [PaymentController::class, 'index'])->middleware('permission:payment.view');
+    Route::post('/', [PaymentController::class, 'store'])->middleware('permission:payment.create');
+    Route::post('/{payment}/approve', [PaymentController::class, 'approve'])->middleware('permission:payment.approve');
+});
+
+Route::prefix('bank-accounts')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [BankAccountController::class, 'index'])->middleware('permission:accounting.view');
+    Route::post('/', [BankAccountController::class, 'store'])->middleware('permission:accounting.manage');
 });
 
 Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
