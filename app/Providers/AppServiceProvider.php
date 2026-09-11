@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -34,5 +35,11 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('otp-request', function ($request) {
             return Limit::perMinute(3)->by($request->input('mobile', $request->ip()));
         });
+
+        // PRD section 2: Super Admin can do "সব কিছু" (everything). Rather
+        // than remembering to assign every permission created in every
+        // future module to super_admin by hand, it bypasses permission
+        // checks entirely — the standard spatie/laravel-permission pattern.
+        Gate::before(fn ($user) => $user->hasRole('super_admin') ? true : null);
     }
 }

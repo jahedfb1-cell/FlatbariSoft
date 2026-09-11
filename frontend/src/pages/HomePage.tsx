@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -50,6 +51,13 @@ export default function HomePage() {
             </p>
           )}
         </div>
+
+        <Link
+          to="/flats"
+          className="mt-4 block rounded-lg border border-brand-200 px-4 py-2 text-center text-sm font-medium text-brand-700 transition hover:bg-brand-100"
+        >
+          ফ্ল্যাট ব্যবস্থাপনা →
+        </Link>
       </div>
     </div>
   );
