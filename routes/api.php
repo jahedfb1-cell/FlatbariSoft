@@ -12,7 +12,9 @@ use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\ConstructionDueController;
 use App\Http\Controllers\Api\FlatController;
 use App\Http\Controllers\Api\MeetingController;
+use App\Http\Controllers\Api\MyController;
 use App\Http\Controllers\Api\NoticeController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\GasController;
 use App\Http\Controllers\Api\FlatOwnerController;
 use App\Http\Controllers\Api\OwnerDocumentController;
@@ -125,6 +127,21 @@ Route::prefix('meetings')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [MeetingController::class, 'index'])->middleware('permission:meeting.view');
     Route::post('/', [MeetingController::class, 'store'])->middleware('permission:meeting.manage');
     Route::post('/{meeting}/resolutions', [MeetingController::class, 'addResolution'])->middleware('permission:meeting.manage');
+});
+
+Route::prefix('reports')->middleware(['auth:sanctum', 'permission:accounting.view'])->group(function () {
+    Route::get('/trial-balance', [ReportController::class, 'trialBalance']);
+    Route::get('/income-statement', [ReportController::class, 'incomeStatement']);
+    Route::get('/balance-sheet', [ReportController::class, 'balanceSheet']);
+    Route::get('/dashboard', [ReportController::class, 'dashboard']);
+});
+
+Route::prefix('me')->middleware('auth:sanctum')->group(function () {
+    Route::get('/flats', [MyController::class, 'flats']);
+    Route::get('/bills', [MyController::class, 'bills']);
+    Route::get('/documents', [MyController::class, 'documents']);
+    Route::get('/complaints', [MyController::class, 'complaints']);
+    Route::post('/complaints', [MyController::class, 'storeComplaint']);
 });
 
 Route::prefix('notices')->middleware('auth:sanctum')->group(function () {
