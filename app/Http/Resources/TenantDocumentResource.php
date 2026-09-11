@@ -16,6 +16,7 @@ class TenantDocumentResource extends JsonResource
             // uploads deliver every field as a string, unlike JSON requests).
             'tenant_id' => (int) $this->tenant_id,
             'document_type' => $this->document_type,
+            'side' => $this->side,
             'file_url' => app(DocumentService::class)->url($this->file_path),
             'uploaded_at' => $this->uploaded_at,
             'uploaded_by' => $this->uploaded_by,

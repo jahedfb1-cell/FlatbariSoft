@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import DropZone from './DropZone';
 import * as docsApi from '../api/documents';
@@ -19,9 +20,11 @@ const tenantTypes = ['NID', 'PHOTO', 'POLICE_VERIFICATION'] as const;
 
 export default function DocumentManagerModal(props: Props) {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [documents, setDocuments] = useState<(OwnerDocument | TenantDocument)[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState('NID');
+  const [side, setSide] = useState('FRONT');
   const [documentYear, setDocumentYear] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,11 +48,16 @@ export default function DocumentManagerModal(props: Props) {
         await docsApi.uploadOwnerDocument(props.personId, {
           flat_id: props.flatId,
           document_type: documentType,
+          side: documentType === 'NID' ? side : undefined,
           document_year: documentType === 'LAND_TAX_RECEIPT' ? documentYear : undefined,
           file,
         });
       } else {
-        await docsApi.uploadTenantDocument(props.tenantId, { document_type: documentType, file });
+        await docsApi.uploadTenantDocument(props.tenantId, {
+          document_type: documentType,
+          side: documentType === 'NID' ? side : undefined,
+          file,
+        });
       }
       setFile(null);
       setDocumentYear('');
@@ -73,6 +81,14 @@ export default function DocumentManagerModal(props: Props) {
   }
 
   const typeOptions = props.kind === 'owner' ? ownerTypes : tenantTypes;
+  const nidDocs = documents.filter((d) => d.document_type === 'NID');
+  const nidFront = nidDocs.find((d) => d.side === 'FRONT');
+  const nidBack = nidDocs.find((d) => d.side === 'BACK');
+
+  function openNidPrint() {
+    if (!nidFront || !nidBack) return;
+    navigate('/print/nid', { state: { front: nidFront.file_url, back: nidBack.file_url } });
+  }
 
   return (
     <Modal title={t('documents.title')} onClose={props.onClose}>
@@ -83,6 +99,7 @@ export default function DocumentManagerModal(props: Props) {
             <div key={doc.id} className="flex items-center justify-between rounded-lg border border-brand-100 px-3 py-2 text-sm">
               <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">
                 {t(`docType.${doc.document_type}` as TranslationKey)}
+                {doc.side ? ` — ${t(`side.${doc.side}` as TranslationKey)}` : ''}
                 {'document_year' in doc && doc.document_year ? ` (${doc.document_year})` : ''}
               </a>
               <button onClick={() => handleDelete(doc.id)} className="text-status-due hover:underline">
@@ -91,6 +108,15 @@ export default function DocumentManagerModal(props: Props) {
             </div>
           ))}
         </div>
+
+        {nidFront && nidBack && (
+          <button
+            onClick={openNidPrint}
+            className="w-full rounded-lg border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100"
+          >
+            🖨️ {t('documents.printNid')}
+          </button>
+        )}
 
         <div className="border-t border-brand-100 pt-4">
           <label className={labelClass}>{t('documents.type')}</label>
@@ -101,6 +127,20 @@ export default function DocumentManagerModal(props: Props) {
               </option>
             ))}
           </select>
+
+          {documentType === 'NID' && (
+            <div className="mb-3">
+              <label className={labelClass}>{t('documents.side')}</label>
+              <select value={side} onChange={(e) => setSide(e.target.value)} className={inputClass}>
+                <option value="FRONT" disabled={!!nidFront}>
+                  {t('side.FRONT')}
+                </option>
+                <option value="BACK" disabled={!!nidBack}>
+                  {t('side.BACK')}
+                </option>
+              </select>
+            </div>
+          )}
 
           {props.kind === 'owner' && documentType === 'LAND_TAX_RECEIPT' && (
             <div className="mb-3">

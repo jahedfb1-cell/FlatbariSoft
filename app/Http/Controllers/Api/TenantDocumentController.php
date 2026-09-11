@@ -28,6 +28,7 @@ class TenantDocumentController extends Controller
         $document = TenantDocument::create([
             'tenant_id' => $tenant->id,
             'document_type' => $request->validated('document_type'),
+            'side' => $request->validated('side'),
             'file_path' => $path,
             'uploaded_at' => now(),
             'uploaded_by' => Auth::id(),

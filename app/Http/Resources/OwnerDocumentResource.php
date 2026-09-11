@@ -18,6 +18,7 @@ class OwnerDocumentResource extends JsonResource
             // MySQL would return on a fresh SELECT.
             'flat_id' => (int) $this->flat_id,
             'document_type' => $this->document_type,
+            'side' => $this->side,
             'document_year' => $this->document_year === null ? null : (int) $this->document_year,
             'issued_date' => $this->issued_date?->toDateString(),
             'expiry_date' => $this->expiry_date?->toDateString(),

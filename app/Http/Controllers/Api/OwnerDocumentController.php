@@ -29,6 +29,7 @@ class OwnerDocumentController extends Controller
             'person_id' => $person->id,
             'flat_id' => $request->validated('flat_id'),
             'document_type' => $request->validated('document_type'),
+            'side' => $request->validated('side'),
             'document_year' => $request->validated('document_year'),
             'issued_date' => $request->validated('issued_date'),
             'expiry_date' => $request->validated('expiry_date'),

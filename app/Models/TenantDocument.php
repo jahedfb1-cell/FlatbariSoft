@@ -13,6 +13,7 @@ class TenantDocument extends Model
     protected $fillable = [
         'tenant_id',
         'document_type',
+        'side',
         'file_path',
         'uploaded_at',
         'uploaded_by',

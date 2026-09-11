@@ -14,6 +14,7 @@ class OwnerDocument extends Model
         'person_id',
         'flat_id',
         'document_type',
+        'side',
         'document_year',
         'file_path',
         'issued_date',

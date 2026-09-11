@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import FlatsPage from './pages/FlatsPage';
 import FlatDetailPage from './pages/FlatDetailPage';
+import NidPrintPage from './pages/NidPrintPage';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -28,6 +29,7 @@ function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/flats" element={<FlatsPage />} />
       <Route path="/flats/:id" element={<FlatDetailPage />} />
+      <Route path="/print/nid" element={<NidPrintPage />} />
     </Routes>
   );
 }
