@@ -86,6 +86,7 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
 Route::prefix('billing')->middleware('auth:sanctum')->group(function () {
     Route::post('/generate', [BillingController::class, 'generate'])->middleware('permission:billing.manage');
     Route::get('/{year}/{month}', [BillingController::class, 'show'])->middleware('permission:billing.view');
+    Route::post('/periods/{year}/{month}', [\App\Http\Controllers\Api\BillingPeriodController::class, 'findOrCreate'])->middleware('permission:gas.manage');
 });
 
 Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
@@ -99,6 +100,9 @@ Route::prefix('expenses')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [ExpenseController::class, 'store'])->middleware('permission:expense.create');
     Route::post('/{expense}/approve', [ExpenseController::class, 'approve'])->middleware('permission:expense.approve');
 });
+
+Route::get('/expense-heads', [\App\Http\Controllers\Api\ExpenseHeadController::class, 'index'])
+    ->middleware(['auth:sanctum', 'permission:expense.view']);
 
 Route::post('/closing', [MonthlyClosingController::class, 'close'])
     ->middleware(['auth:sanctum', 'permission:accounting.manage']);

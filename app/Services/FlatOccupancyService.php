@@ -21,6 +21,7 @@ class FlatOccupancyService
     {
         return DB::transaction(function () use ($flat, $personData, $fromDate, $isBillingContact) {
             $person = $this->personService->findOrCreate($personData);
+            $this->personService->ensureUserAccount($person, 'flat_owner');
 
             return FlatParty::create([
                 'flat_id' => $flat->id,
@@ -53,6 +54,7 @@ class FlatOccupancyService
             }
 
             $person = $this->personService->findOrCreate($personData);
+            $this->personService->ensureUserAccount($person, 'tenant');
 
             $tenant = Tenant::create([
                 'flat_id' => $flat->id,
