@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import FlatsPage from './pages/FlatsPage';
@@ -7,9 +8,10 @@ import FlatDetailPage from './pages/FlatDetailPage';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-navy-700">লোড হচ্ছে...</div>;
+    return <div className="flex min-h-screen items-center justify-center text-navy-700">{t('loading')}</div>;
   }
 
   if (!user) {
@@ -33,9 +35,11 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

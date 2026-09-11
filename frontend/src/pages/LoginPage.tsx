@@ -1,11 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import * as authApi from '../api/auth';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import LanguageToggle from '../components/LanguageToggle';
 
 type Step = 'mobile' | 'otp';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useLanguage();
   const [step, setStep] = useState<Step>('mobile');
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
@@ -22,7 +25,7 @@ export default function LoginPage() {
       setDevOtp(res.dev_otp);
       setStep('otp');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'কিছু একটা ভুল হয়েছে।');
+      setError(err.response?.data?.message || t('somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -36,7 +39,7 @@ export default function LoginPage() {
       const res = await authApi.verifyOtp(mobile, code);
       login(res.token, res.user);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'কিছু একটা ভুল হয়েছে।');
+      setError(err.response?.data?.message || t('somethingWrong'));
     } finally {
       setSubmitting(false);
     }
@@ -45,15 +48,18 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-50 px-4">
       <div className="w-full max-w-sm rounded-xl border border-brand-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-navy-900">Green Valley BMS</h1>
+        <div className="mb-2 flex items-start justify-between">
+          <h1 className="text-xl font-semibold text-navy-900">{t('appName')}</h1>
+          <LanguageToggle />
+        </div>
         <p className="mt-1 text-sm text-navy-700">
-          {step === 'mobile' ? 'মোবাইল নম্বর দিয়ে লগইন করুন' : 'OTP কোড দিন'}
+          {step === 'mobile' ? t('login.mobileStepTitle') : t('login.otpStepTitle')}
         </p>
 
         {step === 'mobile' && (
           <form onSubmit={handleRequestOtp} className="mt-6 space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-navy-900">মোবাইল নম্বর</label>
+              <label className="mb-1 block text-sm font-medium text-navy-900">{t('login.mobileLabel')}</label>
               <input
                 type="tel"
                 required
@@ -69,7 +75,7 @@ export default function LoginPage() {
               disabled={submitting}
               className="w-full rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
             >
-              {submitting ? 'পাঠানো হচ্ছে...' : 'OTP পাঠান'}
+              {submitting ? t('login.sending') : t('login.sendOtp')}
             </button>
           </form>
         )}
@@ -78,11 +84,11 @@ export default function LoginPage() {
           <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
             {devOtp && (
               <p className="rounded-lg bg-brand-100 px-3 py-2 text-sm text-navy-900">
-                Dev মোডে SMS গেটওয়ে নেই — OTP: <span className="font-semibold">{devOtp}</span>
+                {t('login.devOtpHint')} <span className="font-semibold">{devOtp}</span>
               </p>
             )}
             <div>
-              <label className="mb-1 block text-sm font-medium text-navy-900">OTP কোড</label>
+              <label className="mb-1 block text-sm font-medium text-navy-900">{t('login.otpLabel')}</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -98,14 +104,14 @@ export default function LoginPage() {
               disabled={submitting}
               className="w-full rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
             >
-              {submitting ? 'যাচাই হচ্ছে...' : 'যাচাই করুন'}
+              {submitting ? t('login.verifying') : t('login.verify')}
             </button>
             <button
               type="button"
               onClick={() => setStep('mobile')}
               className="w-full text-sm text-navy-700 hover:underline"
             >
-              মোবাইল নম্বর পরিবর্তন করুন
+              {t('login.changeMobile')}
             </button>
           </form>
         )}

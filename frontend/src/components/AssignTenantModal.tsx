@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import * as flatsApi from '../api/flats';
+import { useLanguage } from '../context/LanguageContext';
 
 const inputClass =
   'w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500';
@@ -15,6 +16,7 @@ export default function AssignTenantModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useLanguage();
   const [nameBn, setNameBn] = useState('');
   const [mobile, setMobile] = useState('');
   const [occupation, setOccupation] = useState('');
@@ -41,22 +43,22 @@ export default function AssignTenantModal({
       onSaved();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
-      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || 'কিছু ভুল হয়েছে।');
+      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || t('somethingWrong'));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Modal title="ভাড়াটিয়া যোগ করুন" onClose={onClose}>
+    <Modal title={t('assignTenant.title')} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>ভাড়াটিয়ার নাম (বাংলা)</label>
+            <label className={labelClass}>{t('assignTenant.nameLabel')}</label>
             <input required value={nameBn} onChange={(e) => setNameBn(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>মোবাইল নম্বর</label>
+            <label className={labelClass}>{t('assignTenant.mobileLabel')}</label>
             <input
               required
               placeholder="01912345678"
@@ -68,11 +70,11 @@ export default function AssignTenantModal({
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>পেশা</label>
+            <label className={labelClass}>{t('assignTenant.occupation')}</label>
             <input value={occupation} onChange={(e) => setOccupation(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>পরিবারের সদস্য সংখ্যা</label>
+            <label className={labelClass}>{t('assignTenant.familyMembers')}</label>
             <input
               type="number"
               value={familyMembers}
@@ -82,7 +84,7 @@ export default function AssignTenantModal({
           </div>
         </div>
         <div>
-          <label className={labelClass}>ভাড়া শুরুর তারিখ</label>
+          <label className={labelClass}>{t('assignTenant.startDate')}</label>
           <input
             type="date"
             required
@@ -93,7 +95,7 @@ export default function AssignTenantModal({
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>মাসিক ভাড়া (৳)</label>
+            <label className={labelClass}>{t('assignTenant.monthlyRent')}</label>
             <input
               type="number"
               value={monthlyRent}
@@ -102,7 +104,7 @@ export default function AssignTenantModal({
             />
           </div>
           <div>
-            <label className={labelClass}>সিকিউরিটি ডিপোজিট (৳)</label>
+            <label className={labelClass}>{t('assignTenant.securityDeposit')}</label>
             <input
               type="number"
               value={securityDeposit}
@@ -117,7 +119,7 @@ export default function AssignTenantModal({
           disabled={submitting}
           className="w-full rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
         >
-          {submitting ? 'সংরক্ষণ হচ্ছে...' : 'ভাড়াটিয়া যোগ করুন'}
+          {submitting ? t('flatForm.saving') : t('assignTenant.title')}
         </button>
       </form>
     </Modal>

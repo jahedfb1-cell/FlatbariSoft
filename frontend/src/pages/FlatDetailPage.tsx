@@ -6,10 +6,14 @@ import AssignOwnerModal from '../components/AssignOwnerModal';
 import AssignTenantModal from '../components/AssignTenantModal';
 import FlatFormModal from '../components/FlatFormModal';
 import DocumentManagerModal from '../components/DocumentManagerModal';
+import LanguageToggle from '../components/LanguageToggle';
+import { useLanguage } from '../context/LanguageContext';
+import type { TranslationKey } from '../i18n/translations';
 
 type DocTarget = { kind: 'owner'; personId: number } | { kind: 'tenant'; tenantId: number };
 
 export default function FlatDetailPage() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const flatId = Number(id);
   const [flat, setFlat] = useState<Flat | null>(null);
@@ -23,71 +27,84 @@ export default function FlatDetailPage() {
   useEffect(load, [flatId]);
 
   async function handleEndOwnership(flatPartyId: number) {
-    if (!confirm('এই মালিকানার রেকর্ড শেষ করবেন?')) return;
+    if (!confirm(t('flatDetail.confirmEndOwnership'))) return;
     await flatsApi.endOwnership(flatId, flatPartyId);
     load();
   }
 
   async function handleVacate(tenantId: number) {
-    if (!confirm('এই ভাড়াটিয়াকে ভ্যাকেট করবেন?')) return;
+    if (!confirm(t('flatDetail.confirmVacate'))) return;
     await flatsApi.vacateTenant(tenantId);
     load();
   }
 
   if (!flat) {
-    return <div className="flex min-h-screen items-center justify-center text-navy-700">লোড হচ্ছে...</div>;
+    return <div className="flex min-h-screen items-center justify-center text-navy-700">{t('loading')}</div>;
   }
 
   return (
     <div className="min-h-screen bg-brand-50 px-4 py-8">
       <div className="mx-auto max-w-2xl space-y-6">
-        <Link to="/flats" className="text-sm text-navy-700 hover:underline">
-          ← ফ্ল্যাট তালিকা
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/flats" className="text-sm text-navy-700 hover:underline">
+            ← {t('flatDetail.back')}
+          </Link>
+          <LanguageToggle />
+        </div>
 
         <div className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-navy-900">ফ্ল্যাট {flat.flat_no}</h1>
+              <h1 className="text-xl font-semibold text-navy-900">
+                {t('flatDetail.flat')} {flat.flat_no}
+              </h1>
               <p className="mt-1 text-sm text-navy-700">
-                ফ্লোর {flat.floor} · {flat.size_sqft ?? '—'} sqft
+                {t('flatDetail.floor')} {flat.floor} · {flat.size_sqft ?? '—'} sqft
               </p>
             </div>
             <button
               onClick={() => setModal('edit')}
               className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm text-navy-700 transition hover:bg-brand-100"
             >
-              এডিট
+              {t('flatDetail.edit')}
             </button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-navy-900">
-            <p>সার্ভিস চার্জ: ৳{Number(flat.service_charge_rate).toLocaleString('en-BD')}</p>
-            <p>খালি রেট: ৳{Number(flat.empty_flat_rate).toLocaleString('en-BD')}</p>
-            <p>গ্যাস মিটার: {flat.gas_meter_no ?? '—'}</p>
-            <p>অবস্থা: {flat.occupancy_status}</p>
+            <p>
+              {t('flatDetail.serviceCharge')}: ৳{Number(flat.service_charge_rate).toLocaleString('en-BD')}
+            </p>
+            <p>
+              {t('flatDetail.emptyRate')}: ৳{Number(flat.empty_flat_rate).toLocaleString('en-BD')}
+            </p>
+            <p>
+              {t('flatDetail.gasMeter')}: {flat.gas_meter_no ?? '—'}
+            </p>
+            <p>
+              {t('flatDetail.status')}: {t(`occupancy.${flat.occupancy_status}` as TranslationKey)}
+            </p>
           </div>
         </div>
 
         <div className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold text-navy-900">মালিক</h2>
+            <h2 className="font-semibold text-navy-900">{t('flatDetail.owner')}</h2>
             <button
               onClick={() => setModal('owner')}
               className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm text-white transition hover:bg-brand-700"
             >
-              + মালিক যোগ করুন
+              {t('flatDetail.addOwner')}
             </button>
           </div>
           {(!flat.current_owners || flat.current_owners.length === 0) && (
-            <p className="text-sm text-navy-700">কোনো মালিক যোগ করা হয়নি।</p>
+            <p className="text-sm text-navy-700">{t('flatDetail.noOwner')}</p>
           )}
           {flat.current_owners?.map((party) => (
             <div key={party.id} className="flex items-center justify-between border-t border-brand-100 py-2 text-sm">
               <div>
                 <p className="font-medium text-navy-900">{party.person.name_bn}</p>
                 <p className="text-navy-700">
-                  {party.person.mobile} · থেকে {party.from_date}
-                  {party.is_billing_contact && ' · বিলিং কন্টাক্ট'}
+                  {party.person.mobile} · {t('flatDetail.from')} {party.from_date}
+                  {party.is_billing_contact && ` · ${t('flatDetail.billingContact')}`}
                 </p>
               </div>
               <div className="flex shrink-0 gap-3">
@@ -95,10 +112,10 @@ export default function FlatDetailPage() {
                   onClick={() => setDocTarget({ kind: 'owner', personId: party.person.id! })}
                   className="text-brand-700 hover:underline"
                 >
-                  ডকুমেন্ট
+                  {t('flatDetail.document')}
                 </button>
                 <button onClick={() => handleEndOwnership(party.id)} className="text-status-due hover:underline">
-                  মালিকানা শেষ করুন
+                  {t('flatDetail.endOwnership')}
                 </button>
               </div>
             </div>
@@ -107,25 +124,25 @@ export default function FlatDetailPage() {
 
         <div className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold text-navy-900">ভাড়াটিয়া</h2>
+            <h2 className="font-semibold text-navy-900">{t('flatDetail.tenant')}</h2>
             {(!flat.current_tenant || flat.current_tenant.length === 0) && (
               <button
                 onClick={() => setModal('tenant')}
                 className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm text-white transition hover:bg-brand-700"
               >
-                + ভাড়াটিয়া যোগ করুন
+                {t('flatDetail.addTenant')}
               </button>
             )}
           </div>
           {(!flat.current_tenant || flat.current_tenant.length === 0) && (
-            <p className="text-sm text-navy-700">কোনো সক্রিয় ভাড়াটিয়া নেই।</p>
+            <p className="text-sm text-navy-700">{t('flatDetail.noTenant')}</p>
           )}
           {flat.current_tenant?.map((tenant) => (
             <div key={tenant.id} className="flex items-center justify-between border-t border-brand-100 py-2 text-sm">
               <div>
                 <p className="font-medium text-navy-900">{tenant.person.name_bn}</p>
                 <p className="text-navy-700">
-                  {tenant.person.mobile} · থেকে {tenant.start_date} · ভাড়া ৳
+                  {tenant.person.mobile} · {t('flatDetail.from')} {tenant.start_date} · {t('flatDetail.rent')} ৳
                   {tenant.monthly_rent ? Number(tenant.monthly_rent).toLocaleString('en-BD') : '—'}
                 </p>
               </div>
@@ -134,10 +151,10 @@ export default function FlatDetailPage() {
                   onClick={() => setDocTarget({ kind: 'tenant', tenantId: tenant.id })}
                   className="text-brand-700 hover:underline"
                 >
-                  ডকুমেন্ট
+                  {t('flatDetail.document')}
                 </button>
                 <button onClick={() => handleVacate(tenant.id)} className="text-status-due hover:underline">
-                  ভ্যাকেট করুন
+                  {t('flatDetail.vacate')}
                 </button>
               </div>
             </div>

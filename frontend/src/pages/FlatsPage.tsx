@@ -3,12 +3,9 @@ import { Link } from 'react-router-dom';
 import * as flatsApi from '../api/flats';
 import type { Flat } from '../api/flats';
 import FlatFormModal from '../components/FlatFormModal';
-
-const occupancyLabel: Record<Flat['occupancy_status'], string> = {
-  OWNER_OCCUPIED: 'মালিক নিজে থাকেন',
-  TENANTED: 'ভাড়াটিয়া আছে',
-  EMPTY: 'খালি',
-};
+import LanguageToggle from '../components/LanguageToggle';
+import { useLanguage } from '../context/LanguageContext';
+import type { TranslationKey } from '../i18n/translations';
 
 const occupancyClass: Record<Flat['occupancy_status'], string> = {
   OWNER_OCCUPIED: 'bg-brand-100 text-brand-700',
@@ -17,6 +14,7 @@ const occupancyClass: Record<Flat['occupancy_status'], string> = {
 };
 
 export default function FlatsPage() {
+  const { t } = useLanguage();
   const [flats, setFlats] = useState<Flat[]>([]);
   const [buildingId, setBuildingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,21 +44,24 @@ export default function FlatsPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <Link to="/" className="text-sm text-navy-700 hover:underline">
-              ← হোম
+              ← {t('flats.home')}
             </Link>
-            <h1 className="mt-1 text-xl font-semibold text-navy-900">ফ্ল্যাট তালিকা</h1>
+            <h1 className="mt-1 text-xl font-semibold text-navy-900">{t('flats.title')}</h1>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            disabled={!buildingId}
-            className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
-          >
-            + নতুন ফ্ল্যাট
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <button
+              onClick={() => setShowForm(true)}
+              disabled={!buildingId}
+              className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
+            >
+              {t('flats.addNew')}
+            </button>
+          </div>
         </div>
 
         <input
-          placeholder="ফ্ল্যাট নম্বর দিয়ে খুঁজুন..."
+          placeholder={t('flats.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="mb-4 w-full max-w-xs rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500"
@@ -70,24 +71,24 @@ export default function FlatsPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-brand-100 text-navy-900">
               <tr>
-                <th className="px-4 py-3">ফ্ল্যাট</th>
-                <th className="px-4 py-3">ফ্লোর</th>
-                <th className="px-4 py-3">অবস্থা</th>
-                <th className="px-4 py-3">সার্ভিস চার্জ</th>
+                <th className="px-4 py-3">{t('flats.colFlat')}</th>
+                <th className="px-4 py-3">{t('flats.colFloor')}</th>
+                <th className="px-4 py-3">{t('flats.colStatus')}</th>
+                <th className="px-4 py-3">{t('flats.colServiceCharge')}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-navy-700">
-                    লোড হচ্ছে...
+                    {t('loading')}
                   </td>
                 </tr>
               )}
               {!loading && flats.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-6 text-center text-navy-700">
-                    কোনো ফ্ল্যাট পাওয়া যায়নি।
+                    {t('flats.empty')}
                   </td>
                 </tr>
               )}
@@ -101,7 +102,7 @@ export default function FlatsPage() {
                   <td className="px-4 py-3 text-navy-900">{flat.floor}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-1 text-xs font-medium ${occupancyClass[flat.occupancy_status]}`}>
-                      {occupancyLabel[flat.occupancy_status]}
+                      {t(`occupancy.${flat.occupancy_status}` as TranslationKey)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(flat.service_charge_rate).toLocaleString('en-BD')}</td>

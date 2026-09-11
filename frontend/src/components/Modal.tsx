@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Modal({
   title,
@@ -9,6 +10,8 @@ export default function Modal({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 px-4">
       <div className="w-full max-w-lg rounded-xl border border-brand-200 bg-white p-6 shadow-lg">
@@ -17,7 +20,7 @@ export default function Modal({
           <button
             onClick={onClose}
             className="rounded-lg px-2 py-1 text-navy-700 transition hover:bg-brand-100"
-            aria-label="বন্ধ করুন"
+            aria-label={t('modal.close')}
           >
             ✕
           </button>

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import * as flatsApi from '../api/flats';
 import type { Flat } from '../api/flats';
+import { useLanguage } from '../context/LanguageContext';
 
 const inputClass =
   'w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500';
@@ -18,6 +19,7 @@ export default function FlatFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useLanguage();
   const isEdit = !!flat;
   const [flatNo, setFlatNo] = useState(flat?.flat_no ?? '');
   const [floor, setFloor] = useState(flat?.floor ?? '');
@@ -50,28 +52,28 @@ export default function FlatFormModal({
       onSaved();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
-      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || 'কিছু ভুল হয়েছে।');
+      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || t('somethingWrong'));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Modal title={isEdit ? 'ফ্ল্যাট এডিট করুন' : 'নতুন ফ্ল্যাট যোগ করুন'} onClose={onClose}>
+    <Modal title={isEdit ? t('flatForm.editTitle') : t('flatForm.addTitle')} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>ফ্ল্যাট নম্বর</label>
+            <label className={labelClass}>{t('flatForm.flatNo')}</label>
             <input required value={flatNo} onChange={(e) => setFlatNo(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>ফ্লোর</label>
+            <label className={labelClass}>{t('flatForm.floor')}</label>
             <input required value={floor} onChange={(e) => setFloor(e.target.value)} className={inputClass} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>সাইজ (Sqft)</label>
+            <label className={labelClass}>{t('flatForm.size')}</label>
             <input
               type="number"
               value={sizeSqft}
@@ -80,13 +82,13 @@ export default function FlatFormModal({
             />
           </div>
           <div>
-            <label className={labelClass}>গ্যাস মিটার নম্বর</label>
+            <label className={labelClass}>{t('flatForm.gasMeter')}</label>
             <input value={gasMeterNo} onChange={(e) => setGasMeterNo(e.target.value)} className={inputClass} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>সার্ভিস চার্জ (৳)</label>
+            <label className={labelClass}>{t('flatForm.serviceCharge')}</label>
             <input
               type="number"
               value={serviceChargeRate}
@@ -95,7 +97,7 @@ export default function FlatFormModal({
             />
           </div>
           <div>
-            <label className={labelClass}>খালি ফ্ল্যাট রেট (৳)</label>
+            <label className={labelClass}>{t('flatForm.emptyRate')}</label>
             <input
               type="number"
               value={emptyFlatRate}
@@ -110,7 +112,7 @@ export default function FlatFormModal({
           disabled={submitting}
           className="w-full rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
         >
-          {submitting ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+          {submitting ? t('flatForm.saving') : t('flatForm.save')}
         </button>
       </form>
     </Modal>

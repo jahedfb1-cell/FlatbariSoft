@@ -1,10 +1,12 @@
 import { useRef, useState, type DragEvent } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Drag-drop file picker with an image/PDF thumbnail preview.
  * Accepts the same file types the backend allows: jpg, jpeg, png, pdf (max 5MB).
  */
 export default function DropZone({ file, onChange }: { file: File | null; onChange: (file: File | null) => void }) {
+  const { t } = useLanguage();
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,7 +39,7 @@ export default function DropZone({ file, onChange }: { file: File | null; onChan
         className="hidden"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />
-      {previewUrl && <img src={previewUrl} alt="প্রিভিউ" className="mb-2 h-24 w-24 rounded-lg object-cover" />}
+      {previewUrl && <img src={previewUrl} alt={t('dropzone.preview')} className="mb-2 h-24 w-24 rounded-lg object-cover" />}
       {file && !previewUrl && (
         <div className="mb-2 flex h-24 w-24 items-center justify-center rounded-lg bg-brand-200 text-3xl">📄</div>
       )}
@@ -45,8 +47,8 @@ export default function DropZone({ file, onChange }: { file: File | null; onChan
         <p className="text-sm text-navy-900">{file.name}</p>
       ) : (
         <>
-          <p className="text-sm font-medium text-navy-900">ফাইল টেনে আনুন অথবা ক্লিক করুন</p>
-          <p className="mt-1 text-xs text-navy-700">jpg, png, pdf (সর্বোচ্চ 5MB)</p>
+          <p className="text-sm font-medium text-navy-900">{t('dropzone.instruction')}</p>
+          <p className="mt-1 text-xs text-navy-700">{t('dropzone.hint')}</p>
         </>
       )}
     </div>

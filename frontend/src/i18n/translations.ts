@@ -1,0 +1,256 @@
+/**
+ * Frontend UI text only (labels, buttons, headers, static messages).
+ * Backend validation error messages stay Bengali-only for now — that
+ * would mean bn+en copies of every FormRequest's messages() across every
+ * phase, plus server-side locale detection, which is a separate, larger
+ * piece of work the owner deferred when this toggle was scoped.
+ */
+export const translations = {
+  bn: {
+    appName: 'Green Valley BMS',
+    loading: 'লোড হচ্ছে...',
+    somethingWrong: 'কিছু একটা ভুল হয়েছে।',
+
+    // Login
+    'login.mobileStepTitle': 'মোবাইল নম্বর দিয়ে লগইন করুন',
+    'login.otpStepTitle': 'OTP কোড দিন',
+    'login.mobileLabel': 'মোবাইল নম্বর',
+    'login.sendOtp': 'OTP পাঠান',
+    'login.sending': 'পাঠানো হচ্ছে...',
+    'login.devOtpHint': 'Dev মোডে SMS গেটওয়ে নেই — OTP:',
+    'login.otpLabel': 'OTP কোড',
+    'login.verify': 'যাচাই করুন',
+    'login.verifying': 'যাচাই হচ্ছে...',
+    'login.changeMobile': 'মোবাইল নম্বর পরিবর্তন করুন',
+
+    // Home
+    'home.loggedIn': 'লগইন সফল হয়েছে',
+    'home.logout': 'লগআউট',
+    'home.mobile': 'মোবাইল',
+    'home.role': 'Role',
+    'home.serverTime': 'Server time',
+    'home.flatManagement': 'ফ্ল্যাট ব্যবস্থাপনা',
+
+    // Roles
+    'role.super_admin': 'সুপার অ্যাডমিন',
+    'role.admin': 'অ্যাডমিন',
+    'role.manager': 'ম্যানেজার',
+    'role.flat_owner': 'ফ্ল্যাট মালিক',
+    'role.tenant': 'ভাড়াটিয়া',
+
+    // Flats list
+    'flats.home': 'হোম',
+    'flats.title': 'ফ্ল্যাট তালিকা',
+    'flats.addNew': '+ নতুন ফ্ল্যাট',
+    'flats.searchPlaceholder': 'ফ্ল্যাট নম্বর দিয়ে খুঁজুন...',
+    'flats.colFlat': 'ফ্ল্যাট',
+    'flats.colFloor': 'ফ্লোর',
+    'flats.colStatus': 'অবস্থা',
+    'flats.colServiceCharge': 'সার্ভিস চার্জ',
+    'flats.empty': 'কোনো ফ্ল্যাট পাওয়া যায়নি।',
+    'occupancy.OWNER_OCCUPIED': 'মালিক নিজে থাকেন',
+    'occupancy.TENANTED': 'ভাড়াটিয়া আছে',
+    'occupancy.EMPTY': 'খালি',
+
+    // Flat detail
+    'flatDetail.back': 'ফ্ল্যাট তালিকা',
+    'flatDetail.flat': 'ফ্ল্যাট',
+    'flatDetail.floor': 'ফ্লোর',
+    'flatDetail.edit': 'এডিট',
+    'flatDetail.serviceCharge': 'সার্ভিস চার্জ',
+    'flatDetail.emptyRate': 'খালি রেট',
+    'flatDetail.gasMeter': 'গ্যাস মিটার',
+    'flatDetail.status': 'অবস্থা',
+    'flatDetail.owner': 'মালিক',
+    'flatDetail.addOwner': '+ মালিক যোগ করুন',
+    'flatDetail.noOwner': 'কোনো মালিক যোগ করা হয়নি।',
+    'flatDetail.from': 'থেকে',
+    'flatDetail.billingContact': 'বিলিং কন্টাক্ট',
+    'flatDetail.document': 'ডকুমেন্ট',
+    'flatDetail.endOwnership': 'মালিকানা শেষ করুন',
+    'flatDetail.confirmEndOwnership': 'এই মালিকানার রেকর্ড শেষ করবেন?',
+    'flatDetail.tenant': 'ভাড়াটিয়া',
+    'flatDetail.addTenant': '+ ভাড়াটিয়া যোগ করুন',
+    'flatDetail.noTenant': 'কোনো সক্রিয় ভাড়াটিয়া নেই।',
+    'flatDetail.rent': 'ভাড়া',
+    'flatDetail.vacate': 'ভ্যাকেট করুন',
+    'flatDetail.confirmVacate': 'এই ভাড়াটিয়াকে ভ্যাকেট করবেন?',
+
+    // Flat form
+    'flatForm.editTitle': 'ফ্ল্যাট এডিট করুন',
+    'flatForm.addTitle': 'নতুন ফ্ল্যাট যোগ করুন',
+    'flatForm.flatNo': 'ফ্ল্যাট নম্বর',
+    'flatForm.floor': 'ফ্লোর',
+    'flatForm.size': 'সাইজ (Sqft)',
+    'flatForm.gasMeter': 'গ্যাস মিটার নম্বর',
+    'flatForm.serviceCharge': 'সার্ভিস চার্জ (৳)',
+    'flatForm.emptyRate': 'খালি ফ্ল্যাট রেট (৳)',
+    'flatForm.saving': 'সংরক্ষণ হচ্ছে...',
+    'flatForm.save': 'সংরক্ষণ করুন',
+
+    // Assign owner
+    'assignOwner.title': 'মালিক যোগ করুন',
+    'assignOwner.nameLabel': 'মালিকের নাম (বাংলা)',
+    'assignOwner.mobileLabel': 'মোবাইল নম্বর',
+    'assignOwner.mobileHint': 'এই মোবাইল নম্বর দিয়ে আগে থেকে কেউ থাকলে তাকেই লিংক করা হবে।',
+    'assignOwner.fromDate': 'মালিকানা শুরুর তারিখ',
+    'assignOwner.billingContact': 'এই ব্যক্তি বিলিং কন্টাক্ট (গ্যাস বিল তার কাছে যাবে)',
+
+    // Assign tenant
+    'assignTenant.title': 'ভাড়াটিয়া যোগ করুন',
+    'assignTenant.nameLabel': 'ভাড়াটিয়ার নাম (বাংলা)',
+    'assignTenant.mobileLabel': 'মোবাইল নম্বর',
+    'assignTenant.occupation': 'পেশা',
+    'assignTenant.familyMembers': 'পরিবারের সদস্য সংখ্যা',
+    'assignTenant.startDate': 'ভাড়া শুরুর তারিখ',
+    'assignTenant.monthlyRent': 'মাসিক ভাড়া (৳)',
+    'assignTenant.securityDeposit': 'সিকিউরিটি ডিপোজিট (৳)',
+
+    // Documents
+    'documents.title': 'ডকুমেন্ট',
+    'documents.none': 'কোনো ডকুমেন্ট আপলোড করা হয়নি।',
+    'documents.delete': 'মুছুন',
+    'documents.confirmDelete': 'এই ডকুমেন্ট মুছে ফেলবেন?',
+    'documents.type': 'ধরন',
+    'documents.year': 'সাল',
+    'documents.uploading': 'আপলোড হচ্ছে...',
+    'documents.upload': 'আপলোড করুন',
+    'documents.uploadFailed': 'আপলোড ব্যর্থ হয়েছে।',
+    'docType.NID': 'জাতীয় পরিচয়পত্র',
+    'docType.NAMJARI': 'নামজারি',
+    'docType.LAND_TAX_RECEIPT': 'জমির খাজনা রসিদ',
+    'docType.OTHER': 'অন্যান্য',
+    'docType.PHOTO': 'ছবি',
+    'docType.POLICE_VERIFICATION': 'পুলিশ ভেরিফিকেশন',
+
+    // Drop zone
+    'dropzone.preview': 'প্রিভিউ',
+    'dropzone.instruction': 'ফাইল টেনে আনুন অথবা ক্লিক করুন',
+    'dropzone.hint': 'jpg, png, pdf (সর্বোচ্চ 5MB)',
+
+    // Modal
+    'modal.close': 'বন্ধ করুন',
+
+    // Language toggle
+    'lang.toggleTo': 'English',
+  },
+  en: {
+    appName: 'Green Valley BMS',
+    loading: 'Loading...',
+    somethingWrong: 'Something went wrong.',
+
+    'login.mobileStepTitle': 'Log in with your mobile number',
+    'login.otpStepTitle': 'Enter the OTP code',
+    'login.mobileLabel': 'Mobile number',
+    'login.sendOtp': 'Send OTP',
+    'login.sending': 'Sending...',
+    'login.devOtpHint': 'No SMS gateway in dev mode — OTP:',
+    'login.otpLabel': 'OTP code',
+    'login.verify': 'Verify',
+    'login.verifying': 'Verifying...',
+    'login.changeMobile': 'Change mobile number',
+
+    'home.loggedIn': 'Logged in successfully',
+    'home.logout': 'Log out',
+    'home.mobile': 'Mobile',
+    'home.role': 'Role',
+    'home.serverTime': 'Server time',
+    'home.flatManagement': 'Flat Management',
+
+    'role.super_admin': 'Super Admin',
+    'role.admin': 'Admin',
+    'role.manager': 'Manager',
+    'role.flat_owner': 'Flat Owner',
+    'role.tenant': 'Tenant',
+
+    'flats.home': 'Home',
+    'flats.title': 'Flats',
+    'flats.addNew': '+ New Flat',
+    'flats.searchPlaceholder': 'Search by flat number...',
+    'flats.colFlat': 'Flat',
+    'flats.colFloor': 'Floor',
+    'flats.colStatus': 'Status',
+    'flats.colServiceCharge': 'Service Charge',
+    'flats.empty': 'No flats found.',
+    'occupancy.OWNER_OCCUPIED': 'Owner-occupied',
+    'occupancy.TENANTED': 'Tenanted',
+    'occupancy.EMPTY': 'Empty',
+
+    'flatDetail.back': 'Flats',
+    'flatDetail.flat': 'Flat',
+    'flatDetail.floor': 'Floor',
+    'flatDetail.edit': 'Edit',
+    'flatDetail.serviceCharge': 'Service charge',
+    'flatDetail.emptyRate': 'Empty rate',
+    'flatDetail.gasMeter': 'Gas meter',
+    'flatDetail.status': 'Status',
+    'flatDetail.owner': 'Owner',
+    'flatDetail.addOwner': '+ Add Owner',
+    'flatDetail.noOwner': 'No owner has been added.',
+    'flatDetail.from': 'since',
+    'flatDetail.billingContact': 'billing contact',
+    'flatDetail.document': 'Documents',
+    'flatDetail.endOwnership': 'End ownership',
+    'flatDetail.confirmEndOwnership': 'End this ownership record?',
+    'flatDetail.tenant': 'Tenant',
+    'flatDetail.addTenant': '+ Add Tenant',
+    'flatDetail.noTenant': 'No active tenant.',
+    'flatDetail.rent': 'rent',
+    'flatDetail.vacate': 'Vacate',
+    'flatDetail.confirmVacate': 'Vacate this tenant?',
+
+    'flatForm.editTitle': 'Edit Flat',
+    'flatForm.addTitle': 'Add New Flat',
+    'flatForm.flatNo': 'Flat number',
+    'flatForm.floor': 'Floor',
+    'flatForm.size': 'Size (Sqft)',
+    'flatForm.gasMeter': 'Gas meter number',
+    'flatForm.serviceCharge': 'Service charge (৳)',
+    'flatForm.emptyRate': 'Empty flat rate (৳)',
+    'flatForm.saving': 'Saving...',
+    'flatForm.save': 'Save',
+
+    'assignOwner.title': 'Add Owner',
+    'assignOwner.nameLabel': "Owner's name",
+    'assignOwner.mobileLabel': 'Mobile number',
+    'assignOwner.mobileHint': 'If this number already belongs to someone, that person will be linked instead.',
+    'assignOwner.fromDate': 'Ownership start date',
+    'assignOwner.billingContact': 'This person is the billing contact (gas bill goes to them)',
+
+    'assignTenant.title': 'Add Tenant',
+    'assignTenant.nameLabel': "Tenant's name",
+    'assignTenant.mobileLabel': 'Mobile number',
+    'assignTenant.occupation': 'Occupation',
+    'assignTenant.familyMembers': 'Family members',
+    'assignTenant.startDate': 'Tenancy start date',
+    'assignTenant.monthlyRent': 'Monthly rent (৳)',
+    'assignTenant.securityDeposit': 'Security deposit (৳)',
+
+    'documents.title': 'Documents',
+    'documents.none': 'No documents uploaded.',
+    'documents.delete': 'Delete',
+    'documents.confirmDelete': 'Delete this document?',
+    'documents.type': 'Type',
+    'documents.year': 'Year',
+    'documents.uploading': 'Uploading...',
+    'documents.upload': 'Upload',
+    'documents.uploadFailed': 'Upload failed.',
+    'docType.NID': 'National ID',
+    'docType.NAMJARI': 'Mutation (Namjari)',
+    'docType.LAND_TAX_RECEIPT': 'Land Tax Receipt',
+    'docType.OTHER': 'Other',
+    'docType.PHOTO': 'Photo',
+    'docType.POLICE_VERIFICATION': 'Police Verification',
+
+    'dropzone.preview': 'Preview',
+    'dropzone.instruction': 'Drag a file here or click to browse',
+    'dropzone.hint': 'jpg, png, pdf (max 5MB)',
+
+    'modal.close': 'Close',
+
+    'lang.toggleTo': 'বাংলা',
+  },
+} as const;
+
+export type Lang = keyof typeof translations;
+export type TranslationKey = keyof (typeof translations)['bn'];
