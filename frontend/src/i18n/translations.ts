@@ -253,6 +253,14 @@ export const translations = {
     'owner.newComplaint': '+ নতুন অভিযোগ',
     'owner.myDocuments': 'আমার ডকুমেন্ট',
 
+    'bank.title': 'ব্যাংক হিসাব',
+    'bank.name': 'ব্যাংকের নাম',
+    'bank.accountNo': 'হিসাব নম্বর',
+    'bank.accountTitle': 'হিসাবের নাম',
+    'bank.opening': 'শুরুর ব্যালেন্স',
+    'bank.current': 'বর্তমান ব্যালেন্স',
+    'bank.none': 'কোনো ব্যাংক হিসাব সেটআপ করা নেই — BANK/BKASH/NAGAD পেমেন্ট অনুমোদনের জন্য একটা যোগ করুন।',
+
     // Language toggle
     'lang.toggleTo': 'English',
   },
@@ -491,6 +499,14 @@ export const translations = {
     'owner.myFlats': 'My Flats',
     'owner.newComplaint': '+ New Complaint',
     'owner.myDocuments': 'My Documents',
+
+    'bank.title': 'Bank Accounts',
+    'bank.name': 'Bank Name',
+    'bank.accountNo': 'Account No',
+    'bank.accountTitle': 'Account Title',
+    'bank.opening': 'Opening Balance',
+    'bank.current': 'Current Balance',
+    'bank.none': 'No bank account set up yet — add one so BANK/BKASH/NAGAD payments can be approved.',
   },
 } as const;
 
