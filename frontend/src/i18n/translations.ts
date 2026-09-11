@@ -135,6 +135,19 @@ export const translations = {
     // Modal
     'modal.close': 'বন্ধ করুন',
 
+    // Staff
+    'staff.title': 'স্টাফ তালিকা',
+    'staff.addNew': '+ নতুন স্টাফ',
+    'staff.addTitle': 'নতুন স্টাফ যোগ করুন',
+    'staff.editTitle': 'স্টাফ এডিট করুন',
+    'staff.name': 'নাম',
+    'staff.designation': 'পদবি',
+    'staff.mobile': 'মোবাইল',
+    'staff.joinDate': 'যোগদানের তারিখ',
+    'staff.salary': 'মাসিক বেতন',
+    'staff.empty': 'কোনো স্টাফ পাওয়া যায়নি।',
+    'staff.confirmDelete': 'এই স্টাফ মুছে ফেলবেন?',
+
     // Language toggle
     'lang.toggleTo': 'English',
   },
@@ -257,6 +270,18 @@ export const translations = {
     'modal.close': 'Close',
 
     'lang.toggleTo': 'বাংলা',
+
+    'staff.title': 'Staff',
+    'staff.addNew': '+ New Staff',
+    'staff.addTitle': 'Add New Staff',
+    'staff.editTitle': 'Edit Staff',
+    'staff.name': 'Name',
+    'staff.designation': 'Designation',
+    'staff.mobile': 'Mobile',
+    'staff.joinDate': 'Join date',
+    'staff.salary': 'Monthly salary',
+    'staff.empty': 'No staff found.',
+    'staff.confirmDelete': 'Delete this staff member?',
   },
 } as const;
 

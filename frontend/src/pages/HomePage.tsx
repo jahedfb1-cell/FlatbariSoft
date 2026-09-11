@@ -66,6 +66,12 @@ export default function HomePage() {
         >
           {t('home.flatManagement')} →
         </Link>
+        <Link
+          to="/staff"
+          className="mt-2 block rounded-lg border border-brand-200 px-4 py-2 text-center text-sm font-medium text-brand-700 transition hover:bg-brand-100"
+        >
+          {t('staff.title')} →
+        </Link>
       </div>
     </div>
   );

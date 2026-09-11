@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\FlatController;
 use App\Http\Controllers\Api\FlatOwnerController;
 use App\Http\Controllers\Api\OwnerDocumentController;
 use App\Http\Controllers\Api\PersonController;
+use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\TenantController;
 use App\Http\Controllers\Api\TenantDocumentController;
 use Illuminate\Support\Facades\Route;
@@ -61,4 +62,10 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
     Route::get('/tenants/{tenant}/documents', [TenantDocumentController::class, 'index'])->middleware('permission:document.view');
     Route::post('/tenants/{tenant}/documents', [TenantDocumentController::class, 'store'])->middleware('permission:document.manage');
     Route::delete('/tenant-documents/{tenantDocument}', [TenantDocumentController::class, 'destroy'])->middleware('permission:document.manage');
+
+    Route::get('/staff', [StaffController::class, 'index'])->middleware('permission:staff.view');
+    Route::post('/staff', [StaffController::class, 'store'])->middleware('permission:staff.manage');
+    Route::get('/staff/{staff}', [StaffController::class, 'show'])->middleware('permission:staff.view');
+    Route::put('/staff/{staff}', [StaffController::class, 'update'])->middleware('permission:staff.manage');
+    Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->middleware('permission:staff.manage');
 });

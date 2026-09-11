@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             FlatMasterPermissionSeeder::class,
             DocumentPermissionSeeder::class,
+            StaffPermissionSeeder::class,
             BuildingSeeder::class,
         ]);
     }
