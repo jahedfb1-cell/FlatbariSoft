@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ComplaintController;
 use App\Http\Controllers\Api\ConstructionDueController;
 use App\Http\Controllers\Api\FlatController;
 use App\Http\Controllers\Api\MeetingController;
+use App\Http\Controllers\Api\NoticeController;
 use App\Http\Controllers\Api\GasController;
 use App\Http\Controllers\Api\FlatOwnerController;
 use App\Http\Controllers\Api\OwnerDocumentController;
@@ -124,6 +125,11 @@ Route::prefix('meetings')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [MeetingController::class, 'index'])->middleware('permission:meeting.view');
     Route::post('/', [MeetingController::class, 'store'])->middleware('permission:meeting.manage');
     Route::post('/{meeting}/resolutions', [MeetingController::class, 'addResolution'])->middleware('permission:meeting.manage');
+});
+
+Route::prefix('notices')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [NoticeController::class, 'index']); // any logged-in resident can read published notices
+    Route::post('/', [NoticeController::class, 'store'])->middleware('permission:notice.manage');
 });
 
 Route::prefix('complaints')->middleware('auth:sanctum')->group(function () {

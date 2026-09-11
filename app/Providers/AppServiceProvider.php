@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\SmsGatewayInterface;
+use App\Services\Sms\NullSmsGateway;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Gate;
@@ -15,7 +17,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Phase 3.1 driver pattern: swap this binding for a real gateway
+        // class later — SmsService and every caller never change.
+        $this->app->bind(SmsGatewayInterface::class, NullSmsGateway::class);
     }
 
     /**

@@ -24,6 +24,8 @@ class DatabaseSeeder extends Seeder
             GasSetupSeeder::class,
             ExpenseHeadSeeder::class,
             GovernancePermissionSeeder::class,
+            CommunicationPermissionSeeder::class,
+            SmsTemplateSeeder::class,
         ]);
     }
 }
