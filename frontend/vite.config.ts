@@ -6,7 +6,9 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    port: 3000,
+    // 3000 is WBL Soft's frontend port (becha-kena-erp) — Green Valley BMS
+    // is a separate project and must never collide with it.
+    port: 4000,
     strictPort: true,
   },
 })

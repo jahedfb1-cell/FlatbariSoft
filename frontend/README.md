@@ -1,32 +1,25 @@
-# React + TypeScript + Vite
+# Green Valley BMS — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 18 + TypeScript + Tailwind v4 SPA for the Green Valley Building Management System.
+Talks to the Laravel API in the parent directory over Sanctum bearer tokens.
 
-Currently, two official plugins are available:
+**Dev port: `4000`** (fixed, `strictPort: true`) — deliberately different from WBL Soft's
+`becha-kena-erp/frontend`, which owns port `3000`. These are two unrelated projects that may
+run on the same machine at the same time; never change this port back to 3000.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Run
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev        # http://localhost:4000
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The API base URL comes from `VITE_API_BASE_URL` in `.env` (defaults to
+`http://127.0.0.1:8000/api`, i.e. `php artisan serve` in the parent directory).
+
+## Stack notes
+
+- React is pinned to `^18.3.1` — the PRD locks React 18, not the Vite-default 19.
+- Tailwind v4 via `@tailwindcss/vite`, CSS-first theme tokens in `src/index.css`.
+- Fonts are self-hosted via `@fontsource` (Hind Siliguri for Bengali, Inter for
+  English/numbers) — no CDN dependency, works offline in dev.
