@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             ChartOfAccountsSeeder::class,
             MoneyCorePermissionSeeder::class,
             GasSetupSeeder::class,
+            ExpenseHeadSeeder::class,
         ]);
     }
 }

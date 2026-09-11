@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BankAccountController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\MonthlyClosingController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\BuildingController;
 use App\Http\Controllers\Api\FlatController;
@@ -84,6 +86,15 @@ Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [PaymentController::class, 'store'])->middleware('permission:payment.create');
     Route::post('/{payment}/approve', [PaymentController::class, 'approve'])->middleware('permission:payment.approve');
 });
+
+Route::prefix('expenses')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [ExpenseController::class, 'index'])->middleware('permission:expense.view');
+    Route::post('/', [ExpenseController::class, 'store'])->middleware('permission:expense.create');
+    Route::post('/{expense}/approve', [ExpenseController::class, 'approve'])->middleware('permission:expense.approve');
+});
+
+Route::post('/closing', [MonthlyClosingController::class, 'close'])
+    ->middleware(['auth:sanctum', 'permission:accounting.manage']);
 
 Route::prefix('bank-accounts')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [BankAccountController::class, 'index'])->middleware('permission:accounting.view');
