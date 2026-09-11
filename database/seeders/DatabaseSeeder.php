@@ -18,6 +18,10 @@ class DatabaseSeeder extends Seeder
             DocumentPermissionSeeder::class,
             StaffPermissionSeeder::class,
             BuildingSeeder::class,
+            CollectionHeadSeeder::class,
+            ChartOfAccountsSeeder::class,
+            MoneyCorePermissionSeeder::class,
+            GasSetupSeeder::class,
         ]);
     }
 }

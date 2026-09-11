@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BuildingController;
 use App\Http\Controllers\Api\FlatController;
+use App\Http\Controllers\Api\GasController;
 use App\Http\Controllers\Api\FlatOwnerController;
 use App\Http\Controllers\Api\OwnerDocumentController;
 use App\Http\Controllers\Api\PersonController;
@@ -68,4 +70,16 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
     Route::get('/staff/{staff}', [StaffController::class, 'show'])->middleware('permission:staff.view');
     Route::put('/staff/{staff}', [StaffController::class, 'update'])->middleware('permission:staff.manage');
     Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->middleware('permission:staff.manage');
+});
+
+Route::prefix('billing')->middleware('auth:sanctum')->group(function () {
+    Route::post('/generate', [BillingController::class, 'generate'])->middleware('permission:billing.manage');
+    Route::get('/{year}/{month}', [BillingController::class, 'show'])->middleware('permission:billing.view');
+});
+
+Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
+    Route::get('/consumers', [GasController::class, 'consumers'])->middleware('permission:gas.view');
+    Route::post('/readings', [GasController::class, 'storeReading'])->middleware('permission:gas.manage');
+    Route::post('/periods/{billingPeriodId}/apply', [GasController::class, 'applyToBills'])->middleware('permission:gas.manage');
+    Route::get('/periods/{billingPeriodId}/system-loss/{year}/{month}', [GasController::class, 'systemLoss'])->middleware('permission:gas.view');
 });
