@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             MoneyCorePermissionSeeder::class,
             GasSetupSeeder::class,
             ExpenseHeadSeeder::class,
+            GovernancePermissionSeeder::class,
         ]);
     }
 }

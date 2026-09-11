@@ -6,8 +6,12 @@ use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\MonthlyClosingController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\BuildingController;
+use App\Http\Controllers\Api\ComplaintController;
+use App\Http\Controllers\Api\ConstructionDueController;
 use App\Http\Controllers\Api\FlatController;
+use App\Http\Controllers\Api\MeetingController;
 use App\Http\Controllers\Api\GasController;
 use App\Http\Controllers\Api\FlatOwnerController;
 use App\Http\Controllers\Api\OwnerDocumentController;
@@ -99,6 +103,33 @@ Route::post('/closing', [MonthlyClosingController::class, 'close'])
 Route::prefix('bank-accounts')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [BankAccountController::class, 'index'])->middleware('permission:accounting.view');
     Route::post('/', [BankAccountController::class, 'store'])->middleware('permission:accounting.manage');
+});
+
+Route::prefix('construction-dues')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [ConstructionDueController::class, 'index'])->middleware('permission:due.view');
+    Route::post('/', [ConstructionDueController::class, 'store'])->middleware('permission:due.manage');
+    Route::get('/aging-report', [ConstructionDueController::class, 'agingReport'])->middleware('permission:due.view');
+    Route::post('/installments/{installment}/pay', [ConstructionDueController::class, 'payInstallment'])->middleware('permission:due.manage');
+});
+
+Route::prefix('assets')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [AssetController::class, 'index'])->middleware('permission:asset.view');
+    Route::post('/', [AssetController::class, 'store'])->middleware('permission:asset.manage');
+    Route::get('/{asset}', [AssetController::class, 'show'])->middleware('permission:asset.view');
+    Route::put('/{asset}', [AssetController::class, 'update'])->middleware('permission:asset.manage');
+    Route::post('/{asset}/service-logs', [AssetController::class, 'addServiceLog'])->middleware('permission:asset.manage');
+});
+
+Route::prefix('meetings')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [MeetingController::class, 'index'])->middleware('permission:meeting.view');
+    Route::post('/', [MeetingController::class, 'store'])->middleware('permission:meeting.manage');
+    Route::post('/{meeting}/resolutions', [MeetingController::class, 'addResolution'])->middleware('permission:meeting.manage');
+});
+
+Route::prefix('complaints')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [ComplaintController::class, 'index'])->middleware('permission:complaint.view');
+    Route::post('/', [ComplaintController::class, 'store'])->middleware('permission:complaint.manage');
+    Route::put('/{complaint}/status', [ComplaintController::class, 'updateStatus'])->middleware('permission:complaint.manage');
 });
 
 Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
