@@ -14,7 +14,7 @@ class Phase01FoundationTest extends TestCase
 
     public function test_sanctum_blocks_unauthenticated_requests(): void
     {
-        $response = $this->getJson('/api/ping');
+        $response = $this->getJson('/api/auth/me');
 
         $response->assertStatus(401);
     }
@@ -25,7 +25,7 @@ class Phase01FoundationTest extends TestCase
         // Accept: application/json header) must still get a JSON 401,
         // not a crash from Laravel trying to redirect to a nonexistent
         // 'login' route — this app has no web auth, only Sanctum tokens.
-        $response = $this->get('/api/ping');
+        $response = $this->get('/api/auth/me');
 
         $response->assertStatus(401)->assertJson(['message' => 'Unauthenticated.']);
     }
@@ -34,10 +34,9 @@ class Phase01FoundationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user, 'sanctum')->getJson('/api/ping');
+        $response = $this->actingAs($user, 'sanctum')->getJson('/api/auth/me');
 
-        $response->assertStatus(200)
-            ->assertJson(['ok' => true, 'user_id' => $user->id]);
+        $response->assertStatus(200)->assertJson(['id' => $user->id, 'mobile' => $user->mobile]);
     }
 
     public function test_permission_middleware_alias_blocks_user_without_permission(): void

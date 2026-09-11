@@ -1,10 +1,10 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 
 // Public health check — lets the frontend (and infra monitoring later)
-// confirm the API is reachable before any auth exists (Phase 0.4).
+// confirm the API is reachable before any auth exists.
 Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
@@ -13,12 +13,12 @@ Route::get('/health', function () {
     ]);
 });
 
-// Temporary Phase 0.1 smoke-test route — confirms Sanctum token auth
-// and the spatie/laravel-permission middleware alias both resolve.
-// Will be replaced by the real auth routes in Phase 0.4.
-Route::middleware('auth:sanctum')->get('/ping', function (Request $request) {
-    return response()->json([
-        'ok' => true,
-        'user_id' => $request->user()->id,
-    ]);
+Route::prefix('auth')->group(function () {
+    Route::post('/otp/request', [AuthController::class, 'requestOtp'])->middleware('throttle:otp-request');
+    Route::post('/otp/verify', [AuthController::class, 'verifyOtp']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', [AuthController::class, 'me']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+    });
 });
