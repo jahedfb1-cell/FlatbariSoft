@@ -166,4 +166,11 @@ Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
     Route::post('/readings', [GasController::class, 'storeReading'])->middleware('permission:gas.manage');
     Route::post('/periods/{billingPeriodId}/apply', [GasController::class, 'applyToBills'])->middleware('permission:gas.manage');
     Route::get('/periods/{billingPeriodId}/system-loss/{year}/{month}', [GasController::class, 'systemLoss'])->middleware('permission:gas.view');
+    Route::get('/purchases', [\App\Http\Controllers\Api\GasPurchaseController::class, 'index'])->middleware('permission:gas.view');
+    Route::post('/purchases', [\App\Http\Controllers\Api\GasPurchaseController::class, 'store'])->middleware('permission:gas.manage');
+});
+
+Route::prefix('construction-materials')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'index'])->middleware('permission:expense.view');
+    Route::post('/', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'store'])->middleware('permission:expense.create');
 });

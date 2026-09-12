@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import * as gasApi from '../api/gas';
 import * as billingApi from '../api/billing';
-import type { GasConsumer } from '../api/gas';
+import type { GasConsumer, GasPurchase } from '../api/gas';
 
 export default function GasPage() {
   const { t } = useLanguage();
@@ -15,11 +15,44 @@ export default function GasPage() {
   const [readings, setReadings] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<string | null>(null);
 
+  const [purchases, setPurchases] = useState<GasPurchase[]>([]);
+  const [pDate, setPDate] = useState(new Date().toISOString().slice(0, 10));
+  const [pSupplier, setPSupplier] = useState('');
+  const [pQty, setPQty] = useState('');
+  const [pRate, setPRate] = useState('');
+  const [pTransport, setPTransport] = useState('0');
+  const [pMedium, setPMedium] = useState<'CASH' | 'BANK'>('CASH');
+  const [pError, setPError] = useState<string | null>(null);
+
   function load() {
     gasApi.listGasConsumers().then(setConsumers);
+    gasApi.listGasPurchases().then(setPurchases);
   }
 
   useEffect(load, []);
+
+  async function handleRecordPurchase(e: FormEvent) {
+    e.preventDefault();
+    setPError(null);
+    try {
+      await gasApi.recordGasPurchase({
+        date: pDate,
+        supplier_name: pSupplier,
+        quantity_kg: pQty,
+        unit_price: pRate,
+        transport_cost: pTransport,
+        treasury_medium: pMedium,
+      });
+      setPSupplier('');
+      setPQty('');
+      setPRate('');
+      setPTransport('0');
+      load();
+    } catch (err: any) {
+      const errors = err.response?.data?.errors;
+      setPError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+    }
+  }
 
   async function handleSubmit(consumerId: number) {
     const value = readings[consumerId];
@@ -94,6 +127,49 @@ export default function GasPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        <h2 className="mb-3 mt-8 text-lg font-semibold text-navy-900">{t('gas.purchasesTitle')}</h2>
+
+        <form onSubmit={handleRecordPurchase} className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-6">
+          <input type="date" required value={pDate} onChange={(e) => setPDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required placeholder={t('gas.supplierName')} value={pSupplier} onChange={(e) => setPSupplier(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required type="number" step="0.01" placeholder={t('gas.quantityKg')} value={pQty} onChange={(e) => setPQty(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required type="number" step="0.01" placeholder={t('gas.unitPrice')} value={pRate} onChange={(e) => setPRate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input type="number" step="0.01" placeholder={t('gas.transportCost')} value={pTransport} onChange={(e) => setPTransport(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <select value={pMedium} onChange={(e) => setPMedium(e.target.value as 'CASH' | 'BANK')} className="rounded-lg border border-brand-200 px-3 py-2">
+            <option value="CASH">CASH</option>
+            <option value="BANK">BANK</option>
+          </select>
+          <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
+            {t('gas.recordPurchase')}
+          </button>
+        </form>
+        {pError && <p className="mb-4 text-sm text-status-due">{pError}</p>}
+
+        <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-brand-100 text-navy-900">
+              <tr>
+                <th className="px-4 py-3">{t('common.date')}</th>
+                <th className="px-4 py-3">{t('gas.supplierName')}</th>
+                <th className="px-4 py-3">{t('gas.quantityKg')}</th>
+                <th className="px-4 py-3">{t('gas.totalCost')}</th>
+                <th className="px-4 py-3">{t('common.status')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {purchases.map((p) => (
+                <tr key={p.id} className="border-t border-brand-100">
+                  <td className="px-4 py-3 text-navy-900">{p.date}</td>
+                  <td className="px-4 py-3 text-navy-900">{p.supplier_name}</td>
+                  <td className="px-4 py-3 text-navy-900">{p.quantity_kg}</td>
+                  <td className="px-4 py-3 text-navy-900">৳{Number(p.total_cost).toLocaleString('en-BD')}</td>
+                  <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

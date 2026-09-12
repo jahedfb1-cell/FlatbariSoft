@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class GasPurchase extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['date', 'supplier_name', 'quantity_kg', 'unit_price', 'transport_cost', 'total_cost', 'invoice_file'];
+    protected $fillable = ['date', 'supplier_name', 'quantity_kg', 'unit_price', 'transport_cost', 'total_cost', 'expense_id', 'invoice_file'];
 
     protected function casts(): array
     {
@@ -20,5 +21,10 @@ class GasPurchase extends Model
             'transport_cost' => 'decimal:4',
             'total_cost' => 'decimal:4',
         ];
+    }
+
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
     }
 }

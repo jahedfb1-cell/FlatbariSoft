@@ -51,6 +51,7 @@ class ChartOfAccountsSeeder extends Seeder
             ['code' => '5300', 'name_bn' => 'সিটি কর্পোরেশন খরচ', 'name_en' => 'City Corporation Expense', 'account_type' => 'EXPENSE', 'parent' => '5000'],
             ['code' => '5400', 'name_bn' => 'রক্ষণাবেক্ষণ খরচ', 'name_en' => 'Maintenance Expense', 'account_type' => 'EXPENSE', 'parent' => '5000'],
             ['code' => '5500', 'name_bn' => 'গ্যাস ক্রয় খরচ', 'name_en' => 'Gas Purchase Expense', 'account_type' => 'EXPENSE', 'parent' => '5000'],
+            ['code' => '5600', 'name_bn' => 'নির্মাণ সামগ্রী খরচ', 'name_en' => 'Construction Materials Expense', 'account_type' => 'EXPENSE', 'parent' => '5000'],
             ['code' => '5900', 'name_bn' => 'অন্যান্য খরচ', 'name_en' => 'Other Expense', 'account_type' => 'EXPENSE', 'parent' => '5000'],
         ];
 

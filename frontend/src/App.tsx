@@ -19,6 +19,7 @@ import NoticesPage from './pages/NoticesPage';
 import ReportsPage from './pages/ReportsPage';
 import BankAccountsPage from './pages/BankAccountsPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
+import ConstructionMaterialsPage from './pages/ConstructionMaterialsPage';
 import OwnerHomePage from './pages/owner/OwnerHomePage';
 import OwnerBillsPage from './pages/owner/OwnerBillsPage';
 import OwnerNoticesPage from './pages/owner/OwnerNoticesPage';
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Route path="/notices" element={<NoticesPage />} />
       <Route path="/reports" element={<ReportsPage />} />
       <Route path="/bank-accounts" element={<BankAccountsPage />} />
+      <Route path="/construction-materials" element={<ConstructionMaterialsPage />} />
 
       {/* Owner/Tenant portal (5 screens, PRD's mobile-first cap) */}
       <Route path="/owner" element={<OwnerHomePage />} />

@@ -14,6 +14,7 @@ const navItems: { to: string; key: any }[] = [
   { to: '/payments', key: 'nav.payments' },
   { to: '/bank-accounts', key: 'bank.title' },
   { to: '/expenses', key: 'nav.expenses' },
+  { to: '/construction-materials', key: 'nav.materials' },
   { to: '/dues', key: 'nav.dues' },
   { to: '/assets', key: 'nav.assets' },
   { to: '/meetings', key: 'nav.meetings' },
