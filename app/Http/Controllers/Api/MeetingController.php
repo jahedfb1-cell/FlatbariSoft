@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreMeetingRequest;
+use App\Http\Requests\StoreResolutionRequest;
 use App\Models\Meeting;
-use App\Models\Resolution;
-use Illuminate\Http\Request;
 
 class MeetingController extends Controller
 {
@@ -14,26 +14,16 @@ class MeetingController extends Controller
         return Meeting::with('resolutions')->orderByDesc('meeting_date')->get();
     }
 
-    public function store(Request $request)
+    public function store(StoreMeetingRequest $request)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'meeting_date' => 'required|date',
-            'venue' => 'nullable|string|max:255',
-            'agenda' => 'nullable|string',
-        ]);
-
-        $meeting = Meeting::create(array_merge($data, ['status' => 'SCHEDULED']));
+        $meeting = Meeting::create(array_merge($request->validated(), ['status' => 'SCHEDULED']));
 
         return response()->json($meeting, 201);
     }
 
-    public function addResolution(Request $request, Meeting $meeting)
+    public function addResolution(StoreResolutionRequest $request, Meeting $meeting)
     {
-        $data = $request->validate([
-            'description' => 'required|string',
-            'decision' => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         $resolutionNo = 'RES-'.$meeting->id.'-'.str_pad((string) ($meeting->resolutions()->count() + 1), 3, '0', STR_PAD_LEFT);
 

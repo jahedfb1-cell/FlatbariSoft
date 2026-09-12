@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import * as flatsApi from '../api/flats';
-import type { Flat } from '../api/flats';
+import type { Flat, PersonData } from '../api/flats';
 import AssignOwnerModal from '../components/AssignOwnerModal';
 import AssignTenantModal from '../components/AssignTenantModal';
 import FlatFormModal from '../components/FlatFormModal';
@@ -11,6 +11,13 @@ import { useLanguage } from '../context/LanguageContext';
 import type { TranslationKey } from '../i18n/translations';
 
 type DocTarget = { kind: 'owner'; personId: number } | { kind: 'tenant'; tenantId: number };
+
+// Bangladeshi numbers (the default '+880') are shown bare, as everyone
+// already writes them — a foreign owner's number is meaningless without
+// its country code, so that one case gets it prefixed.
+function formatMobile(person: PersonData): string {
+  return person.country_code && person.country_code !== '+880' ? `${person.country_code} ${person.mobile}` : person.mobile;
+}
 
 export default function FlatDetailPage() {
   const { t } = useLanguage();
@@ -103,7 +110,7 @@ export default function FlatDetailPage() {
               <div>
                 <p className="font-medium text-navy-900">{party.person.name_bn}</p>
                 <p className="text-navy-700">
-                  {party.person.mobile} · {t('flatDetail.from')} {party.from_date}
+                  {formatMobile(party.person)} · {t('flatDetail.from')} {party.from_date}
                   {party.is_billing_contact && ` · ${t('flatDetail.billingContact')}`}
                 </p>
               </div>
@@ -142,7 +149,7 @@ export default function FlatDetailPage() {
               <div>
                 <p className="font-medium text-navy-900">{tenant.person.name_bn}</p>
                 <p className="text-navy-700">
-                  {tenant.person.mobile} · {t('flatDetail.from')} {tenant.start_date} · {t('flatDetail.rent')} ৳
+                  {formatMobile(tenant.person)} · {t('flatDetail.from')} {tenant.start_date} · {t('flatDetail.rent')} ৳
                   {tenant.monthly_rent ? Number(tenant.monthly_rent).toLocaleString('en-BD') : '—'}
                 </p>
               </div>

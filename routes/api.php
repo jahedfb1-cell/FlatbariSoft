@@ -140,6 +140,13 @@ Route::prefix('reports')->middleware(['auth:sanctum', 'permission:accounting.vie
     Route::get('/income-statement', [ReportController::class, 'incomeStatement']);
     Route::get('/balance-sheet', [ReportController::class, 'balanceSheet']);
     Route::get('/dashboard', [ReportController::class, 'dashboard']);
+
+    Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf']);
+    Route::get('/trial-balance/excel', [ReportController::class, 'trialBalanceExcel']);
+    Route::get('/balance-sheet/pdf', [ReportController::class, 'balanceSheetPdf']);
+    Route::get('/balance-sheet/excel', [ReportController::class, 'balanceSheetExcel']);
+    Route::get('/income-statement/pdf', [ReportController::class, 'incomeStatementPdf']);
+    Route::get('/income-statement/excel', [ReportController::class, 'incomeStatementExcel']);
 });
 
 Route::prefix('me')->middleware('auth:sanctum')->group(function () {

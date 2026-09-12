@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreMyComplaintRequest;
 use App\Http\Resources\BillResource;
 use App\Models\Bill;
 use App\Models\Complaint;
@@ -63,17 +64,9 @@ class MyController extends Controller
         return Complaint::whereIn('flat_id', $flatIds)->latest('id')->get();
     }
 
-    public function storeComplaint(Request $request)
+    public function storeComplaint(StoreMyComplaintRequest $request)
     {
-        $flatIds = $this->myFlatIds();
-
-        $data = $request->validate([
-            'flat_id' => 'required|in:'.implode(',', $flatIds ?: [0]),
-            'category' => 'required|string|max:255',
-            'description' => 'required|string',
-        ]);
-
-        $complaint = Complaint::create(array_merge($data, ['status' => 'OPEN', 'priority' => 'MEDIUM']));
+        $complaint = Complaint::create(array_merge($request->validated(), ['status' => 'OPEN', 'priority' => 'MEDIUM']));
 
         return response()->json($complaint, 201);
     }

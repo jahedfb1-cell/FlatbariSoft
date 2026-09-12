@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAssetRequest;
+use App\Http\Requests\StoreAssetServiceLogRequest;
 use App\Http\Resources\AssetResource;
 use App\Models\Asset;
-use Illuminate\Http\Request;
 
 class AssetController extends Controller
 {
@@ -34,16 +34,9 @@ class AssetController extends Controller
         return new AssetResource($asset);
     }
 
-    public function addServiceLog(Request $request, Asset $asset)
+    public function addServiceLog(StoreAssetServiceLogRequest $request, Asset $asset)
     {
-        $request->validate([
-            'service_date' => 'required|date',
-            'description' => 'nullable|string',
-            'cost' => 'nullable|numeric|min:0',
-            'technician' => 'nullable|string|max:255',
-        ]);
-
-        $log = $asset->serviceLogs()->create($request->only('service_date', 'description', 'cost', 'technician'));
+        $log = $asset->serviceLogs()->create($request->validated());
 
         return response()->json($log, 201);
     }

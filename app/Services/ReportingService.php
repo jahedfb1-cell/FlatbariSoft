@@ -22,8 +22,8 @@ class ReportingService
     {
         $rows = ChartOfAccount::query()
             ->leftJoin('journal_lines', 'journal_lines.account_id', '=', 'chart_of_accounts.id')
-            ->groupBy('chart_of_accounts.id', 'chart_of_accounts.code', 'chart_of_accounts.name_bn', 'chart_of_accounts.account_type')
-            ->selectRaw('chart_of_accounts.id, chart_of_accounts.code, chart_of_accounts.name_bn, chart_of_accounts.account_type,
+            ->groupBy('chart_of_accounts.id', 'chart_of_accounts.code', 'chart_of_accounts.name_bn', 'chart_of_accounts.name_en', 'chart_of_accounts.account_type')
+            ->selectRaw('chart_of_accounts.id, chart_of_accounts.code, chart_of_accounts.name_bn, chart_of_accounts.name_en, chart_of_accounts.account_type,
                          COALESCE(SUM(journal_lines.debit),0) as total_debit, COALESCE(SUM(journal_lines.credit),0) as total_credit')
             ->havingRaw('SUM(journal_lines.debit) > 0 OR SUM(journal_lines.credit) > 0')
             ->orderBy('chart_of_accounts.code')
@@ -40,6 +40,7 @@ class ReportingService
             $lines[] = [
                 'account_code' => $row->code,
                 'account_name' => $row->name_bn,
+                'account_name_en' => $row->name_en,
                 'account_type' => $row->account_type,
                 'debit' => $isDebitBalance ? abs((float) $net) : 0,
                 'credit' => ! $isDebitBalance ? abs((float) $net) : 0,

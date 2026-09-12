@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PayInstallmentRequest;
 use App\Http\Requests\StoreConstructionDueRequest;
 use App\Models\ConstructionDue;
 use App\Models\DueInstallment;
 use App\Services\ConstructionDueService;
-use Illuminate\Http\Request;
 
 class ConstructionDueController extends Controller
 {
@@ -28,11 +28,9 @@ class ConstructionDueController extends Controller
         return response()->json($due, 201);
     }
 
-    public function payInstallment(Request $request, DueInstallment $installment)
+    public function payInstallment(PayInstallmentRequest $request, DueInstallment $installment)
     {
-        $request->validate(['amount' => 'required|numeric|min:0.01']);
-
-        $installment = $this->service->recordInstallmentPayment($installment, (string) $request->input('amount'));
+        $installment = $this->service->recordInstallmentPayment($installment, (string) $request->validated('amount'));
 
         return response()->json($installment);
     }

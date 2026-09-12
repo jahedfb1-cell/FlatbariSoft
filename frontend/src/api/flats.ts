@@ -4,6 +4,7 @@ export interface PersonData {
   id?: number;
   name_bn: string;
   name_en?: string;
+  country_code?: string;
   mobile: string;
   nid?: string;
   email?: string;

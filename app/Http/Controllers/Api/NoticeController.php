@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreNoticeRequest;
 use App\Models\Notice;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 class NoticeController extends Controller
 {
@@ -15,13 +14,9 @@ class NoticeController extends Controller
         return Notice::whereNotNull('published_at')->latest('published_at')->get();
     }
 
-    public function store(Request $request)
+    public function store(StoreNoticeRequest $request)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'body' => 'required|string',
-            'audience' => ['nullable', Rule::in(['ALL', 'OWNERS', 'TENANTS'])],
-        ]);
+        $data = $request->validated();
 
         $notice = Notice::create(array_merge($data, [
             'audience' => $data['audience'] ?? 'ALL',

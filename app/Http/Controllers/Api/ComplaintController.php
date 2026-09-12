@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreComplaintRequest;
+use App\Http\Requests\UpdateComplaintStatusRequest;
 use App\Models\Complaint;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ComplaintController extends Controller
 {
@@ -17,26 +18,16 @@ class ComplaintController extends Controller
             ->get();
     }
 
-    public function store(Request $request)
+    public function store(StoreComplaintRequest $request)
     {
-        $data = $request->validate([
-            'flat_id' => 'required|exists:flats,id',
-            'category' => 'required|string|max:255',
-            'description' => 'required|string',
-            'priority' => ['nullable', Rule::in(['LOW', 'MEDIUM', 'HIGH'])],
-        ]);
-
-        $complaint = Complaint::create(array_merge($data, ['status' => 'OPEN']));
+        $complaint = Complaint::create(array_merge($request->validated(), ['status' => 'OPEN']));
 
         return response()->json($complaint, 201);
     }
 
-    public function updateStatus(Request $request, Complaint $complaint)
+    public function updateStatus(UpdateComplaintStatusRequest $request, Complaint $complaint)
     {
-        $data = $request->validate([
-            'status' => ['required', Rule::in(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'])],
-            'assigned_to' => 'nullable|exists:staff,id',
-        ]);
+        $data = $request->validated();
 
         if ($data['status'] === 'RESOLVED' && $complaint->status !== 'RESOLVED') {
             $data['resolved_at'] = now();
