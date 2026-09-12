@@ -30,6 +30,17 @@ export const translations = {
     'login.login': 'লগইন',
     'login.loggingIn': 'লগইন হচ্ছে...',
 
+    // Change password
+    'password.change': 'পাসওয়ার্ড পরিবর্তন',
+    'password.current': 'বর্তমান পাসওয়ার্ড',
+    'password.new': 'নতুন পাসওয়ার্ড',
+    'password.confirm': 'নতুন পাসওয়ার্ড আবার লিখুন',
+    'password.submit': 'পাসওয়ার্ড পরিবর্তন করুন',
+    'password.submitting': 'পরিবর্তন হচ্ছে...',
+    'password.success': 'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে। অন্য কোথাও লগইন থাকলে সেখান থেকে লগআউট হয়ে যাবে।',
+    'password.mismatch': 'নতুন পাসওয়ার্ড দুটো মিলছে না।',
+    'password.minLength': 'নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।',
+
     // Home
     'home.loggedIn': 'লগইন সফল হয়েছে',
     'home.logout': 'লগআউট',
@@ -293,6 +304,17 @@ export const translations = {
     'login.passwordLabel': 'Password',
     'login.login': 'Log in',
     'login.loggingIn': 'Logging in...',
+
+    // Change password
+    'password.change': 'Change password',
+    'password.current': 'Current password',
+    'password.new': 'New password',
+    'password.confirm': 'Confirm new password',
+    'password.submit': 'Change password',
+    'password.submitting': 'Changing...',
+    'password.success': 'Password changed successfully. You will be logged out of any other sessions.',
+    'password.mismatch': 'The new passwords do not match.',
+    'password.minLength': 'The new password must be at least 8 characters.',
 
     'home.loggedIn': 'Logged in successfully',
     'home.logout': 'Log out',

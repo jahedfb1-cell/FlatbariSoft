@@ -101,4 +101,87 @@ class EmailPasswordLoginTest extends TestCase
 
         $response->assertStatus(422);
     }
+
+    public function test_user_can_change_their_own_password(): void
+    {
+        $user = User::factory()->create(['email' => 'admin@greenvalley.com', 'password' => Hash::make('old-password')]);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/auth/change-password', [
+            'current_password' => 'old-password',
+            'new_password' => 'new-password-123',
+            'new_password_confirmation' => 'new-password-123',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertTrue(Hash::check('new-password-123', $user->fresh()->password));
+    }
+
+    public function test_change_password_rejects_wrong_current_password(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('old-password')]);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/auth/change-password', [
+            'current_password' => 'not-the-current-one',
+            'new_password' => 'new-password-123',
+            'new_password_confirmation' => 'new-password-123',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertTrue(Hash::check('old-password', $user->fresh()->password));
+    }
+
+    public function test_change_password_requires_confirmation_to_match(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('old-password')]);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/auth/change-password', [
+            'current_password' => 'old-password',
+            'new_password' => 'new-password-123',
+            'new_password_confirmation' => 'does-not-match',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('new_password');
+    }
+
+    public function test_change_password_enforces_minimum_length(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('old-password')]);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/auth/change-password', [
+            'current_password' => 'old-password',
+            'new_password' => 'short',
+            'new_password_confirmation' => 'short',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('new_password');
+    }
+
+    public function test_change_password_requires_authentication(): void
+    {
+        $response = $this->postJson('/api/auth/change-password', [
+            'current_password' => 'old-password',
+            'new_password' => 'new-password-123',
+            'new_password_confirmation' => 'new-password-123',
+        ]);
+
+        $response->assertStatus(401);
+    }
+
+    public function test_changing_password_revokes_other_tokens_but_keeps_the_current_one(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('old-password')]);
+        $otherToken = $user->createToken('other-device');
+        $currentToken = $user->createToken('this-device');
+
+        $this->withHeader('Authorization', "Bearer {$currentToken->plainTextToken}")
+            ->postJson('/api/auth/change-password', [
+                'current_password' => 'old-password',
+                'new_password' => 'new-password-123',
+                'new_password_confirmation' => 'new-password-123',
+            ])
+            ->assertStatus(200);
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $otherToken->accessToken->id]);
+        $this->assertDatabaseHas('personal_access_tokens', ['id' => $currentToken->accessToken->id]);
+    }
 }

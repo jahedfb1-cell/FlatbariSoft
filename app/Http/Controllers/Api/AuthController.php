@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RequestOtpRequest;
 use App\Http\Requests\VerifyOtpRequest;
@@ -93,6 +94,35 @@ class AuthController extends Controller
             'token' => $user->createToken('auth')->plainTextToken,
             'user' => new UserResource($user),
         ]);
+    }
+
+    /**
+     * Self-service password change for the logged-in user (either login
+     * path lands here — mobile+OTP users may still set a real password
+     * so the email+password path becomes available to them later, once
+     * an admin gives them an email).
+     */
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'বর্তমান পাসওয়ার্ড সঠিক নয়।',
+            ], 422);
+        }
+
+        $user->update(['password' => Hash::make($request->new_password)]);
+
+        // Force re-login everywhere else — only the token used to make
+        // this request stays valid, same principle as a "log out other
+        // devices" action. currentAccessToken() is null when there is no
+        // real Sanctum token on the request (e.g. session-guard access);
+        // in that case there is nothing to spare, so revoke everything.
+        $currentTokenId = $user->currentAccessToken()?->id;
+        $user->tokens()->when($currentTokenId, fn ($q) => $q->where('id', '!=', $currentTokenId))->delete();
+
+        return response()->json(['message' => 'পাসওয়ার্ড পরিবর্তন হয়েছে।']);
     }
 
     public function me(Request $request): UserResource

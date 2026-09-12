@@ -18,6 +18,7 @@ import ComplaintsPage from './pages/ComplaintsPage';
 import NoticesPage from './pages/NoticesPage';
 import ReportsPage from './pages/ReportsPage';
 import BankAccountsPage from './pages/BankAccountsPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import OwnerHomePage from './pages/owner/OwnerHomePage';
 import OwnerBillsPage from './pages/owner/OwnerBillsPage';
 import OwnerNoticesPage from './pages/owner/OwnerNoticesPage';
@@ -56,6 +57,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<HomeRedirect />} />
+      <Route path="/change-password" element={<ChangePasswordPage />} />
 
       {/* Admin/Manager */}
       <Route path="/flats" element={<FlatsPage />} />

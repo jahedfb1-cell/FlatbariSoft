@@ -40,3 +40,13 @@ export function me() {
 export function logout() {
   return client.post('/auth/logout');
 }
+
+export function changePassword(currentPassword: string, newPassword: string, newPasswordConfirmation: string) {
+  return client
+    .post<{ message: string }>('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+      new_password_confirmation: newPasswordConfirmation,
+    })
+    .then((r) => r.data);
+}

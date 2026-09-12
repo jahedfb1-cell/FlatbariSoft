@@ -42,6 +42,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle />
+            <Link
+              to="/change-password"
+              className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm text-navy-700 transition hover:bg-brand-100"
+            >
+              {t('password.change')}
+            </Link>
             <button
               onClick={() => logout()}
               className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm text-navy-700 transition hover:bg-brand-100"
