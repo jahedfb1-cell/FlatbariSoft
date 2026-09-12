@@ -37,6 +37,7 @@ Route::get('/health', function () {
 Route::prefix('auth')->group(function () {
     Route::post('/otp/request', [AuthController::class, 'requestOtp'])->middleware('throttle:otp-request');
     Route::post('/otp/verify', [AuthController::class, 'verifyOtp']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);

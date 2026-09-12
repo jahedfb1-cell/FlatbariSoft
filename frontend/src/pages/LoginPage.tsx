@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 
-type Step = 'mobile' | 'otp';
+type Step = 'mobile' | 'otp' | 'email';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>('mobile');
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -45,6 +47,20 @@ export default function LoginPage() {
     }
   }
 
+  async function handleEmailLogin(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await authApi.loginWithPassword(email, password);
+      login(res.token, res.user);
+    } catch (err: any) {
+      setError(err.response?.data?.message || t('somethingWrong'));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-50 px-4">
       <div className="w-full max-w-sm rounded-xl border border-brand-200 bg-white p-8 shadow-sm">
@@ -53,7 +69,9 @@ export default function LoginPage() {
           <LanguageToggle />
         </div>
         <p className="mt-1 text-sm text-navy-700">
-          {step === 'mobile' ? t('login.mobileStepTitle') : t('login.otpStepTitle')}
+          {step === 'mobile' && t('login.mobileStepTitle')}
+          {step === 'otp' && t('login.otpStepTitle')}
+          {step === 'email' && t('login.emailStepTitle')}
         </p>
 
         {step === 'mobile' && (
@@ -76,6 +94,60 @@ export default function LoginPage() {
               className="w-full rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
             >
               {submitting ? t('login.sending') : t('login.sendOtp')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStep('email');
+              }}
+              className="w-full text-sm text-navy-700 hover:underline"
+            >
+              {t('login.useEmail')}
+            </button>
+          </form>
+        )}
+
+        {step === 'email' && (
+          <form onSubmit={handleEmailLogin} className="mt-6 space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-navy-900">{t('login.emailLabel')}</label>
+              <input
+                type="email"
+                required
+                placeholder="admin@greenvalley.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-navy-900">{t('login.passwordLabel')}</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500"
+              />
+            </div>
+            {error && <p className="text-sm text-status-due">{error}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
+            >
+              {submitting ? t('login.loggingIn') : t('login.login')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStep('mobile');
+              }}
+              className="w-full text-sm text-navy-700 hover:underline"
+            >
+              {t('login.useMobile')}
             </button>
           </form>
         )}

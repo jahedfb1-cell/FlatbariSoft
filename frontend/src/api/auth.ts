@@ -3,6 +3,7 @@ import client from './client';
 export interface CurrentUser {
   id: number;
   mobile: string;
+  email: string | null;
   role: string;
   status: string;
   last_login: string | null;
@@ -26,6 +27,10 @@ export function requestOtp(mobile: string) {
 
 export function verifyOtp(mobile: string, code: string) {
   return client.post<VerifyOtpResponse>('/auth/otp/verify', { mobile, code }).then((r) => r.data);
+}
+
+export function loginWithPassword(email: string, password: string) {
+  return client.post<VerifyOtpResponse>('/auth/login', { email, password }).then((r) => r.data);
 }
 
 export function me() {

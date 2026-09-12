@@ -22,6 +22,13 @@ export const translations = {
     'login.verify': 'যাচাই করুন',
     'login.verifying': 'যাচাই হচ্ছে...',
     'login.changeMobile': 'মোবাইল নম্বর পরিবর্তন করুন',
+    'login.useEmail': 'ইমেইল দিয়ে লগইন করুন',
+    'login.useMobile': 'মোবাইল নম্বর দিয়ে লগইন করুন',
+    'login.emailStepTitle': 'ইমেইল দিয়ে লগইন করুন',
+    'login.emailLabel': 'ইমেইল',
+    'login.passwordLabel': 'পাসওয়ার্ড',
+    'login.login': 'লগইন',
+    'login.loggingIn': 'লগইন হচ্ছে...',
 
     // Home
     'home.loggedIn': 'লগইন সফল হয়েছে',
@@ -279,6 +286,13 @@ export const translations = {
     'login.verify': 'Verify',
     'login.verifying': 'Verifying...',
     'login.changeMobile': 'Change mobile number',
+    'login.useEmail': 'Log in with email',
+    'login.useMobile': 'Log in with mobile number',
+    'login.emailStepTitle': 'Log in with email',
+    'login.emailLabel': 'Email',
+    'login.passwordLabel': 'Password',
+    'login.login': 'Log in',
+    'login.loggingIn': 'Logging in...',
 
     'home.loggedIn': 'Logged in successfully',
     'home.logout': 'Log out',

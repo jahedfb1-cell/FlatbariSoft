@@ -40,6 +40,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(3)->by($request->input('mobile', $request->ip()));
         });
 
+        // Same idea for the email+password path — cap guesses per email so
+        // it isn't brute-forceable, since (unlike OTP) the same password
+        // stays valid across attempts.
+        RateLimiter::for('login', function ($request) {
+            return Limit::perMinute(5)->by($request->input('email', $request->ip()));
+        });
+
         // PRD section 2: Super Admin can do "সব কিছু" (everything). Rather
         // than remembering to assign every permission created in every
         // future module to super_admin by hand, it bypasses permission

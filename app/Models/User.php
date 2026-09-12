@@ -25,6 +25,7 @@ class User extends Authenticatable
         'staff_id',
         'country_code',
         'mobile',
+        'email',
         'password',
         'role',
         'status',
