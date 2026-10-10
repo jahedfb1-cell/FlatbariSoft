@@ -23,3 +23,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Machine-specific report written by find-database.bat / php artisan db:where --write
+/DATABASE-STATUS.txt
