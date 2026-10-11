@@ -17,11 +17,27 @@ use Illuminate\Support\Facades\DB;
  */
 class ConstructionMaterialPurchaseService
 {
-    public function __construct(private readonly ExpenseService $expenses) {}
+    public function __construct(
+        private readonly ExpenseService $expenses,
+        private readonly InvoiceImageService $images,
+    ) {}
 
+    /** $data['invoice_image'] (an UploadedFile) is optional — see InvoiceImageService. */
     public function record(array $data, int $createdBy): ConstructionMaterialPurchase
     {
-        return DB::transaction(function () use ($data, $createdBy) {
+        $stored = isset($data['invoice_image']) ? $this->images->store($data['invoice_image'], 'invoices/materials') : null;
+
+        try {
+            return $this->create($data, $createdBy, $stored['path'] ?? null);
+        } catch (\Throwable $e) {
+            $this->images->delete($stored['path'] ?? null);
+            throw $e;
+        }
+    }
+
+    private function create(array $data, int $createdBy, ?string $invoicePath): ConstructionMaterialPurchase
+    {
+        return DB::transaction(function () use ($data, $createdBy, $invoicePath) {
             $totalCost = bcadd(
                 bcmul((string) $data['quantity'], (string) $data['unit_rate'], 4),
                 (string) ($data['transport_cost'] ?? 0),
@@ -49,6 +65,7 @@ class ConstructionMaterialPurchaseService
                 'supplier_name' => $data['supplier_name'] ?? null,
                 'transport_cost' => $data['transport_cost'] ?? 0,
                 'total_cost' => $totalCost,
+                'invoice_file' => $invoicePath,
                 'expense_id' => $expense->id,
                 'created_by' => $createdBy,
             ]);

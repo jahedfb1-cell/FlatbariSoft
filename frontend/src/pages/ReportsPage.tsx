@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import InvoiceAuditPack from '../components/InvoiceAuditPack';
 import * as reportsApi from '../api/reports';
 import type { TrialBalance, BalanceSheet, IncomeStatement, ReportKind } from '../api/reports';
 
@@ -161,6 +162,8 @@ export default function ReportsPage() {
             </table>
           </div>
         )}
+
+        <InvoiceAuditPack />
       </div>
     </div>
   );

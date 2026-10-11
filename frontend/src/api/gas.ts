@@ -1,4 +1,5 @@
 import client from './client';
+import { toFormData } from './invoices';
 
 export interface GasConsumer {
   id: number;
@@ -36,6 +37,8 @@ export interface GasPurchase {
   unit_price: string;
   transport_cost: string;
   total_cost: string;
+  has_invoice: boolean;
+  invoice_kb: number | null;
   expense_status: 'PENDING' | 'APPROVED';
 }
 
@@ -50,6 +53,8 @@ export function recordGasPurchase(data: {
   unit_price: number | string;
   transport_cost?: number | string;
   treasury_medium: 'CASH' | 'BANK';
+  invoice_image?: File | null;
 }) {
-  return client.post<GasPurchase>('/gas/purchases', data).then((r) => r.data);
+  // multipart, because the optional invoice photo is a file
+  return client.post<GasPurchase>('/gas/purchases', toFormData(data)).then((r) => r.data);
 }

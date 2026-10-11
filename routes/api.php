@@ -181,3 +181,24 @@ Route::prefix('construction-materials')->middleware('auth:sanctum')->group(funct
     Route::get('/', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'index'])->middleware('permission:expense.view');
     Route::post('/', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'store'])->middleware('permission:expense.create');
 });
+
+// Purchase-invoice photos. The same three operations exist for each purchase
+// type; only the URL prefix and the permission differ, so they are registered
+// in a loop (the type is handed to the controller as a route default).
+foreach ([
+    'gas' => ['prefix' => 'gas/purchases', 'view' => 'gas.view', 'manage' => 'gas.manage'],
+    'materials' => ['prefix' => 'construction-materials', 'view' => 'expense.view', 'manage' => 'expense.create'],
+] as $invoiceType => $invoiceCfg) {
+    $invoiceBase = "{$invoiceCfg['prefix']}/{purchase}/invoice";
+    $invoiceController = \App\Http\Controllers\Api\PurchaseInvoiceController::class;
+
+    Route::get($invoiceBase, [$invoiceController, 'show'])
+        ->defaults('type', $invoiceType)->middleware(['auth:sanctum', "permission:{$invoiceCfg['view']}"]);
+    Route::get("{$invoiceBase}/print", [$invoiceController, 'print'])
+        ->defaults('type', $invoiceType)->middleware(['auth:sanctum', "permission:{$invoiceCfg['view']}"]);
+    Route::post($invoiceBase, [$invoiceController, 'store'])
+        ->defaults('type', $invoiceType)->middleware(['auth:sanctum', "permission:{$invoiceCfg['manage']}"]);
+}
+
+Route::get('/invoices/audit-pack', [\App\Http\Controllers\Api\InvoiceAuditController::class, 'pack'])
+    ->middleware(['auth:sanctum', 'permission:accounting.view']);

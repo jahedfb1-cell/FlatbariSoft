@@ -12,7 +12,7 @@ class ConstructionMaterialPurchase extends Model
 
     protected $fillable = [
         'date', 'item_name', 'quantity', 'unit', 'unit_rate',
-        'supplier_name', 'transport_cost', 'total_cost', 'expense_id', 'created_by',
+        'supplier_name', 'transport_cost', 'total_cost', 'invoice_file', 'expense_id', 'created_by',
     ];
 
     protected function casts(): array

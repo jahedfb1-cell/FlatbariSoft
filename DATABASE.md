@@ -45,10 +45,23 @@ XAMPP Control Panel থেকে **`C:\xampp2`**-এরটা চালান।
 "C:\xampp2\mysql\bin\mysqldump.exe" -uroot green_valley_bms > green_valley_bms_backup.sql
 ```
 
+## ⚠️ ইনভয়েসের ছবি ডাটাবেসে নেই — আলাদা ব্যাকআপ লাগবে
+
+গ্যাস/নির্মাণ সামগ্রী ক্রয়ের ইনভয়েস ছবি **ডাটাবেসে নয়, ফাইল হিসেবে** থাকে (ডাটাবেসে শুধু পাথ):
+
+```
+storage/app/private/invoices/     ← এই ফোল্ডারটাও কপি/ব্যাকআপ করুন, নইলে শুধু SQL ব্যাকআপ থেকে ছবি ফিরবে না
+```
+- সব ছবি আপলোডের সময় ছোট করা হয় (সর্বোচ্চ ২০০০px, প্রায় ৩৫০ KB), GPS/EXIF মুছে ফেলা হয়।
+- ফোল্ডারটা `private` — লগইন ও অনুমতি ছাড়া URL দিয়ে খোলা যায় না।
+- হোস্টিং-এ সরালে `storage/app/private/invoices/` ফোল্ডারসহ সরান।
+
 ## ফাইলগুলো
 | ফাইল | কাজ |
 |---|---|
 | `find-database.bat` | ডাবল-ক্লিক করে ডাটাবেস খোঁজা |
 | `scripts/find-database.ps1` | আসল খোঁজার স্ক্রিপ্ট |
 | `app/Console/Commands/DatabaseWhere.php` | `php artisan db:where` |
+| `app/Services/InvoiceImageService.php` | ছবি ছোট করা/সোজা করা/সাদা-কালো করা |
+| `app/Services/InvoicePrintService.php` | A4 সাদা-কালো প্রিন্ট ও অডিট প্যাক |
 | `DATABASE-STATUS.txt` | সর্বশেষ রিপোর্ট (প্রতি মেশিনে আলাদা, git-এ যায় না) |

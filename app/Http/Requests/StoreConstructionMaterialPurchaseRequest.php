@@ -23,12 +23,13 @@ class StoreConstructionMaterialPurchaseRequest extends FormRequest
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'transport_cost' => ['nullable', 'numeric', 'min:0'],
             'treasury_medium' => ['required', Rule::in(['CASH', 'BANK'])],
+            'invoice_image' => InvoiceImageRules::rules(),
         ];
     }
 
     public function messages(): array
     {
-        return [
+        return InvoiceImageRules::messages() + [
             'date.required' => 'তারিখ আবশ্যক।',
             'item_name.required' => 'মালামালের নাম আবশ্যক।',
             'quantity.required' => 'পরিমাণ আবশ্যক।',

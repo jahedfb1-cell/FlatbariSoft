@@ -17,6 +17,8 @@ class GasPurchaseResource extends JsonResource
             'unit_price' => $this->unit_price,
             'transport_cost' => $this->transport_cost,
             'total_cost' => $this->total_cost,
+            'has_invoice' => (bool) $this->invoice_file,
+            'invoice_kb' => $this->invoice_file ? app(\App\Services\InvoiceImageService::class)->sizeKb($this->invoice_file) : null,
             'expense_status' => $this->whenLoaded('expense', fn () => $this->expense->status),
         ];
     }

@@ -19,6 +19,8 @@ class ConstructionMaterialPurchaseResource extends JsonResource
             'supplier_name' => $this->supplier_name,
             'transport_cost' => $this->transport_cost,
             'total_cost' => $this->total_cost,
+            'has_invoice' => (bool) $this->invoice_file,
+            'invoice_kb' => $this->invoice_file ? app(\App\Services\InvoiceImageService::class)->sizeKb($this->invoice_file) : null,
             'expense_status' => $this->whenLoaded('expense', fn () => $this->expense->status),
         ];
     }

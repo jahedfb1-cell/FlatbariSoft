@@ -17,11 +17,28 @@ use Illuminate\Support\Facades\DB;
  */
 class GasPurchaseService
 {
-    public function __construct(private readonly ExpenseService $expenses) {}
+    public function __construct(
+        private readonly ExpenseService $expenses,
+        private readonly InvoiceImageService $images,
+    ) {}
 
+    /** $data['invoice_image'] (an UploadedFile) is optional — see InvoiceImageService. */
     public function record(array $data, int $createdBy): GasPurchase
     {
-        return DB::transaction(function () use ($data, $createdBy) {
+        // Compressed and written first: a bad image fails fast, before any rows exist.
+        $stored = isset($data['invoice_image']) ? $this->images->store($data['invoice_image'], 'invoices/gas') : null;
+
+        try {
+            return $this->create($data, $createdBy, $stored['path'] ?? null);
+        } catch (\Throwable $e) {
+            $this->images->delete($stored['path'] ?? null); // don't leave an orphan file behind
+            throw $e;
+        }
+    }
+
+    private function create(array $data, int $createdBy, ?string $invoicePath): GasPurchase
+    {
+        return DB::transaction(function () use ($data, $createdBy, $invoicePath) {
             $totalCost = bcadd(
                 bcmul((string) $data['quantity_kg'], (string) $data['unit_price'], 4),
                 (string) ($data['transport_cost'] ?? 0),
@@ -47,6 +64,7 @@ class GasPurchaseService
                 'unit_price' => $data['unit_price'],
                 'transport_cost' => $data['transport_cost'] ?? 0,
                 'total_cost' => $totalCost,
+                'invoice_file' => $invoicePath,
                 'expense_id' => $expense->id,
             ]);
         });

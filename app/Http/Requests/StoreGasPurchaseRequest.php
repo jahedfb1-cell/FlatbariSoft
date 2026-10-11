@@ -21,12 +21,13 @@ class StoreGasPurchaseRequest extends FormRequest
             'unit_price' => ['required', 'numeric', 'min:0.01'],
             'transport_cost' => ['nullable', 'numeric', 'min:0'],
             'treasury_medium' => ['required', Rule::in(['CASH', 'BANK'])],
+            'invoice_image' => InvoiceImageRules::rules(),
         ];
     }
 
     public function messages(): array
     {
-        return [
+        return InvoiceImageRules::messages() + [
             'date.required' => 'তারিখ আবশ্যক।',
             'supplier_name.required' => 'সরবরাহকারীর নাম আবশ্যক।',
             'quantity_kg.required' => 'পরিমাণ (কেজি) আবশ্যক।',

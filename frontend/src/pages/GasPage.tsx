@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import InvoicePicker from '../components/InvoicePicker';
+import InvoiceCell from '../components/InvoiceCell';
 import * as gasApi from '../api/gas';
 import * as billingApi from '../api/billing';
 import type { GasConsumer, GasPurchase } from '../api/gas';
@@ -22,6 +24,7 @@ export default function GasPage() {
   const [pRate, setPRate] = useState('');
   const [pTransport, setPTransport] = useState('0');
   const [pMedium, setPMedium] = useState<'CASH' | 'BANK'>('CASH');
+  const [pInvoice, setPInvoice] = useState<File | null>(null);
   const [pError, setPError] = useState<string | null>(null);
 
   function load() {
@@ -42,7 +45,9 @@ export default function GasPage() {
         unit_price: pRate,
         transport_cost: pTransport,
         treasury_medium: pMedium,
+        invoice_image: pInvoice,
       });
+      setPInvoice(null);
       setPSupplier('');
       setPQty('');
       setPRate('');
@@ -144,6 +149,9 @@ export default function GasPage() {
           <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
             {t('gas.recordPurchase')}
           </button>
+          <div className="col-span-2 sm:col-span-6">
+            <InvoicePicker file={pInvoice} onChange={setPInvoice} />
+          </div>
         </form>
         {pError && <p className="mb-4 text-sm text-status-due">{pError}</p>}
 
@@ -156,6 +164,7 @@ export default function GasPage() {
                 <th className="px-4 py-3">{t('gas.quantityKg')}</th>
                 <th className="px-4 py-3">{t('gas.totalCost')}</th>
                 <th className="px-4 py-3">{t('common.status')}</th>
+                <th className="px-4 py-3">{t('invoice.col')}</th>
               </tr>
             </thead>
             <tbody>
@@ -166,6 +175,9 @@ export default function GasPage() {
                   <td className="px-4 py-3 text-navy-900">{p.quantity_kg}</td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(p.total_cost).toLocaleString('en-BD')}</td>
                   <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
+                  <td className="px-4 py-3">
+                    <InvoiceCell type="gas" id={p.id} hasInvoice={p.has_invoice} invoiceKb={p.invoice_kb} onChanged={load} />
+                  </td>
                 </tr>
               ))}
             </tbody>

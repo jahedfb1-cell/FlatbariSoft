@@ -1,4 +1,5 @@
 import client from './client';
+import { toFormData } from './invoices';
 
 export interface ConstructionMaterialPurchase {
   id: number;
@@ -10,6 +11,8 @@ export interface ConstructionMaterialPurchase {
   supplier_name: string | null;
   transport_cost: string;
   total_cost: string;
+  has_invoice: boolean;
+  invoice_kb: number | null;
   expense_status: 'PENDING' | 'APPROVED';
 }
 
@@ -26,6 +29,8 @@ export function recordMaterialPurchase(data: {
   supplier_name?: string;
   transport_cost?: number | string;
   treasury_medium: 'CASH' | 'BANK';
+  invoice_image?: File | null;
 }) {
-  return client.post<ConstructionMaterialPurchase>('/construction-materials', data).then((r) => r.data);
+  // multipart, because the optional invoice photo is a file
+  return client.post<ConstructionMaterialPurchase>('/construction-materials', toFormData(data)).then((r) => r.data);
 }

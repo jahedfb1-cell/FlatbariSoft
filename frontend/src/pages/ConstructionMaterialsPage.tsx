@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import InvoicePicker from '../components/InvoicePicker';
+import InvoiceCell from '../components/InvoiceCell';
 import * as materialsApi from '../api/constructionMaterials';
 import type { ConstructionMaterialPurchase } from '../api/constructionMaterials';
 
@@ -16,6 +18,7 @@ export default function ConstructionMaterialsPage() {
   const [supplierName, setSupplierName] = useState('');
   const [transportCost, setTransportCost] = useState('0');
   const [medium, setMedium] = useState<'CASH' | 'BANK'>('CASH');
+  const [invoice, setInvoice] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function load() {
@@ -37,7 +40,9 @@ export default function ConstructionMaterialsPage() {
         supplier_name: supplierName || undefined,
         transport_cost: transportCost,
         treasury_medium: medium,
+        invoice_image: invoice,
       });
+      setInvoice(null);
       setItemName('');
       setQuantity('');
       setUnit('');
@@ -79,6 +84,9 @@ export default function ConstructionMaterialsPage() {
           <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
             {t('common.submit')}
           </button>
+          <div className="col-span-2 sm:col-span-4">
+            <InvoicePicker file={invoice} onChange={setInvoice} />
+          </div>
         </form>
         <p className="mb-4 text-xs text-navy-700">{t('materials.approveHint')}</p>
         {error && <p className="mb-4 text-sm text-status-due">{error}</p>}
@@ -93,6 +101,7 @@ export default function ConstructionMaterialsPage() {
                 <th className="px-4 py-3">{t('materials.unit')}</th>
                 <th className="px-4 py-3">{t('materials.totalCost')}</th>
                 <th className="px-4 py-3">{t('common.status')}</th>
+                <th className="px-4 py-3">{t('invoice.col')}</th>
               </tr>
             </thead>
             <tbody>
@@ -104,6 +113,9 @@ export default function ConstructionMaterialsPage() {
                   <td className="px-4 py-3 text-navy-900">{p.unit}</td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(p.total_cost).toLocaleString('en-BD')}</td>
                   <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
+                  <td className="px-4 py-3">
+                    <InvoiceCell type="materials" id={p.id} hasInvoice={p.has_invoice} invoiceKb={p.invoice_kb} onChanged={load} />
+                  </td>
                 </tr>
               ))}
             </tbody>
