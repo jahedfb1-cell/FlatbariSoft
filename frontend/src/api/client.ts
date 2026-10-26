@@ -6,7 +6,10 @@ export interface ApiErrorPayload {
 }
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api',
+  // Production sets VITE_API_BASE_URL at build time. With it unset (dev / a phone on the same WiFi
+  // opening http://<pc-ip>:4000) the API is assumed to sit on the SAME host, port 8100 - a hardcoded
+  // 127.0.0.1 would point a phone at itself.
+  baseURL: import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8100/api`,
   headers: {
     Accept: 'application/json',
   },

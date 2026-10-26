@@ -3,6 +3,8 @@ import * as authApi from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import { isNativeApp } from '../utils/download';
+import client from '../api/client';
 
 type Step = 'mobile' | 'otp' | 'email';
 
@@ -186,6 +188,15 @@ export default function LoginPage() {
               {t('login.changeMobile')}
             </button>
           </form>
+        )}
+        {/* The Android app has no use for a link to itself. The page lives on the backend (same host as the API). */}
+        {!isNativeApp() && (
+          <a
+            href={`${String(client.defaults.baseURL).replace(/\/api\/?$/, '')}/download/app`}
+            className="mt-6 block text-center text-sm text-navy-700 hover:underline"
+          >
+            📱 {t('login.getApp')}
+          </a>
         )}
       </div>
     </div>

@@ -1,0 +1,7 @@
+.gradle/
+build/
+app/build/
+local.properties
+# signing secrets + key: never commit (the .jks lives outside the repo)
+keystore.properties
+*.jks

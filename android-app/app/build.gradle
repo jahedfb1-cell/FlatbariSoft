@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+// ./gradlew assembleRelease -PserverUrl=https://your-domain.com [-PallowHttp=true] [-PappVersionName=1.0.1 -PappVersionCode=2]
+def serverUrl  = (project.findProperty('serverUrl') ?: '').toString().trim()
+def allowHttp  = (project.findProperty('allowHttp') ?: 'false').toString().toBoolean()
+def verName    = (project.findProperty('appVersionName') ?: '1.0.0').toString()
+def verCode    = (project.findProperty('appVersionCode') ?: '1').toString().toInteger()
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file('keystore.properties')
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
+
+android {
+    namespace 'bd.greenvalley.bms'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'bd.greenvalley.bms'
+        minSdk 29          // Android 10+: saving downloads/photos needs no storage permission
+        targetSdk 34
+        versionCode verCode
+        versionName verName
+        // Baked-in address of the live site. Empty = the app asks for it on first launch.
+        buildConfigField 'String', 'DEFAULT_SERVER_URL', "\"${serverUrl}\""
+        buildConfigField 'boolean', 'ALLOW_HTTP', "${allowHttp}"
+        manifestPlaceholders = [usesCleartext: allowHttp.toString()]
+    }
+
+    buildFeatures { buildConfig true }
+
+    signingConfigs {
+        release {
+            if (keystoreFile.exists()) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystoreFile.exists() ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

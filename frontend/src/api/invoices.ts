@@ -21,12 +21,12 @@ export function uploadInvoice(type: InvoiceType, id: number, file: File) {
 
 /** One invoice as a black-and-white A4 PDF. */
 export function printInvoice(type: InvoiceType, id: number) {
-  return openPdf(`${base(type, id)}/print`);
+  return openPdf(`${base(type, id)}/print`, undefined, `invoice-${type}-${id}.pdf`);
 }
 
 /** Every purchase invoice in a date range as one black-and-white A4 PDF, for an audit. */
 export function printAuditPack(from: string, to: string, type: 'all' | InvoiceType) {
-  return openPdf('/invoices/audit-pack', { from, to, type });
+  return openPdf('/invoices/audit-pack', { from, to, type }, `invoice-audit-${from}_${to}.pdf`);
 }
 
 /** Build multipart form data from a plain object, skipping empty values and passing files through. */

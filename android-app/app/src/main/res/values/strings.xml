@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Green Valley BMS</string>
+    <string name="menu_change_server">সার্ভার বদলান</string>
+    <string name="menu_reload">রিলোড</string>
+    <string name="server_title">সার্ভারের ঠিকানা</string>
+    <string name="server_message">অ্যাপটি যে ওয়েবসাইট খুলবে তার ঠিকানা দিন।</string>
+    <string name="server_open">খুলুন</string>
+    <string name="server_cancel">বাতিল</string>
+    <string name="server_invalid">ঠিকানাটি সঠিক নয়।</string>
+    <string name="server_http_blocked">এই অ্যাপে শুধু https:// ঠিকানা চলে।</string>
+    <string name="choose_file">ছবি বা ফাইল বাছুন</string>
+    <string name="saved_to_downloads">Downloads ফোল্ডারে সেভ হয়েছে</string>
+    <string name="save_failed">ফাইল সেভ করা যায়নি</string>
+    <string name="no_viewer">এই ফাইল খোলার অ্যাপ নেই — Downloads ফোল্ডারে দেখুন</string>
+</resources>
