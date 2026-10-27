@@ -1,6 +1,11 @@
 # Green Valley BMS - the web root is the project folder, but ONLY public/ may ever be served.
 # Every request is sent into public/, so .env, app/, vendor/, storage/, .git ... can never be fetched
 # (they simply do not exist as far as the web is concerned).
+# This site needs PHP 8.4; the hosting account's default is older. Per-folder, so the other sites on the account keep theirs.
+<IfModule mod_litespeed.c>
+    AddHandler application/x-httpd-alt-php84___lsphp .php
+</IfModule>
+
 Options -Indexes
 RewriteEngine On
 RewriteCond %{REQUEST_URI} !^/public/
