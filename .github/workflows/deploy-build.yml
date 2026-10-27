@@ -1,0 +1,58 @@
+name: Build deploy branch
+
+# Push to main  ->  this builds the finished site (vendor/ + built frontend) and commits it to the
+# `deploy` branch  ->  Hostinger pulls `deploy`. The server has no composer/npm, so it cannot build.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: gd, bcmath, mbstring, fileinfo, zip, pdo_mysql
+          tools: composer:v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Assemble the site
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://house.dhakablinds.shop' }}
+        run: bash deploy/assemble.sh "$RUNNER_TEMP/site"
+
+      - name: Commit it to the deploy branch
+        run: |
+          set -e
+          REMOTE="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@users.noreply.github.com"
+          # keep the deploy branch's history linear (a force-push would break the server's pull)
+          if git ls-remote --exit-code --heads "$REMOTE" deploy >/dev/null 2>&1; then
+            git clone --quiet --branch deploy --single-branch "$REMOTE" "$RUNNER_TEMP/deploy"
+          else
+            mkdir "$RUNNER_TEMP/deploy" && git -C "$RUNNER_TEMP/deploy" init --quiet -b deploy
+            git -C "$RUNNER_TEMP/deploy" remote add origin "$REMOTE"
+          fi
+          rsync -a --delete --exclude='.git' "$RUNNER_TEMP/site/" "$RUNNER_TEMP/deploy/"
+          cd "$RUNNER_TEMP/deploy"
+          git add -A -f
+          if git diff --cached --quiet; then echo "nothing changed"; exit 0; fi
+          git commit --quiet -m "Build of ${{ github.sha }}"
+          git push origin deploy

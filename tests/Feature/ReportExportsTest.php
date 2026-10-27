@@ -10,6 +10,7 @@ use Database\Seeders\ChartOfAccountsSeeder;
 use Database\Seeders\MoneyCorePermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /**
@@ -126,5 +127,24 @@ class ReportExportsTest extends TestCase
     public function test_report_exports_require_authentication(): void
     {
         $this->getJson('/api/reports/trial-balance/pdf')->assertStatus(401);
+    }
+
+    public function test_pdf_still_works_on_a_fresh_deploy_where_the_font_cache_folder_does_not_exist(): void
+    {
+        // A fresh clone/deploy has no storage/app/dompdf-font-cache; dompdf alone dies on that.
+        $cache = (string) config('dompdf.options.font_cache');
+        File::deleteDirectory($cache);
+        $this->assertDirectoryDoesNotExist($cache);
+
+        $admin = $this->admin();
+        $this->postSomeJournal($admin);
+        // a real request boots the app first, and that boot recreates the folder
+        (new \App\Providers\AppServiceProvider($this->app))->boot();
+        $this->assertDirectoryExists($cache);
+        File::deleteDirectory($cache);
+        (new \App\Providers\AppServiceProvider($this->app))->boot();
+
+        $this->actingAs($admin, 'sanctum')->get('/api/reports/trial-balance/pdf')->assertStatus(200);
+        $this->assertDirectoryExists($cache);
     }
 }

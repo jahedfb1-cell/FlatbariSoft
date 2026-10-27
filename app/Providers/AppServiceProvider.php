@@ -6,6 +6,7 @@ use App\Contracts\SmsGatewayInterface;
 use App\Services\Sms\NullSmsGateway;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // dompdf refuses to start ("Path must not be empty") if its font-cache folder is missing, and
+        // a fresh clone/deploy never has it (storage/app/* is not tracked). Create it on demand.
+        File::ensureDirectoryExists((string) config('dompdf.options.font_cache'));
+
         // Every API Resource returns its fields at the top level, never
         // wrapped in a "data" key — consistent whether a resource is
         // returned directly from a controller or embedded inside a plain

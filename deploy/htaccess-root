@@ -1,0 +1,12 @@
+# Green Valley BMS - the web root is the project folder, but ONLY public/ may ever be served.
+# Every request is sent into public/, so .env, app/, vendor/, storage/, .git ... can never be fetched
+# (they simply do not exist as far as the web is concerned).
+Options -Indexes
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ public/$1 [L]
+
+# belt and braces: if the rewrite above is ever disabled, still refuse secrets
+<FilesMatch "^(\.env.*|composer\.(json|lock)|artisan)$">
+    Require all denied
+</FilesMatch>

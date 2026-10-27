@@ -1,0 +1,20 @@
+# One site, two halves: Laravel answers /api, /download (and /up); the React app answers everything else.
+Options -MultiViews -Indexes
+# "/" must open the React app, not Laravel's welcome page
+DirectoryIndex index.html
+RewriteEngine On
+
+# keep the Authorization header (Sanctum bearer tokens)
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# backend
+RewriteRule ^(api|download|up)(/|$) index.php [L]
+
+# real files (built JS/CSS, images, the APK in downloads/) are served as they are
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# anything else is a React route (/flats, /reports, ...) - the app renders it
+RewriteRule ^ index.html [L]
