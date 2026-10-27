@@ -19,6 +19,7 @@ const navItems: { to: string; key: any; perm: string }[] = [
   { to: '/dues', key: 'nav.dues', perm: 'due.view' },
   { to: '/assets', key: 'nav.assets', perm: 'asset.view' },
   { to: '/hall', key: 'nav.hall', perm: 'hall.view' },
+  { to: '/parking', key: 'nav.parking', perm: 'parking.view' },
   { to: '/meetings', key: 'nav.meetings', perm: 'meeting.view' },
   { to: '/complaints', key: 'nav.complaints', perm: 'complaint.view' },
   { to: '/notices', key: 'nav.notices', perm: 'notice.view' },

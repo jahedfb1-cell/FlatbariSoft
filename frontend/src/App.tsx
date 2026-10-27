@@ -27,6 +27,8 @@ import OwnerComplaintsPage from './pages/owner/OwnerComplaintsPage';
 import OwnerDocumentsPage from './pages/owner/OwnerDocumentsPage';
 import HallPage from './pages/HallPage';
 import UsersPage from './pages/UsersPage';
+import ParkingPage from './pages/ParkingPage';
+import OwnerParkingPage from './pages/owner/OwnerParkingPage';
 import OwnerHallPage from './pages/owner/OwnerHallPage';
 
 const OWNER_ROLES = ['flat_owner', 'tenant'];
@@ -85,6 +87,7 @@ function AppRoutes() {
       <Route path="/construction-materials" element={<ConstructionMaterialsPage />} />
       <Route path="/hall" element={<HallPage />} />
       <Route path="/users" element={<UsersPage />} />
+      <Route path="/parking" element={<ParkingPage />} />
 
       {/* Owner/Tenant portal (5 screens, PRD's mobile-first cap) */}
       <Route path="/owner" element={<OwnerHomePage />} />
@@ -93,6 +96,7 @@ function AppRoutes() {
       <Route path="/owner/complaints" element={<OwnerComplaintsPage />} />
       <Route path="/owner/documents" element={<OwnerDocumentsPage />} />
       <Route path="/owner/hall" element={<OwnerHallPage />} />
+      <Route path="/owner/parking" element={<OwnerParkingPage />} />
     </Routes>
   );
 }

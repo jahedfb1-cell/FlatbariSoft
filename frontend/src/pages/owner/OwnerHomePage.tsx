@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { Link } from 'react-router-dom';
 import LanguageToggle from '../../components/LanguageToggle';
 import OwnerNav from '../../components/OwnerNav';
 import * as myApi from '../../api/my';
@@ -32,6 +33,10 @@ export default function OwnerHomePage() {
           <p className="text-sm text-navy-700">{user?.mobile}</p>
           <p className="text-sm text-navy-700">{user?.roles.join(', ')}</p>
         </div>
+
+        <Link to="/owner/parking" className="mt-4 block rounded-xl border border-brand-200 bg-white p-4 text-center font-medium text-navy-900 shadow-sm hover:bg-brand-100">
+          🚗 {t('owner.parking')}
+        </Link>
 
         <h2 className="mb-2 mt-6 font-semibold text-navy-900">{t('owner.myFlats')}</h2>
         <div className="space-y-2">
