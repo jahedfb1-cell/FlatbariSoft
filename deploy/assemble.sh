@@ -18,6 +18,9 @@ find "$OUT" -name .gitignore -delete
 
 # 2. PHP dependencies, production only
 composer install --working-dir="$OUT" --no-dev --optimize-autoloader --no-interaction --no-progress
+# vendor/ is already built, so keep Hostinger's Git deploy from re-running "composer install" on the server
+# (it fails there when the server PHP is older than the lock file requires). Nothing reads these at runtime.
+rm -f "$OUT/composer.json" "$OUT/composer.lock"
 
 # 3. the React app, pointed at this site's own API
 # (CI always installs clean; by hand, reuse node_modules - a running dev server locks them on Windows)
