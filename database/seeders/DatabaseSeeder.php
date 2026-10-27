@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             SmsTemplateSeeder::class,
             CommunityHallSeeder::class,
             RoleCatalogSeeder::class,
+            ParkingSeeder::class,
         ]);
     }
 }

@@ -247,3 +247,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('permission:role.manage');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.manage');
 });
+
+// Parking. view = see slots/holders/charges; manage = slots, allocations, generate monthly charges;
+// payments = collect money. Residents see only their own flat's slots through /me/parking.
+Route::prefix('parking')->middleware('auth:sanctum')->group(function () {
+    Route::get('/slots', [\App\Http\Controllers\Api\ParkingController::class, 'slots'])->middleware('permission:parking.view');
+    Route::post('/slots', [\App\Http\Controllers\Api\ParkingController::class, 'storeSlot'])->middleware('permission:parking.manage');
+    Route::put('/slots/{slot}', [\App\Http\Controllers\Api\ParkingController::class, 'updateSlot'])->middleware('permission:parking.manage');
+    Route::post('/slots/{slot}/allocate', [\App\Http\Controllers\Api\ParkingController::class, 'allocate'])->middleware('permission:parking.manage');
+    Route::post('/allocations/{allocation}/release', [\App\Http\Controllers\Api\ParkingController::class, 'release'])->middleware('permission:parking.manage');
+
+    Route::get('/charges', [\App\Http\Controllers\Api\ParkingController::class, 'charges'])->middleware('permission:parking.view');
+    Route::post('/charges/generate', [\App\Http\Controllers\Api\ParkingController::class, 'generate'])->middleware('permission:parking.manage');
+    Route::get('/charges/{charge}', [\App\Http\Controllers\Api\ParkingController::class, 'showCharge'])->middleware('permission:parking.view');
+    Route::post('/charges/{charge}/payments', [\App\Http\Controllers\Api\ParkingController::class, 'pay'])->middleware('permission:parking.payments');
+    Route::get('/summary', [\App\Http\Controllers\Api\ParkingController::class, 'summary'])->middleware('permission:parking.view');
+});
+Route::get('/me/parking', [\App\Http\Controllers\Api\MyParkingController::class, 'index'])->middleware('auth:sanctum');
