@@ -25,6 +25,9 @@ import OwnerBillsPage from './pages/owner/OwnerBillsPage';
 import OwnerNoticesPage from './pages/owner/OwnerNoticesPage';
 import OwnerComplaintsPage from './pages/owner/OwnerComplaintsPage';
 import OwnerDocumentsPage from './pages/owner/OwnerDocumentsPage';
+import HallPage from './pages/HallPage';
+import UsersPage from './pages/UsersPage';
+import OwnerHallPage from './pages/owner/OwnerHallPage';
 
 const OWNER_ROLES = ['flat_owner', 'tenant'];
 
@@ -34,8 +37,11 @@ function HomeRedirect() {
   // and the denormalized `role` column (a display label that's always set,
   // even in the rare case a roles assignment was missed) so routing never
   // silently falls through to the admin dashboard for an owner/tenant.
-  const isOwner = user ? OWNER_ROLES.includes(user.role) || user.roles.some((r) => OWNER_ROLES.includes(r)) : false;
-  return isOwner ? <Navigate to="/owner" replace /> : <DashboardPage />;
+  // A committee member who is also a flat owner holds both kinds of role: they belong on the office
+  // dashboard (which links to their flat's portal), not trapped in the portal.
+  const residentOnly = user ? user.roles.length > 0 && user.roles.every((r) => OWNER_ROLES.includes(r)) : false;
+  const legacyOwner = user ? user.roles.length === 0 && OWNER_ROLES.includes(user.role) : false;
+  return residentOnly || legacyOwner ? <Navigate to="/owner" replace /> : <DashboardPage />;
 }
 
 function AppRoutes() {
@@ -77,6 +83,8 @@ function AppRoutes() {
       <Route path="/reports" element={<ReportsPage />} />
       <Route path="/bank-accounts" element={<BankAccountsPage />} />
       <Route path="/construction-materials" element={<ConstructionMaterialsPage />} />
+      <Route path="/hall" element={<HallPage />} />
+      <Route path="/users" element={<UsersPage />} />
 
       {/* Owner/Tenant portal (5 screens, PRD's mobile-first cap) */}
       <Route path="/owner" element={<OwnerHomePage />} />
@@ -84,6 +92,7 @@ function AppRoutes() {
       <Route path="/owner/notices" element={<OwnerNoticesPage />} />
       <Route path="/owner/complaints" element={<OwnerComplaintsPage />} />
       <Route path="/owner/documents" element={<OwnerDocumentsPage />} />
+      <Route path="/owner/hall" element={<OwnerHallPage />} />
     </Routes>
   );
 }

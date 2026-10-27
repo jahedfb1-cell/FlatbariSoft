@@ -6,32 +6,41 @@ import LanguageToggle from '../components/LanguageToggle';
 import * as reportsApi from '../api/reports';
 import type { DashboardKpis } from '../api/reports';
 
-const navItems: { to: string; key: any }[] = [
-  { to: '/flats', key: 'home.flatManagement' },
-  { to: '/staff', key: 'staff.title' },
-  { to: '/billing', key: 'nav.billing' },
-  { to: '/gas', key: 'nav.gas' },
-  { to: '/payments', key: 'nav.payments' },
-  { to: '/bank-accounts', key: 'bank.title' },
-  { to: '/expenses', key: 'nav.expenses' },
-  { to: '/construction-materials', key: 'nav.materials' },
-  { to: '/dues', key: 'nav.dues' },
-  { to: '/assets', key: 'nav.assets' },
-  { to: '/meetings', key: 'nav.meetings' },
-  { to: '/complaints', key: 'nav.complaints' },
-  { to: '/notices', key: 'nav.notices' },
-  { to: '/reports', key: 'nav.reports' },
+// `perm` is the permission that opens the screen (the API enforces it too); super_admin sees every tile.
+const navItems: { to: string; key: any; perm: string }[] = [
+  { to: '/flats', key: 'home.flatManagement', perm: 'flat.view' },
+  { to: '/staff', key: 'staff.title', perm: 'staff.view' },
+  { to: '/billing', key: 'nav.billing', perm: 'billing.view' },
+  { to: '/gas', key: 'nav.gas', perm: 'gas.view' },
+  { to: '/payments', key: 'nav.payments', perm: 'payment.view' },
+  { to: '/bank-accounts', key: 'bank.title', perm: 'accounting.view' },
+  { to: '/expenses', key: 'nav.expenses', perm: 'expense.view' },
+  { to: '/construction-materials', key: 'nav.materials', perm: 'expense.view' },
+  { to: '/dues', key: 'nav.dues', perm: 'due.view' },
+  { to: '/assets', key: 'nav.assets', perm: 'asset.view' },
+  { to: '/hall', key: 'nav.hall', perm: 'hall.view' },
+  { to: '/meetings', key: 'nav.meetings', perm: 'meeting.view' },
+  { to: '/complaints', key: 'nav.complaints', perm: 'complaint.view' },
+  { to: '/notices', key: 'nav.notices', perm: 'notice.view' },
+  { to: '/reports', key: 'nav.reports', perm: 'accounting.view' },
+  { to: '/users', key: 'nav.users', perm: 'user.view' },
 ];
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
+  const can = (p: string) => !!user && (user.roles.includes('super_admin') || user.permissions.includes(p));
+  const visibleItems = navItems.filter((item) => can(item.perm));
+  // a committee member is usually also a flat owner: let them hop to their own flat's portal
+  const isResident = !!user && user.roles.some((r) => r === 'flat_owner' || r === 'tenant');
 
   useEffect(() => {
+    if (!can('accounting.view')) return; // the KPI numbers are accounting data
     const now = new Date();
     reportsApi.getDashboard(now.getFullYear(), now.getMonth() + 1).then(setKpis).catch(() => {});
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-brand-50 px-4 py-8">
@@ -43,6 +52,11 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle />
+            {isResident && (
+              <Link to="/owner" className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm text-navy-700 transition hover:bg-brand-100">
+                {t('users.openPortal')}
+              </Link>
+            )}
             <Link
               to="/change-password"
               className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm text-navy-700 transition hover:bg-brand-100"
@@ -69,7 +83,7 @@ export default function DashboardPage() {
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {navItems.map((item) => (
+          {visibleItems.map((item) => (
             <Link
               key={item.to}
               to={item.to}
