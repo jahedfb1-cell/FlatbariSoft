@@ -16,6 +16,10 @@ use App\Http\Controllers\Api\MyController;
 use App\Http\Controllers\Api\NoticeController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\GasController;
+use App\Http\Controllers\Api\HallController;
+use App\Http\Controllers\Api\MyHallController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\FlatOwnerController;
 use App\Http\Controllers\Api\OwnerDocumentController;
 use App\Http\Controllers\Api\PersonController;
@@ -155,6 +159,14 @@ Route::prefix('me')->middleware('auth:sanctum')->group(function () {
     Route::get('/documents', [MyController::class, 'documents']);
     Route::get('/complaints', [MyController::class, 'complaints']);
     Route::post('/complaints', [MyController::class, 'storeComplaint']);
+
+    // community hall: any logged-in resident (scoped to their own flats inside the controller)
+    Route::get('/hall', [MyHallController::class, 'hall']);
+    Route::get('/hall/availability', [MyHallController::class, 'availability']);
+    Route::get('/hall/quote', [MyHallController::class, 'quote']);
+    Route::get('/hall/bookings', [MyHallController::class, 'index']);
+    Route::post('/hall/bookings', [MyHallController::class, 'store']);
+    Route::post('/hall/bookings/{booking}/cancel', [MyHallController::class, 'cancel']);
 });
 
 Route::prefix('notices')->middleware('auth:sanctum')->group(function () {
@@ -202,3 +214,36 @@ foreach ([
 
 Route::get('/invoices/audit-pack', [\App\Http\Controllers\Api\InvoiceAuditController::class, 'pack'])
     ->middleware(['auth:sanctum', 'permission:accounting.view']);
+
+// Community hall (office side). view = read; request = take a booking (stays PENDING);
+// approve = approve/reject/cancel/complete; payments = take or refund money; manage = settings and rates.
+Route::prefix('hall')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [HallController::class, 'show'])->middleware('permission:hall.view');
+    Route::put('/', [HallController::class, 'updateSettings'])->middleware('permission:hall.manage');
+    Route::get('/availability', [HallController::class, 'availability'])->middleware('permission:hall.view');
+    Route::get('/quote', [HallController::class, 'quote'])->middleware('permission:hall.view');
+
+    Route::get('/bookings', [HallController::class, 'index'])->middleware('permission:hall.view');
+    Route::post('/bookings', [HallController::class, 'store'])->middleware('permission:hall.request');
+    Route::get('/bookings/{booking}', [HallController::class, 'showBooking'])->middleware('permission:hall.view');
+    Route::post('/bookings/{booking}/approve', [HallController::class, 'approve'])->middleware('permission:hall.approve');
+    Route::post('/bookings/{booking}/reject', [HallController::class, 'reject'])->middleware('permission:hall.approve');
+    Route::post('/bookings/{booking}/cancel', [HallController::class, 'cancel'])->middleware('permission:hall.approve');
+    Route::post('/bookings/{booking}/complete', [HallController::class, 'complete'])->middleware('permission:hall.approve');
+    Route::post('/bookings/{booking}/payments', [HallController::class, 'recordPayment'])->middleware('permission:hall.payments');
+});
+
+// Users and roles. view = see the lists; manage = create/edit logins, reset passwords;
+// role.manage = change what each role may do. Residents' accounts are created automatically when they
+// are assigned to a flat; this is for committee members, the building manager and other staff.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/users', [UserController::class, 'index'])->middleware('permission:user.view');
+    Route::post('/users', [UserController::class, 'store'])->middleware('permission:user.manage');
+    Route::put('/users/{user}', [UserController::class, 'update'])->middleware('permission:user.manage');
+    Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:user.manage');
+
+    Route::get('/roles', [RoleController::class, 'index'])->middleware('permission:user.view');
+    Route::post('/roles', [RoleController::class, 'store'])->middleware('permission:role.manage');
+    Route::put('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->middleware('permission:role.manage');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.manage');
+});

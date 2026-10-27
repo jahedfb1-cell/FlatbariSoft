@@ -26,6 +26,8 @@ class DatabaseSeeder extends Seeder
             GovernancePermissionSeeder::class,
             CommunicationPermissionSeeder::class,
             SmsTemplateSeeder::class,
+            CommunityHallSeeder::class,
+            RoleCatalogSeeder::class,
         ]);
     }
 }
