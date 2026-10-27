@@ -28,9 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // dompdf refuses to start ("Path must not be empty") if its font-cache folder is missing, and
-        // a fresh clone/deploy never has it (storage/app/* is not tracked). Create it on demand.
+        // dompdf needs these two folders to exist and be writable, and a fresh clone/deploy has neither
+        // (storage/app/* is not tracked) - create them on demand.
         File::ensureDirectoryExists((string) config('dompdf.options.font_cache'));
+        File::ensureDirectoryExists((string) config('dompdf.options.temp_dir'));
 
         // Every API Resource returns its fields at the top level, never
         // wrapped in a "data" key — consistent whether a resource is

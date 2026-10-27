@@ -67,7 +67,10 @@ return [
          * The temporary directory is required to download remote images and when
          * using the PDFLib back end.
          */
-        'temp_dir' => sys_get_temp_dir(),
+        // Not sys_get_temp_dir(): on shared hosting open_basedir often forbids /tmp, and under Apache-CGI
+        // on Windows TEMP isn't set - either way dompdf's tempnam() fails and PDF export dies with
+        // "Path must not be empty". A folder inside our own storage is always writable.
+        'temp_dir' => storage_path('app/dompdf-tmp'),
 
         /**
          * ==== IMPORTANT ====

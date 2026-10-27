@@ -31,7 +31,7 @@ cp "$ROOT/deploy/env.production.example" "$OUT/.env.example"
 
 # 5. folders Laravel writes to must exist (git does not keep empty folders)
 for d in storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
-         storage/app/public storage/app/private storage/app/dompdf-font-cache bootstrap/cache public/downloads; do
+         storage/app/public storage/app/private storage/app/dompdf-font-cache storage/app/dompdf-tmp bootstrap/cache public/downloads; do
     mkdir -p "$OUT/$d"; touch "$OUT/$d/.gitkeep"
 done
 rm -f "$OUT/.env" "$OUT"/public/downloads/*.apk

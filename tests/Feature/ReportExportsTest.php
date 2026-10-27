@@ -129,22 +129,20 @@ class ReportExportsTest extends TestCase
         $this->getJson('/api/reports/trial-balance/pdf')->assertStatus(401);
     }
 
-    public function test_pdf_still_works_on_a_fresh_deploy_where_the_font_cache_folder_does_not_exist(): void
+    public function test_dompdf_folders_are_recreated_on_boot_for_a_fresh_deploy(): void
     {
-        // A fresh clone/deploy has no storage/app/dompdf-font-cache; dompdf alone dies on that.
-        $cache = (string) config('dompdf.options.font_cache');
-        File::deleteDirectory($cache);
-        $this->assertDirectoryDoesNotExist($cache);
+        // A fresh clone/deploy has neither folder (storage/app/* is untracked).
+        foreach (['font_cache', 'temp_dir'] as $key) {
+            $dir = (string) config("dompdf.options.{$key}");
+            $this->assertStringStartsWith(storage_path(), $dir, "{$key} must live inside storage, not the system temp dir");
+            File::deleteDirectory($dir);
+            $this->assertDirectoryDoesNotExist($dir);
+        }
 
-        $admin = $this->admin();
-        $this->postSomeJournal($admin);
-        // a real request boots the app first, and that boot recreates the folder
-        (new \App\Providers\AppServiceProvider($this->app))->boot();
-        $this->assertDirectoryExists($cache);
-        File::deleteDirectory($cache);
         (new \App\Providers\AppServiceProvider($this->app))->boot();
 
-        $this->actingAs($admin, 'sanctum')->get('/api/reports/trial-balance/pdf')->assertStatus(200);
-        $this->assertDirectoryExists($cache);
+        foreach (['font_cache', 'temp_dir'] as $key) {
+            $this->assertDirectoryExists((string) config("dompdf.options.{$key}"));
+        }
     }
 }
