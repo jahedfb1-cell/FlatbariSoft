@@ -138,6 +138,8 @@ Route::prefix('meetings')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [MeetingController::class, 'index'])->middleware('permission:meeting.view');
     Route::post('/', [MeetingController::class, 'store'])->middleware('permission:meeting.manage');
     Route::post('/{meeting}/resolutions', [MeetingController::class, 'addResolution'])->middleware('permission:meeting.manage');
+    Route::post('/resolutions/{resolution}/attachment', [MeetingController::class, 'attach'])->middleware('permission:meeting.manage');
+    Route::get('/resolutions/{resolution}/attachment', [MeetingController::class, 'attachment'])->middleware('permission:meeting.view');
 });
 
 Route::prefix('reports')->middleware(['auth:sanctum', 'permission:accounting.view'])->group(function () {
