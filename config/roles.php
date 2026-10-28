@@ -82,6 +82,7 @@ return [
         'notice' => ['bn' => 'নোটিশ', 'en' => 'Notices'],
         'hall' => ['bn' => 'কমিউনিটি হল', 'en' => 'Community hall'],
         'parking' => ['bn' => 'পার্কিং', 'en' => 'Parking'],
+        'contribution' => ['bn' => 'নির্মাণ ব্যয় আদায়', 'en' => 'Construction contributions'],
         'user' => ['bn' => 'ইউজার', 'en' => 'Users'],
         'role' => ['bn' => 'রোল', 'en' => 'Roles'],
     ],

@@ -268,3 +268,22 @@ Route::prefix('parking')->middleware('auth:sanctum')->group(function () {
     Route::get('/summary', [\App\Http\Controllers\Api\ParkingController::class, 'summary'])->middleware('permission:parking.view');
 });
 Route::get('/me/parking', [\App\Http\Controllers\Api\MyParkingController::class, 'index'])->middleware('auth:sanctum');
+
+// Construction-cost collection from flat owners (target per flat, receipts, per-owner ledger).
+// view = statement and ledgers; collect = record a receipt; manage = targets, loading earlier collections, reversals.
+Route::prefix('contributions')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\ContributionController::class;
+    Route::get('/statement', [$c, 'statement'])->middleware('permission:contribution.view');
+    Route::get('/statement/pdf', [$c, 'pdf'])->middleware('permission:contribution.view');
+    Route::get('/statement/excel', [$c, 'excel'])->middleware('permission:contribution.view');
+    Route::get('/ledgers/pdf', [$c, 'allLedgersPdf'])->middleware('permission:contribution.view');
+    Route::get('/flats/{flat}/ledger', [$c, 'ledger'])->middleware('permission:contribution.view');
+    Route::get('/flats/{flat}/ledger/pdf', [$c, 'ledgerPdf'])->middleware('permission:contribution.view');
+    Route::post('/flats/{flat}/collections', [$c, 'store'])->middleware('permission:contribution.collect');
+    Route::post('/collections/{contribution}/reverse', [$c, 'reverse'])->middleware('permission:contribution.manage');
+    Route::put('/flats/{flat}/target', [$c, 'setFlatTarget'])->middleware('permission:contribution.manage');
+    Route::put('/settings/default-target', [$c, 'setDefaultTarget'])->middleware('permission:contribution.manage');
+    Route::post('/import', [$c, 'import'])->middleware('permission:contribution.manage');
+});
+Route::get('/me/contributions', [\App\Http\Controllers\Api\MyContributionController::class, 'index'])->middleware('auth:sanctum');
+Route::get('/me/contributions/pdf', [\App\Http\Controllers\Api\MyContributionController::class, 'pdf'])->middleware('auth:sanctum');
