@@ -29,18 +29,20 @@
     <div class="{{ $i > 0 ? 'newpage' : '' }}">
         <div class="head">
             <h1>{{ $building->name ?? 'Green Valley' }}</h1>
-            <div>Construction Cost - Owner Ledger</div>
+            <div>{{ $l['book']['name_en'] }} - Owner Ledger</div>
         </div>
 
         <table class="kv">
             <tr><th>Flat</th><td><b>{{ $l['flat_no'] }}</b></td></tr>
             <tr><th>Owner</th><td>{{ $l['owner'] ?: '-' }}</td></tr>
-            <tr><th>Construction cost target</th><td>{{ number_format((float) $l['target'], 2) }}</td></tr>
+            <tr><th>Target</th><td>{{ $l['target'] === null ? 'not decided yet' : number_format((float) $l['target'], 2) }}</td></tr>
             <tr><th>Collected so far</th><td>{{ number_format((float) $l['collected'], 2) }}</td></tr>
-            <tr>
-                <th>{{ bccomp($l['balance'], '0', 4) >= 0 ? 'Still due' : 'Paid in excess' }}</th>
-                <td><b>{{ number_format(abs((float) $l['balance']), 2) }}</b></td>
-            </tr>
+            @if ($l['balance'] !== null)
+                <tr>
+                    <th>{{ bccomp($l['balance'], '0', 4) >= 0 ? 'Still due' : 'Paid in excess' }}</th>
+                    <td><b>{{ number_format(abs((float) $l['balance']), 2) }}</b></td>
+                </tr>
+            @endif
         </table>
 
         <table>
@@ -48,10 +50,12 @@
                 <th>Date</th><th>Receipt</th><th>Head</th><th>Method / ref</th>
                 <th class="num">Amount</th><th class="num">Balance after</th>
             </tr>
-            <tr>
-                <td colspan="5">Target</td>
-                <td class="num">{{ number_format((float) $l['target'], 2) }}</td>
-            </tr>
+            @if ($l['target'] !== null)
+                <tr>
+                    <td colspan="5">Target</td>
+                    <td class="num">{{ number_format((float) $l['target'], 2) }}</td>
+                </tr>
+            @endif
             @forelse ($l['entries'] as $e)
                 <tr class="{{ $e['is_reversal'] || $e['is_reversed'] ? 'rev' : '' }}">
                     <td>{{ date('d M Y', strtotime($e['date'])) }}</td>
@@ -59,15 +63,15 @@
                     <td>{{ $e['head_name_en'] }}@if (! $e['counts_toward_target']) (not counted)@endif @if ($e['is_reversal']) - reversal @elseif ($e['is_reversed']) - reversed @endif</td>
                     <td>{{ $e['method'] === 'OPENING' ? 'collected earlier' : $e['method'] }}{{ $e['reference_no'] ? ' / '.$e['reference_no'] : '' }}</td>
                     <td class="num">{{ number_format((float) $e['amount'], 2) }}</td>
-                    <td class="num">{{ number_format((float) $e['balance_after'], 2) }}</td>
+                    <td class="num">{{ $e['balance_after'] === null ? '-' : number_format((float) $e['balance_after'], 2) }}</td>
                 </tr>
             @empty
                 <tr><td colspan="6">No receipts yet.</td></tr>
             @endforelse
             <tr class="total">
-                <td colspan="4">Collected / {{ bccomp($l['balance'], '0', 4) >= 0 ? 'still due' : 'excess' }}</td>
+                <td colspan="4">Collected{{ $l['balance'] === null ? '' : ' / '.(bccomp($l['balance'], '0', 4) >= 0 ? 'still due' : 'excess') }}</td>
                 <td class="num">{{ number_format((float) $l['collected'], 2) }}</td>
-                <td class="num">{{ number_format(abs((float) $l['balance']), 2) }}</td>
+                <td class="num">{{ $l['balance'] === null ? '-' : number_format(abs((float) $l['balance']), 2) }}</td>
             </tr>
         </table>
 

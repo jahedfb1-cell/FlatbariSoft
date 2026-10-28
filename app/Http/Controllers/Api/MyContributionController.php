@@ -11,29 +11,31 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * An owner's own construction-cost ledger. Only the flats the logged-in person currently OWNS: a tenant
- * has no share in the construction cost, and nobody can ask for a flat that is not theirs.
+ * An owner's own ledgers - one per book (construction cost, flat, parking sale) for each flat they currently
+ * OWN. A tenant has no share in these, and nobody can ask for a flat that is not theirs.
  */
 class MyContributionController extends Controller
 {
     public function __construct(private readonly ContributionService $service) {}
 
-    private function ownedFlats()
+    /** @return list<array<string, mixed>> */
+    private function ledgers(): array
     {
         $personId = Auth::user()->person_id;
         $ids = $personId ? FlatParty::where('person_id', $personId)->where('role', 'OWNER')->whereNull('to_date')->pluck('flat_id') : collect();
 
-        return Flat::whereIn('id', $ids)->orderBy('flat_no')->get();
+        return Flat::whereIn('id', $ids)->orderBy('flat_no')->get()
+            ->flatMap(fn (Flat $f) => $this->service->flatLedgers($f))->values()->all();
     }
 
     public function index()
     {
-        return response()->json($this->ownedFlats()->map(fn (Flat $f) => $this->service->ledger($f))->values());
+        return response()->json($this->ledgers());
     }
 
     public function pdf()
     {
-        $ledgers = $this->ownedFlats()->map(fn (Flat $f) => $this->service->ledger($f))->values()->all();
+        $ledgers = $this->ledgers();
         abort_if($ledgers === [], 404);
 
         return Pdf::loadView('reports.contribution-ledger', ['building' => Building::first(), 'ledgers' => $ledgers])

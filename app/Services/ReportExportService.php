@@ -157,10 +157,10 @@ class ReportExportService
     {
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Construction Cost');
+        $sheet->setTitle(mb_substr($report['book']['name_en'], 0, 28));
 
-        $sheet->setCellValue('A1', 'গ্রীন ভ্যালি — নির্মাণ ব্যয় আদায় (ফ্ল্যাটভিত্তিক)');
-        $sheet->setCellValue('A2', 'ডিফল্ট টার্গেট: '.number_format((float) $report['default_target'], 2));
+        $sheet->setCellValue('A1', 'গ্রীন ভ্যালি — '.$report['book']['name_bn'].' (ফ্ল্যাটভিত্তিক)');
+        $sheet->setCellValue('A2', $report['book']['has_target'] ? 'ডিফল্ট টার্গেট: '.number_format((float) $report['default_target'], 2) : 'টার্গেট এখনও ঠিক করা হয়নি');
 
         $headers = ['ক্রম', 'ফ্ল্যাট', 'মালিক'];
         foreach ($report['heads'] as $h) {
@@ -184,8 +184,8 @@ class ReportExportService
                 $sheet->setCellValue([$col++, $row], (float) $r['heads'][$h['code']]);
             }
             $sheet->setCellValue([$col++, $row], (float) $r['collected']);
-            $sheet->setCellValue([$col++, $row], (float) $r['target']);
-            $sheet->setCellValue([$col++, $row], (float) $r['balance']);
+            $sheet->setCellValue([$col++, $row], $r['target'] === null ? null : (float) $r['target']);
+            $sheet->setCellValue([$col++, $row], $r['balance'] === null ? null : (float) $r['balance']);
             $row++;
         }
 
