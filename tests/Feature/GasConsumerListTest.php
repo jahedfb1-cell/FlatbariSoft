@@ -81,4 +81,38 @@ class GasConsumerListTest extends TestCase
         $viewer = User::factory()->create(['role' => 'tenant']);
         $this->actingAs($viewer, 'sanctum')->postJson('/api/gas/consumers', ['name' => 'x'])->assertForbidden();
     }
+
+    public function test_summary_totals_purchases_and_what_flats_used_this_month(): void
+    {
+        $admin = $this->admin();
+        $this->seed(\Database\Seeders\ChartOfAccountsSeeder::class);
+        $this->seed(\Database\Seeders\ExpenseHeadSeeder::class);
+        $this->seed(GasSetupSeeder::class);
+        \App\Models\GasRateSetting::query()->update(['m3_per_kg' => 0.5]);
+        $flatA = Flat::factory()->create();
+        $flatB = Flat::factory()->create();
+        $this->actingAs($admin, 'sanctum')->getJson('/api/gas/consumers')->assertOk(); // creates the consumers
+
+        app(\App\Services\GasPurchaseService::class)->record(['date' => '2026-09-05', 'supplier_name' => 'S', 'quantity_kg' => '400', 'unit_price' => '95', 'transport_cost' => '0', 'treasury_medium' => 'CASH'], $admin->id);
+        app(\App\Services\GasPurchaseService::class)->record(['date' => '2026-08-05', 'supplier_name' => 'S', 'quantity_kg' => '100', 'unit_price' => '100', 'transport_cost' => '0', 'treasury_medium' => 'CASH'], $admin->id);
+
+        $period = \App\Models\BillingPeriod::create(['year' => 2026, 'month' => 9, 'status' => 'DRAFT']);
+        $svc = app(\App\Services\GasBillingService::class);
+        $svc->recordReading(GasConsumer::where('flat_id', $flatA->id)->first(), $period->id, 30, '2026-09-28', $admin->id);
+        $svc->recordReading(GasConsumer::where('flat_id', $flatB->id)->first(), $period->id, 20, '2026-09-28', $admin->id);
+        $svc->recordReading(GasConsumer::where('is_internal', true)->first(), $period->id, 10, '2026-09-28', $admin->id);
+
+        $res = $this->actingAs($admin, 'sanctum')->getJson('/api/gas/summary?year=2026&month=9')->assertOk();
+        $this->assertSame(2, $res->json('total_purchases'));
+        $this->assertSame('500.0000', $res->json('total_kg'));
+        $this->assertSame('48000.0000', $res->json('total_cost'));
+        $this->assertSame('400.0000', $res->json('month_kg'));
+        $this->assertSame('200.0000', $res->json('month_bought_m3'));
+        $this->assertSame('50.0000', $res->json('flats_used_m3'));
+        $this->assertSame('10.0000', $res->json('office_used_m3'));
+        $this->assertSame(2, $res->json('flats_read'));
+        $this->assertSame(2, $res->json('flats_total'));
+        $this->assertSame('140.0000', $res->json('loss_m3'));
+        $this->assertEquals(70.0, $res->json('loss_percent'));
+    }
 }

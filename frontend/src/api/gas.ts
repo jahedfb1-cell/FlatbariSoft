@@ -66,3 +66,26 @@ export function createGasConsumer(data: { flat_id?: number | null; name: string;
 export function updateGasConsumer(id: number, data: { name?: string; meter_no?: string | null; active?: boolean }) {
   return client.put<GasConsumer>(`/gas/consumers/${id}`, data).then((r) => r.data);
 }
+
+export interface GasSummary {
+  year: number;
+  month: number;
+  total_purchases: number;
+  total_kg: string;
+  total_cost: string;
+  month_purchases: number;
+  month_kg: string;
+  month_cost: string;
+  month_bought_m3: string;
+  flats_used_m3: string;
+  office_used_m3: string;
+  total_used_m3: string;
+  flats_read: number;
+  flats_total: number;
+  loss_m3: string;
+  loss_percent: number | null;
+}
+
+export function getGasSummary(year: number, month: number) {
+  return client.get<GasSummary>('/gas/summary', { params: { year, month } }).then((r) => r.data);
+}

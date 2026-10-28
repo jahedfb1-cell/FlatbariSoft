@@ -7,7 +7,9 @@ import InvoiceCell from '../components/InvoiceCell';
 import * as gasApi from '../api/gas';
 import * as billingApi from '../api/billing';
 import { listFlats, type Flat } from '../api/flats';
-import type { GasConsumer, GasPurchase } from '../api/gas';
+import type { GasConsumer, GasPurchase, GasSummary } from '../api/gas';
+
+const kgFmt = (v: string | number) => Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 });
 
 export default function GasPage() {
   const { t } = useLanguage();
@@ -17,6 +19,7 @@ export default function GasPage() {
   const [consumers, setConsumers] = useState<GasConsumer[]>([]);
   const [readings, setReadings] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [summary, setSummary] = useState<GasSummary | null>(null);
 
   // adding / editing a gas consumer by hand
   const [flats, setFlats] = useState<Flat[]>([]);
@@ -42,6 +45,7 @@ export default function GasPage() {
   function load() {
     gasApi.listGasConsumers().then(setConsumers);
     gasApi.listGasPurchases().then(setPurchases);
+    gasApi.getGasSummary(year, month).then(setSummary).catch(() => undefined);
     listFlats().then(setFlats).catch(() => undefined);
   }
 
@@ -162,6 +166,82 @@ export default function GasPage() {
 
         {message && <p className="mb-4 text-sm text-navy-900">{message}</p>}
 
+        {summary && (
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              [t('gas.sumTotalPurchase'), `${kgFmt(summary.total_kg)} kg`, `৳${Number(summary.total_cost).toLocaleString('en-BD', { maximumFractionDigits: 2 })} · ${summary.total_purchases} ${t('gas.sumTimes')}`],
+              [t('gas.sumMonthPurchase'), `${kgFmt(summary.month_kg)} kg`, `৳${Number(summary.month_cost).toLocaleString('en-BD', { maximumFractionDigits: 2 })}`],
+              [t('gas.sumFlatsUsed'), `${kgFmt(summary.flats_used_m3)} m³`, `${summary.flats_read}/${summary.flats_total} ${t('gas.sumFlatsRead')}`],
+              [t('gas.sumLoss'), summary.loss_percent === null ? '—' : `${summary.loss_percent}%`, `${t('gas.sumOffice')}: ${kgFmt(summary.office_used_m3)} m³`],
+            ].map(([label, value, sub]) => (
+              <div key={label} className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+                <p className="text-xs text-navy-700">{label}</p>
+                <p className="mt-1 text-xl font-semibold text-navy-900">{value}</p>
+                <p className="mt-1 text-xs text-navy-700">{sub}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-navy-900">{t('gas.purchasesTitle')}</h2>
+          <Link to="/suppliers?kind=gas" className="ml-auto mr-2 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
+            {t('suppliers.gas')}
+          </Link>
+          <Link to="/gas/ledger" className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
+            📒 {t('gasLedger.open')}
+          </Link>
+        </div>
+
+        <form onSubmit={handleRecordPurchase} className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-6">
+          <input type="date" required value={pDate} onChange={(e) => setPDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required placeholder={t('gas.supplierName')} value={pSupplier} onChange={(e) => setPSupplier(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required type="number" step="0.01" placeholder={t('gas.quantityKg')} value={pQty} onChange={(e) => setPQty(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required type="number" step="0.01" placeholder={t('gas.unitPrice')} value={pRate} onChange={(e) => setPRate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input type="number" step="0.01" placeholder={t('gas.transportCost')} value={pTransport} onChange={(e) => setPTransport(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <select value={pMedium} onChange={(e) => setPMedium(e.target.value as 'CASH' | 'BANK')} className="rounded-lg border border-brand-200 px-3 py-2">
+            <option value="CASH">CASH</option>
+            <option value="BANK">BANK</option>
+          </select>
+          <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
+            {t('gas.recordPurchase')}
+          </button>
+          <div className="col-span-2 sm:col-span-6">
+            <InvoicePicker file={pInvoice} onChange={setPInvoice} />
+          </div>
+        </form>
+        {pError && <p className="mb-4 text-sm text-status-due">{pError}</p>}
+
+        <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-brand-100 text-navy-900">
+              <tr>
+                <th className="px-4 py-3">{t('common.date')}</th>
+                <th className="px-4 py-3">{t('gas.supplierName')}</th>
+                <th className="px-4 py-3">{t('gas.quantityKg')}</th>
+                <th className="px-4 py-3">{t('gas.totalCost')}</th>
+                <th className="px-4 py-3">{t('common.status')}</th>
+                <th className="px-4 py-3">{t('invoice.col')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {purchases.map((p) => (
+                <tr key={p.id} className="border-t border-brand-100">
+                  <td className="px-4 py-3 text-navy-900">{p.date}</td>
+                  <td className="px-4 py-3 text-navy-900">{p.supplier_name}</td>
+                  <td className="px-4 py-3 text-navy-900">{p.quantity_kg}</td>
+                  <td className="px-4 py-3 text-navy-900">৳{Number(p.total_cost).toLocaleString('en-BD')}</td>
+                  <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
+                  <td className="px-4 py-3">
+                    <InvoiceCell type="gas" id={p.id} hasInvoice={p.has_invoice} invoiceKb={p.invoice_kb} onChanged={load} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h2 className="mb-3 mt-8 text-lg font-semibold text-navy-900">{t('gas.readingsTitle')}</h2>
         <div className="mb-3">
           <button onClick={() => setShowAdd((v) => !v)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
             + {t('gas.addConsumer')}
@@ -261,61 +341,6 @@ export default function GasPage() {
               )}
             </div>
           ))}
-        </div>
-
-        <div className="mb-3 mt-8 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-navy-900">{t('gas.purchasesTitle')}</h2>
-          <Link to="/gas/ledger" className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
-            📒 {t('gasLedger.open')}
-          </Link>
-        </div>
-
-        <form onSubmit={handleRecordPurchase} className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-6">
-          <input type="date" required value={pDate} onChange={(e) => setPDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required placeholder={t('gas.supplierName')} value={pSupplier} onChange={(e) => setPSupplier(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required type="number" step="0.01" placeholder={t('gas.quantityKg')} value={pQty} onChange={(e) => setPQty(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required type="number" step="0.01" placeholder={t('gas.unitPrice')} value={pRate} onChange={(e) => setPRate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input type="number" step="0.01" placeholder={t('gas.transportCost')} value={pTransport} onChange={(e) => setPTransport(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <select value={pMedium} onChange={(e) => setPMedium(e.target.value as 'CASH' | 'BANK')} className="rounded-lg border border-brand-200 px-3 py-2">
-            <option value="CASH">CASH</option>
-            <option value="BANK">BANK</option>
-          </select>
-          <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
-            {t('gas.recordPurchase')}
-          </button>
-          <div className="col-span-2 sm:col-span-6">
-            <InvoicePicker file={pInvoice} onChange={setPInvoice} />
-          </div>
-        </form>
-        {pError && <p className="mb-4 text-sm text-status-due">{pError}</p>}
-
-        <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-brand-100 text-navy-900">
-              <tr>
-                <th className="px-4 py-3">{t('common.date')}</th>
-                <th className="px-4 py-3">{t('gas.supplierName')}</th>
-                <th className="px-4 py-3">{t('gas.quantityKg')}</th>
-                <th className="px-4 py-3">{t('gas.totalCost')}</th>
-                <th className="px-4 py-3">{t('common.status')}</th>
-                <th className="px-4 py-3">{t('invoice.col')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {purchases.map((p) => (
-                <tr key={p.id} className="border-t border-brand-100">
-                  <td className="px-4 py-3 text-navy-900">{p.date}</td>
-                  <td className="px-4 py-3 text-navy-900">{p.supplier_name}</td>
-                  <td className="px-4 py-3 text-navy-900">{p.quantity_kg}</td>
-                  <td className="px-4 py-3 text-navy-900">৳{Number(p.total_cost).toLocaleString('en-BD')}</td>
-                  <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
-                  <td className="px-4 py-3">
-                    <InvoiceCell type="gas" id={p.id} hasInvoice={p.has_invoice} invoiceKb={p.invoice_kb} onChanged={load} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

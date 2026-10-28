@@ -66,6 +66,59 @@ class GasBillingService
     }
 
     /**
+     * The numbers at the top of the gas page: everything ever bought, what was bought this month, and what the
+     * flats (and the project office) used on their meters this month, with the system loss between the two.
+     * Usage is the sum of the month's readings - a flat that has not been read yet simply isn't counted.
+     *
+     * @return array<string, mixed>
+     */
+    public function summary(int $year, int $month): array
+    {
+        $m3PerKg = (string) (GasRateSetting::latest('effective_from')->first()?->m3_per_kg ?? 0.54);
+
+        $all = GasPurchase::selectRaw('COUNT(*) c, COALESCE(SUM(quantity_kg),0) kg, COALESCE(SUM(total_cost),0) cost')->first();
+        $mon = GasPurchase::whereYear('date', $year)->whereMonth('date', $month)
+            ->selectRaw('COUNT(*) c, COALESCE(SUM(quantity_kg),0) kg, COALESCE(SUM(total_cost),0) cost')->first();
+
+        $period = \App\Models\BillingPeriod::where('year', $year)->where('month', $month)->first();
+        $flatUse = $officeUse = '0';
+        $flatsRead = 0;
+        if ($period) {
+            $rows = GasMeterReading::where('billing_period_id', $period->id)->with('consumer')->get();
+            foreach ($rows as $r) {
+                if ($r->consumer?->is_internal || ! $r->consumer?->flat_id) {
+                    $officeUse = bcadd($officeUse, (string) $r->units_used, 4);
+                } else {
+                    $flatUse = bcadd($flatUse, (string) $r->units_used, 4);
+                    $flatsRead++;
+                }
+            }
+        }
+        $flatCount = GasConsumer::where('active', true)->where('is_internal', false)->whereNotNull('flat_id')->count();
+        $totalUse = bcadd($flatUse, $officeUse, 4);
+        $boughtM3 = bcmul((string) $mon->kg, $m3PerKg, 4);
+
+        return [
+            'year' => $year,
+            'month' => $month,
+            'total_purchases' => (int) $all->c,
+            'total_kg' => bcadd((string) $all->kg, '0', 4),
+            'total_cost' => bcadd((string) $all->cost, '0', 4),
+            'month_purchases' => (int) $mon->c,
+            'month_kg' => bcadd((string) $mon->kg, '0', 4),
+            'month_cost' => bcadd((string) $mon->cost, '0', 4),
+            'month_bought_m3' => $boughtM3,
+            'flats_used_m3' => $flatUse,
+            'office_used_m3' => $officeUse,
+            'total_used_m3' => $totalUse,
+            'flats_read' => $flatsRead,
+            'flats_total' => $flatCount,
+            'loss_m3' => bcsub($boughtM3, $totalUse, 4),
+            'loss_percent' => bccomp($boughtM3, '0', 4) > 0 ? round(((float) bcsub($boughtM3, $totalUse, 4) / (float) $boughtM3) * 100, 2) : null,
+        ];
+    }
+
+    /**
      * Confirmed rule #5: System Loss % = (purchased LPG's m³ equivalent −
      * sum of every consumer's units_used) ÷ purchased m³ equivalent × 100.
      * Purchases are matched to the billing period by calendar month/year

@@ -79,6 +79,17 @@ class GasController extends Controller
         return response()->json(['message' => 'গ্যাস বিল সব ফ্ল্যাটের বিলে যোগ হয়েছে।']);
     }
 
+    /** Top-of-page numbers: total purchases and what the flats used this month (?year=&month=, default this month). */
+    public function summary(Request $request)
+    {
+        $now = now('Asia/Dhaka');
+
+        return response()->json($this->service->summary(
+            (int) $request->query('year', $now->year),
+            (int) $request->query('month', $now->month),
+        ));
+    }
+
     public function systemLoss(int $year, int $month, int $billingPeriodId)
     {
         return response()->json(['system_loss_percent' => $this->service->systemLossPercent($year, $month, $billingPeriodId)]);
