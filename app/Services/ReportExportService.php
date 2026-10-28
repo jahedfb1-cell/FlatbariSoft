@@ -207,6 +207,92 @@ class ReportExportService
         return $spreadsheet;
     }
 
+    /** @param  array<string, mixed>  $r  from FundStatementService::statement() */
+    public function fundStatement(array $r): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle(mb_substr($r['fund']['name_en'], 0, 28));
+
+        $sheet->setCellValue('A1', 'গ্রীন ভ্যালি — '.$r['fund']['name_bn'].' — মাসিক জমা-খরচের বিবরণী');
+        $sheet->mergeCells('A1:F1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+        $sheet->setCellValue('A2', date('F Y', strtotime($r['from'])));
+
+        foreach (['তারিখ', 'জমা — বিবরণ', 'টাকা', 'তারিখ', 'খরচ — বিবরণ', 'টাকা'] as $i => $h) {
+            $sheet->setCellValue([$i + 1, 4], $h);
+        }
+        $this->headerStyle($spreadsheet, 'A4:F4');
+
+        $row = 5;
+        $sheet->setCellValue("A{$row}", $r['from']);
+        $sheet->setCellValue("B{$row}", 'শুরুর ব্যালেন্স — ক্যাশ ইন হ্যান্ড');
+        $sheet->setCellValue("C{$row}", (float) $r['opening']['cash']);
+        $row++;
+        $sheet->setCellValue("A{$row}", $r['from']);
+        $sheet->setCellValue("B{$row}", 'শুরুর ব্যালেন্স — ব্যাংক');
+        $sheet->setCellValue("C{$row}", (float) $r['opening']['bank']);
+        $row++;
+
+        $n = max(count($r['receipts']), count($r['payments']));
+        for ($i = 0; $i < $n; $i++, $row++) {
+            if (isset($r['receipts'][$i])) {
+                $sheet->setCellValue("A{$row}", $r['receipts'][$i]['date']);
+                $sheet->setCellValue("B{$row}", $r['receipts'][$i]['particulars']);
+                $sheet->setCellValue("C{$row}", (float) $r['receipts'][$i]['amount']);
+            }
+            if (isset($r['payments'][$i])) {
+                $sheet->setCellValue("D{$row}", $r['payments'][$i]['date']);
+                $sheet->setCellValue("E{$row}", $r['payments'][$i]['particulars']);
+                $sheet->setCellValue("F{$row}", (float) $r['payments'][$i]['amount']);
+            }
+        }
+
+        $sheet->setCellValue("B{$row}", 'মোট জমা');
+        $sheet->setCellValue("C{$row}", (float) $r['totals']['receipts']);
+        $sheet->setCellValue("E{$row}", 'মোট খরচ');
+        $sheet->setCellValue("F{$row}", (float) $r['totals']['payments']);
+        $sheet->getStyle("A{$row}:F{$row}")->getFont()->setBold(true);
+        $row++;
+        $sheet->setCellValue("D{$row}", $r['to']);
+        $sheet->setCellValue("E{$row}", 'শেষ ব্যালেন্স — ব্যাংক');
+        $sheet->setCellValue("F{$row}", (float) $r['closing']['bank']);
+        $row++;
+        $sheet->setCellValue("D{$row}", $r['to']);
+        $sheet->setCellValue("E{$row}", 'শেষ ব্যালেন্স — ক্যাশ ইন হ্যান্ড');
+        $sheet->setCellValue("F{$row}", (float) $r['closing']['cash']);
+        $row++;
+        $sheet->setCellValue("B{$row}", 'সর্বমোট');
+        $sheet->setCellValue("C{$row}", (float) $r['left_total']);
+        $sheet->setCellValue("E{$row}", 'সর্বমোট');
+        $sheet->setCellValue("F{$row}", (float) $r['right_total']);
+        $sheet->getStyle("A{$row}:F{$row}")->getFont()->setBold(true);
+        $sheet->getStyle("C5:C{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle("F5:F{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+        $row += 2;
+        $sheet->setCellValue("A{$row}", 'খাতওয়ারি সারাংশ');
+        $sheet->getStyle("A{$row}")->getFont()->setBold(true);
+        $row++;
+        foreach ([['জমা', $r['receipts_by_head'], 'B', 'C'], ['খরচ', $r['payments_by_head'], 'E', 'F']] as [$title, $heads, $lc, $vc]) {
+            $rr = $row;
+            $sheet->setCellValue("{$lc}{$rr}", $title);
+            $sheet->getStyle("{$lc}{$rr}")->getFont()->setBold(true);
+            foreach ($heads as $h) {
+                $rr++;
+                $sheet->setCellValue("{$lc}{$rr}", $h['name_bn']);
+                $sheet->setCellValue("{$vc}{$rr}", (float) $h['amount']);
+            }
+            $sheet->getStyle("{$vc}".($row + 1).":{$vc}{$rr}")->getNumberFormat()->setFormatCode('#,##0.00');
+        }
+
+        foreach (['A' => 12, 'B' => 48, 'C' => 14, 'D' => 12, 'E' => 48, 'F' => 14] as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        return $spreadsheet;
+    }
+
     public function incomeStatement(array $report): Spreadsheet
     {
         $spreadsheet = new Spreadsheet();

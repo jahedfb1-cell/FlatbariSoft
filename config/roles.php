@@ -83,6 +83,7 @@ return [
         'hall' => ['bn' => 'কমিউনিটি হল', 'en' => 'Community hall'],
         'parking' => ['bn' => 'পার্কিং', 'en' => 'Parking'],
         'contribution' => ['bn' => 'নির্মাণ ব্যয় আদায়', 'en' => 'Construction contributions'],
+        'treasury' => ['bn' => 'ট্রেজারি (ব্যাংক, ধার, শুরুর ব্যালেন্স)', 'en' => 'Treasury (bank, loans, opening balance)'],
         'user' => ['bn' => 'ইউজার', 'en' => 'Users'],
         'role' => ['bn' => 'রোল', 'en' => 'Roles'],
     ],
