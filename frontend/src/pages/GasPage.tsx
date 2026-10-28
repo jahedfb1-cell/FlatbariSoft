@@ -134,7 +134,12 @@ export default function GasPage() {
           ))}
         </div>
 
-        <h2 className="mb-3 mt-8 text-lg font-semibold text-navy-900">{t('gas.purchasesTitle')}</h2>
+        <div className="mb-3 mt-8 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-navy-900">{t('gas.purchasesTitle')}</h2>
+          <Link to="/gas/ledger" className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
+            📒 {t('gasLedger.open')}
+          </Link>
+        </div>
 
         <form onSubmit={handleRecordPurchase} className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-6">
           <input type="date" required value={pDate} onChange={(e) => setPDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />

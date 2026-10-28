@@ -28,6 +28,7 @@ import OwnerDocumentsPage from './pages/owner/OwnerDocumentsPage';
 import HallPage from './pages/HallPage';
 import UsersPage from './pages/UsersPage';
 import ParkingPage from './pages/ParkingPage';
+import GasLedgerPage from './pages/GasLedgerPage';
 import OwnerParkingPage from './pages/owner/OwnerParkingPage';
 import OwnerHallPage from './pages/owner/OwnerHallPage';
 
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Route path="/staff" element={<StaffPage />} />
       <Route path="/billing" element={<BillingPage />} />
       <Route path="/gas" element={<GasPage />} />
+      <Route path="/gas/ledger" element={<GasLedgerPage />} />
       <Route path="/payments" element={<PaymentsPage />} />
       <Route path="/expenses" element={<ExpensesPage />} />
       <Route path="/dues" element={<DuesPage />} />
