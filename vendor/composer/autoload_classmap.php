@@ -57,6 +57,7 @@ return array(
     'App\\Http\\Requests\\ContributionActionRequest' => $baseDir . '/app/Http/Requests/ContributionActionRequest.php',
     'App\\Http\\Requests\\EndOwnershipRequest' => $baseDir . '/app/Http/Requests/EndOwnershipRequest.php',
     'App\\Http\\Requests\\FundStatementRequest' => $baseDir . '/app/Http/Requests/FundStatementRequest.php',
+    'App\\Http\\Requests\\GasConsumerRequest' => $baseDir . '/app/Http/Requests/GasConsumerRequest.php',
     'App\\Http\\Requests\\GasLedgerRequest' => $baseDir . '/app/Http/Requests/GasLedgerRequest.php',
     'App\\Http\\Requests\\GenerateBillingPeriodRequest' => $baseDir . '/app/Http/Requests/GenerateBillingPeriodRequest.php',
     'App\\Http\\Requests\\HallQuoteRequest' => $baseDir . '/app/Http/Requests/HallQuoteRequest.php',

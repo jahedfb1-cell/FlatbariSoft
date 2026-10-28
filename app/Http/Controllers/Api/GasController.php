@@ -3,25 +3,53 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\GasConsumerRequest;
 use App\Http\Requests\StoreGasReadingRequest;
 use App\Http\Resources\GasConsumerResource;
 use App\Models\GasConsumer;
 use App\Services\GasBillingService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class GasController extends Controller
 {
     public function __construct(private readonly GasBillingService $service) {}
 
-    public function consumers()
+    public function consumers(Request $request)
     {
         $this->service->syncFlatConsumers();
 
         // the project office first, then the flats in flat-number order
         return GasConsumerResource::collection(
-            GasConsumer::with('flat')->where('active', true)->get()
+            GasConsumer::with('flat')->when(! $request->boolean('all'), fn ($q) => $q->where('active', true))->get()
                 ->sortBy(fn ($c) => [$c->flat_id ? 1 : 0, $c->flat?->floor ?? 0, $c->flat?->flat_no ?? ''])->values()
         );
+    }
+
+    /** Add a gas connection by hand: a flat's meter (flat_id) or any other consumer such as the project office. */
+    public function storeConsumer(GasConsumerRequest $request)
+    {
+        $data = $request->validated();
+        // a flat's consumer is never internal; an internal one never belongs to a flat
+        $internal = empty($data['flat_id']) && ! empty($data['is_internal']);
+
+        $consumer = GasConsumer::create([
+            'flat_id' => $data['flat_id'] ?? null,
+            'name' => $data['name'],
+            'meter_no' => $data['meter_no'] ?? null,
+            'is_internal' => $internal,
+            'active' => $data['active'] ?? true,
+        ]);
+
+        return (new GasConsumerResource($consumer->load('flat')))->response()->setStatusCode(201);
+    }
+
+    /** Rename, change the meter number, or switch a consumer off (its readings are kept). */
+    public function updateConsumer(GasConsumerRequest $request, GasConsumer $consumer)
+    {
+        $consumer->update($request->validated());
+
+        return new GasConsumerResource($consumer->load('flat'));
     }
 
     public function storeReading(StoreGasReadingRequest $request)

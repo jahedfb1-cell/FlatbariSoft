@@ -682,6 +682,7 @@ class ComposerStaticInit38374efba84c4668edf19017bd619d1a
         'App\\Http\\Requests\\ContributionActionRequest' => __DIR__ . '/../..' . '/app/Http/Requests/ContributionActionRequest.php',
         'App\\Http\\Requests\\EndOwnershipRequest' => __DIR__ . '/../..' . '/app/Http/Requests/EndOwnershipRequest.php',
         'App\\Http\\Requests\\FundStatementRequest' => __DIR__ . '/../..' . '/app/Http/Requests/FundStatementRequest.php',
+        'App\\Http\\Requests\\GasConsumerRequest' => __DIR__ . '/../..' . '/app/Http/Requests/GasConsumerRequest.php',
         'App\\Http\\Requests\\GasLedgerRequest' => __DIR__ . '/../..' . '/app/Http/Requests/GasLedgerRequest.php',
         'App\\Http\\Requests\\GenerateBillingPeriodRequest' => __DIR__ . '/../..' . '/app/Http/Requests/GenerateBillingPeriodRequest.php',
         'App\\Http\\Requests\\HallQuoteRequest' => __DIR__ . '/../..' . '/app/Http/Requests/HallQuoteRequest.php',
