@@ -16,6 +16,7 @@ const navItems: { to: string; key: any; perm: string }[] = [
   { to: '/bank-accounts', key: 'bank.title', perm: 'accounting.view' },
   { to: '/expenses', key: 'nav.expenses', perm: 'expense.view' },
   { to: '/construction-materials', key: 'nav.materials', perm: 'expense.view' },
+  { to: '/suppliers', key: 'nav.suppliers', perm: 'expense.view' },
   { to: '/contributions', key: 'nav.contrib', perm: 'contribution.view' },
   { to: '/dues', key: 'nav.dues', perm: 'due.view' },
   { to: '/assets', key: 'nav.assets', perm: 'asset.view' },

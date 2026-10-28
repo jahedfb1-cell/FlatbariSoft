@@ -29,6 +29,7 @@ import HallPage from './pages/HallPage';
 import UsersPage from './pages/UsersPage';
 import ParkingPage from './pages/ParkingPage';
 import GasLedgerPage from './pages/GasLedgerPage';
+import SuppliersPage from './pages/SuppliersPage';
 import ContributionsPage from './pages/ContributionsPage';
 import StatementsPage from './pages/StatementsPage';
 import OwnerContributionsPage from './pages/owner/OwnerContributionsPage';
@@ -80,6 +81,7 @@ function AppRoutes() {
       <Route path="/billing" element={<BillingPage />} />
       <Route path="/gas" element={<GasPage />} />
       <Route path="/gas/ledger" element={<GasLedgerPage />} />
+      <Route path="/suppliers" element={<SuppliersPage />} />
       <Route path="/payments" element={<PaymentsPage />} />
       <Route path="/expenses" element={<ExpensesPage />} />
       <Route path="/dues" element={<DuesPage />} />
