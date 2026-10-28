@@ -322,3 +322,6 @@ foreach (['gas' => 'gas.view', 'materials' => 'expense.view'] as $supplierKind =
             ->defaults('kind', $supplierKind)->middleware(['auth:sanctum', "permission:{$supplierPermission}"]);
     }
 }
+
+// Home screen: one call, each block shown only to people allowed to open that part of the system.
+Route::get('/dashboard/overview', [\App\Http\Controllers\Api\DashboardController::class, 'overview'])->middleware('auth:sanctum');
