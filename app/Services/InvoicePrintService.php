@@ -124,6 +124,15 @@ class InvoicePrintService
         }
     }
 
+    /** One supplier's account (gas or construction material) as a black-and-white A4 PDF. */
+    public function supplierLedger(array $ledger): string
+    {
+        return Pdf::loadView('reports.supplier-ledger', [
+            'building' => Building::first(),
+            'ledger' => $ledger,
+        ])->setPaper('a4', 'portrait')->output();
+    }
+
     // ------------------------------------------------------------------
 
     /** @return array<string, mixed> */

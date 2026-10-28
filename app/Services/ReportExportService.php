@@ -96,6 +96,51 @@ class ReportExportService
     }
 
     /** @param  array<string, mixed>  $ledger  from GasLedgerService::ledger() */
+    public function supplierLedger(array $ledger): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Supplier Ledger');
+
+        $sheet->setCellValue('A1', 'গ্রীন ভ্যালি — সরবরাহকারী লেজার: '.$ledger['supplier']);
+        $sheet->mergeCells('A1:G1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->setCellValue('A2', 'সময়: '.($ledger['from'] ?: 'শুরু').' থেকে '.($ledger['to'] ?: 'আজ'));
+
+        foreach (['তারিখ', 'রেফ', 'বিবরণ', 'ভাউচার নং', 'কেনা (জমা)', 'পরিশোধ (খরচ)', 'বাকি'] as $i => $h) {
+            $sheet->setCellValue(chr(65 + $i).'4', $h);
+        }
+        $this->headerStyle($spreadsheet, 'A4:G4');
+
+        $row = 5;
+        $sheet->setCellValue("A{$row}", 'প্রারম্ভিক জের');
+        $sheet->setCellValue("G{$row}", (float) $ledger['opening']);
+        $row++;
+        foreach ($ledger['rows'] as $r) {
+            $sheet->setCellValue("A{$row}", $r['date']);
+            $sheet->setCellValue("B{$row}", $r['ref']);
+            $sheet->setCellValue("C{$row}", $r['particulars']);
+            $sheet->setCellValue("D{$row}", $r['voucher_no'] ?: '-');
+            $sheet->setCellValue("E{$row}", (float) $r['credit']);
+            $sheet->setCellValue("F{$row}", (float) $r['debit']);
+            $sheet->setCellValue("G{$row}", (float) $r['balance']);
+            $row++;
+        }
+
+        $t = $ledger['totals'];
+        $sheet->setCellValue("A{$row}", 'মোট');
+        $sheet->setCellValue("E{$row}", (float) $t['purchased']);
+        $sheet->setCellValue("F{$row}", (float) $t['paid']);
+        $sheet->setCellValue("G{$row}", (float) $t['closing']);
+        $sheet->getStyle("A{$row}:G{$row}")->getFont()->setBold(true);
+        $sheet->getStyle("E5:G{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        return $spreadsheet;
+    }
+
     public function gasLedger(array $ledger): Spreadsheet
     {
         $spreadsheet = new Spreadsheet();

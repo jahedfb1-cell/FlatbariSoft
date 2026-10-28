@@ -307,3 +307,15 @@ Route::prefix('treasury')->middleware('auth:sanctum')->group(function () {
     Route::post('/loan-repayments', [$c, 'repay'])->middleware('permission:treasury.manage');
     Route::post('/entries/{entry}/reverse', [$c, 'reverse'])->middleware('permission:treasury.manage');
 });
+
+// Supplier accounts: what was bought from each gas / construction-material supplier, what was paid, what is owed.
+foreach (['gas' => 'gas.view', 'materials' => 'expense.view'] as $supplierKind => $supplierPermission) {
+    $supplierBase = $supplierKind === 'gas' ? 'gas/suppliers' : 'construction-materials/suppliers';
+    $supplierController = \App\Http\Controllers\Api\SupplierLedgerController::class;
+    foreach ([
+        '' => 'index', '/ledger' => 'ledger', '/ledger/pdf' => 'pdf', '/ledger/excel' => 'excel',
+    ] as $suffix => $action) {
+        Route::get($supplierBase.$suffix, [$supplierController, $action])
+            ->defaults('kind', $supplierKind)->middleware(['auth:sanctum', "permission:{$supplierPermission}"]);
+    }
+}
