@@ -241,7 +241,8 @@ class ContributionService
             $rows[] = [
                 'flat_id' => $flat->id,
                 'flat_no' => $flat->flat_no,
-                'owner' => $this->ownerName($flat),
+                'owner' => $flat->occupantNames()['owner'],
+                'tenant' => $flat->occupantNames()['tenant'],
                 'heads' => $perHead,
                 'collected' => $counted,
                 'target' => $target,
@@ -277,7 +278,7 @@ class ContributionService
      */
     public function ledger(Flat $flat, ContributionBook $book): array
     {
-        $flat->loadMissing('currentOwners.person');
+        $flat->loadMissing('currentOwners.person', 'currentTenant.person');
         $target = $this->targetFor($flat, $book);
         $counted = '0';
         $balance = $target;
@@ -315,7 +316,8 @@ class ContributionService
             'book' => $this->bookRow($book),
             'flat_id' => $flat->id,
             'flat_no' => $flat->flat_no,
-            'owner' => $this->ownerName($flat),
+            'owner' => $flat->occupantNames()['owner'],
+            'tenant' => $flat->occupantNames()['tenant'],
             'target' => $target,
             'collected' => bcadd($counted, '0', 4),
             'balance' => $target === null ? null : bcsub($target, $counted, 4), // > 0 owed, < 0 paid more than the target
@@ -338,17 +340,12 @@ class ContributionService
     private function flatsInSheetOrder()
     {
         // top floor first, then A, B, C... as on the manager's sheet ("10A" before "9A")
-        return Flat::with('currentOwners.person')->get()->sort(function (Flat $a, Flat $b) {
+        return Flat::with('currentOwners.person', 'currentTenant.person')->get()->sort(function (Flat $a, Flat $b) {
             $fa = (int) $a->flat_no;
             $fb = (int) $b->flat_no;
 
             return $fa === $fb ? strcmp($a->flat_no, $b->flat_no) : $fb <=> $fa;
         })->values();
-    }
-
-    private function ownerName(Flat $flat): ?string
-    {
-        return $flat->currentOwners->map(fn ($p) => $p->person?->name_en ?: $p->person?->name_bn)->filter()->implode(', ') ?: null;
     }
 
     private function bookRow(ContributionBook $book): array

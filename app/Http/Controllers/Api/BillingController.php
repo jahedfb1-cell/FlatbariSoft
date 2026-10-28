@@ -32,6 +32,10 @@ class BillingController extends Controller
     {
         $period = BillingPeriod::where('year', $year)->where('month', $month)->firstOrFail();
 
-        return BillResource::collection($period->bills()->with('flat')->orderBy('flat_id')->get());
+        return BillResource::collection(
+            $period->bills()->with('flat.currentOwners.person', 'flat.currentTenant.person')
+                ->withSum(['payments as pending_amount' => fn ($q) => $q->where('status', 'PENDING')], 'amount')
+                ->orderBy('flat_id')->get()
+        );
     }
 }

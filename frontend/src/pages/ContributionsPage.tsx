@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import FlatLabel from '../components/FlatLabel';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
@@ -27,7 +28,10 @@ export default function ContributionsPage() {
   const [bookCode, setBookCode] = useState('CONSTRUCTION');
   const [data, setData] = useState<Statement | null>(null);
   const [onlyDue, setOnlyDue] = useState(false);
-  const [openFlat, setOpenFlat] = useState<number | null>(null);
+  // The open ledger lives in the address (?flat=ID), so the flat and owner names in every list can link straight to it.
+  const [params, setParams] = useSearchParams();
+  const openFlat = Number(params.get('flat')) || null;
+  const setOpenFlat = (id: number | null) => setParams(id ? { flat: String(id) } : {}, { replace: false });
   const [showImport, setShowImport] = useState(false);
   const [editingDefault, setEditingDefault] = useState(false);
   const [defaultTarget, setDefaultTarget] = useState('');
@@ -148,7 +152,6 @@ export default function ContributionsPage() {
               <thead className="bg-brand-100 text-navy-900">
                 <tr>
                   <th className="px-3 py-2">{t('contrib.flat')}</th>
-                  <th className="px-3 py-2">{t('contrib.owner')}</th>
                   {data.heads.map((h) => (
                     <th key={h.code} className="px-3 py-2 text-right">
                       {lang === 'bn' ? h.name_bn : h.name_en}
@@ -164,9 +167,7 @@ export default function ContributionsPage() {
                   <Row key={r.flat_id} r={r} heads={data.heads.map((h) => h.code)} onOpen={() => setOpenFlat(r.flat_id)} />
                 ))}
                 <tr className="border-t-2 border-brand-300 bg-brand-50 font-semibold">
-                  <td className="px-3 py-2" colSpan={2}>
-                    {t('contrib.total')}
-                  </td>
+                  <td className="px-3 py-2">{t('contrib.total')}</td>
                   {data.heads.map((h) => (
                     <td key={h.code} className="px-3 py-2 text-right">
                       {money(totals[h.code])}
@@ -207,8 +208,9 @@ function Row({ r, heads, onOpen }: { r: StatementRow; heads: string[]; onOpen: (
   const bal = r.balance === null ? null : Number(r.balance);
   return (
     <tr className="cursor-pointer border-t border-brand-100 hover:bg-brand-50" onClick={onOpen}>
-      <td className="px-3 py-2 font-medium">{r.flat_no}</td>
-      <td className="px-3 py-2">{r.owner ?? '—'}</td>
+      <td className="px-3 py-2">
+        <FlatLabel flatId={r.flat_id} flatNo={r.flat_no} owner={r.owner} tenant={r.tenant} />
+      </td>
       {heads.map((c) => (
         <td key={c} className="px-3 py-2 text-right text-navy-700">
           {Number(r.heads[c]) ? money(r.heads[c]) : '–'}

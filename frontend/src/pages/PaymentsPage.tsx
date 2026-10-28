@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import FlatLabel from '../components/FlatLabel';
 import * as paymentsApi from '../api/payments';
 import type { PaymentRow } from '../api/payments';
 
@@ -90,7 +91,9 @@ export default function PaymentsPage() {
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id} className="border-t border-brand-100">
-                  <td className="px-4 py-3 text-navy-900">{p.flat_no ?? p.flat_id}</td>
+                  <td className="px-4 py-3">
+                    <FlatLabel flatId={p.flat_id} flatNo={p.flat_no} owner={p.owner} tenant={p.tenant} />
+                  </td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(p.amount).toLocaleString('en-BD')}</td>
                   <td className="px-4 py-3 text-navy-900">{p.method}</td>
                   <td className="px-4 py-3 text-navy-900">{p.receipt_no ?? '—'}</td>
@@ -99,6 +102,11 @@ export default function PaymentsPage() {
                     {p.status === 'PENDING' && (
                       <button onClick={() => handleApprove(p.id)} className="text-brand-700 hover:underline">
                         {t('common.approve')}
+                      </button>
+                    )}
+                    {p.status === 'APPROVED' && (
+                      <button onClick={() => paymentsApi.printReceipt(p.id, p.receipt_no ?? String(p.id))} className="text-brand-700 hover:underline">
+                        🖨 {t('billing.receipt')}
                       </button>
                     )}
                   </td>

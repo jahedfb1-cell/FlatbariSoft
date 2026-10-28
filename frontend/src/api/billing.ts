@@ -11,6 +11,10 @@ export interface BillRow {
   previous_due: string;
   total_payable: string;
   paid_amount: string;
+  due: number;
+  pending_amount: string;
+  owner?: string | null;
+  tenant?: string | null;
   due_date: string;
   status: 'UNPAID' | 'PARTIAL' | 'PAID';
 }

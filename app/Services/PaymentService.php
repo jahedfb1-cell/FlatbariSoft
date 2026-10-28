@@ -20,8 +20,49 @@ class PaymentService
 {
     public function __construct(private readonly AccountingService $accounting) {}
 
+    /**
+     * What can still be collected on a bill: its total, less what is already paid, less what has been
+     * entered but is still waiting for approval (so the same money is never taken twice).
+     */
+    public function collectable(Bill $bill): string
+    {
+        $pending = (string) ($bill->payments()->where('status', 'PENDING')->sum('amount') ?: 0);
+
+        return bcsub(bcsub((string) $bill->total_payable, (string) $bill->paid_amount, 4), $pending, 4);
+    }
+
+    /**
+     * How a payment divides between the service charge (with any previous due) and the gas bill - the same
+     * split the books use. Always worked out here, on the server.
+     *
+     * @return array{service:string, gas:string}
+     */
+    public function allocation(Payment $payment): array
+    {
+        $gasId = ChartOfAccount::where('code', '4200')->value('id');
+        $gas = '0';
+        foreach ($this->creditLinesFor($payment) as $line) {
+            if ($line['account_id'] === $gasId) {
+                $gas = bcadd($gas, (string) $line['credit'], 4);
+            }
+        }
+
+        return ['service' => bcsub((string) $payment->amount, $gas, 4), 'gas' => $gas];
+    }
+
     public function create(array $data, int $receivedBy): Payment
     {
+        if (! empty($data['bill_id'])) {
+            $bill = Bill::findOrFail($data['bill_id']);
+            if ((int) $bill->flat_id !== (int) $data['flat_id']) {
+                throw ValidationException::withMessages(['bill_id' => 'এই বিল ঐ ফ্ল্যাটের নয়।']);
+            }
+            $due = $this->collectable($bill);
+            if (bccomp((string) $data['amount'], $due, 4) > 0) {
+                throw ValidationException::withMessages(['amount' => 'পরিমাণ বকেয়ার ('.$due.') বেশি হতে পারে না।']);
+            }
+        }
+
         return Payment::create(array_merge($data, [
             'received_by' => $receivedBy,
             'status' => 'PENDING',

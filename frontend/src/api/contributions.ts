@@ -28,6 +28,7 @@ export interface StatementRow {
   flat_id: number;
   flat_no: string;
   owner: string | null;
+  tenant: string | null;
   heads: Record<string, string>;
   collected: string;
   target: string | null; // null = no target decided for this book
@@ -66,6 +67,7 @@ export interface FlatLedger {
   flat_id: number;
   flat_no: string;
   owner: string | null;
+  tenant: string | null;
   target: string | null;
   collected: string;
   balance: string | null;

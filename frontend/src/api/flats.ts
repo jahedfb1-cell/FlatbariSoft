@@ -45,6 +45,8 @@ export interface Flat {
   empty_flat_rate: string;
   gas_meter_no: string | null;
   status: 'ACTIVE' | 'INACTIVE';
+  owner_name?: string | null;
+  tenant_name?: string | null;
   current_owners?: FlatParty[];
   current_tenant?: TenantData[];
 }

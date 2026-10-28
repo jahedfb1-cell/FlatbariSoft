@@ -20,6 +20,8 @@ class FlatResource extends JsonResource
             'empty_flat_rate' => $this->empty_flat_rate,
             'gas_meter_no' => $this->gas_meter_no,
             'status' => $this->status,
+            'owner_name' => $this->whenLoaded('currentOwners', fn () => $this->occupantNames()['owner']),
+            'tenant_name' => $this->whenLoaded('currentTenant', fn () => $this->occupantNames()['tenant']),
             'current_owners' => FlatPartyResource::collection($this->whenLoaded('currentOwners')),
             'current_tenant' => TenantResource::collection($this->whenLoaded('currentTenant')),
         ];

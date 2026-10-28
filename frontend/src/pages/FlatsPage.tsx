@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import FlatLabel from '../components/FlatLabel';
 import * as flatsApi from '../api/flats';
 import type { Flat } from '../api/flats';
 import FlatFormModal from '../components/FlatFormModal';
@@ -75,19 +76,20 @@ export default function FlatsPage() {
                 <th className="px-4 py-3">{t('flats.colFloor')}</th>
                 <th className="px-4 py-3">{t('flats.colStatus')}</th>
                 <th className="px-4 py-3">{t('flats.colServiceCharge')}</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-navy-700">
+                  <td colSpan={5} className="px-4 py-6 text-center text-navy-700">
                     {t('loading')}
                   </td>
                 </tr>
               )}
               {!loading && flats.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-navy-700">
+                  <td colSpan={5} className="px-4 py-6 text-center text-navy-700">
                     {t('flats.empty')}
                   </td>
                 </tr>
@@ -95,9 +97,7 @@ export default function FlatsPage() {
               {flats.map((flat) => (
                 <tr key={flat.id} className="cursor-pointer border-t border-brand-100 transition hover:bg-brand-50">
                   <td className="px-4 py-3">
-                    <Link to={`/flats/${flat.id}`} className="font-medium text-brand-700 hover:underline">
-                      {flat.flat_no}
-                    </Link>
+                    <FlatLabel flatId={flat.id} flatNo={flat.flat_no} owner={flat.owner_name} tenant={flat.tenant_name} />
                   </td>
                   <td className="px-4 py-3 text-navy-900">{flat.floor}</td>
                   <td className="px-4 py-3">
@@ -106,6 +106,11 @@ export default function FlatsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(flat.service_charge_rate).toLocaleString('en-BD')}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Link to={`/flats/${flat.id}`} className="text-sm text-navy-700 hover:underline">
+                      {t('flats.detail')} →
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
