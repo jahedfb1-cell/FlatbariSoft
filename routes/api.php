@@ -186,6 +186,10 @@ Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
     Route::post('/periods/{billingPeriodId}/apply', [GasController::class, 'applyToBills'])->middleware('permission:gas.manage');
     Route::get('/periods/{billingPeriodId}/system-loss/{year}/{month}', [GasController::class, 'systemLoss'])->middleware('permission:gas.view');
     Route::get('/purchases', [\App\Http\Controllers\Api\GasPurchaseController::class, 'index'])->middleware('permission:gas.view');
+    // the ledger: every purchase in date order with running totals, the voucher no and bill photo status
+    Route::get('/purchases/ledger', [\App\Http\Controllers\Api\GasLedgerController::class, 'index'])->middleware('permission:gas.view');
+    Route::get('/purchases/ledger/pdf', [\App\Http\Controllers\Api\GasLedgerController::class, 'pdf'])->middleware('permission:gas.view');
+    Route::get('/purchases/ledger/excel', [\App\Http\Controllers\Api\GasLedgerController::class, 'excel'])->middleware('permission:gas.view');
     Route::post('/purchases', [\App\Http\Controllers\Api\GasPurchaseController::class, 'store'])->middleware('permission:gas.manage');
 });
 

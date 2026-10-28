@@ -87,6 +87,43 @@ class InvoicePrintService
         return $this->render('Purchase Invoice Audit Pack (B&W)', $items, $cover);
     }
 
+    /**
+     * The gas purchase ledger as a black-and-white A4 PDF: the ledger pages (totals, month summary, every
+     * purchase with its running total and voucher number), then - when $withVouchers - one page per bill
+     * photo, in ledger order, so the book and its vouchers can be handed over together.
+     *
+     * @param  array<string, mixed>  $ledger  from GasLedgerService::ledger()
+     * @param  Collection<int, GasPurchase>  $purchases  the same purchases, as models
+     */
+    public function gasLedger(array $ledger, bool $withVouchers, Collection $purchases): string
+    {
+        $items = [];
+        if ($withVouchers) {
+            $withImage = $purchases->filter(fn ($p) => $this->images->exists($p->invoice_file));
+            $max = (int) config('invoice_images.audit_pack_max');
+            if ($withImage->count() > $max) {
+                throw ValidationException::withMessages([
+                    'to' => "এক PDF-এ সর্বোচ্চ {$max}টা ভাউচার — তারিখের ব্যবধান ছোট করুন (এখন {$withImage->count()}টা)।",
+                ]);
+            }
+            @set_time_limit(180);
+            $items = $withImage->map(fn ($p) => $this->describe('gas', $p) + ['ref' => 'GP-'.str_pad((string) $p->id, 6, '0', STR_PAD_LEFT)])->values()->all();
+        }
+
+        try {
+            return Pdf::loadView('reports.gas-ledger', [
+                'building' => Building::first(),
+                'ledger' => $ledger,
+                'items' => $items,
+            ])->setPaper('a4', 'portrait')->output();
+        } finally {
+            foreach ($this->tempFiles as $file) {
+                @unlink($file);
+            }
+            $this->tempFiles = [];
+        }
+    }
+
     // ------------------------------------------------------------------
 
     /** @return array<string, mixed> */

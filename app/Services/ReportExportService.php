@@ -95,6 +95,63 @@ class ReportExportService
         return $spreadsheet;
     }
 
+    /** @param  array<string, mixed>  $ledger  from GasLedgerService::ledger() */
+    public function gasLedger(array $ledger): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Gas Purchase Ledger');
+
+        $sheet->setCellValue('A1', 'গ্রীন ভ্যালি — গ্যাস ক্রয় লেজার');
+        $sheet->mergeCells('A1:K1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->setCellValue('A2', 'সময়: '.($ledger['from'] ?: 'শুরু').' থেকে '.($ledger['to'] ?: 'আজ'));
+
+        $headers = ['রেফ', 'তারিখ', 'সরবরাহকারী', 'কেজি', 'রেট', 'পরিবহন', 'মোট', 'ভাউচার নং', 'বিল ছবি', 'চলমান কেজি', 'চলমান মোট'];
+        foreach ($headers as $i => $h) {
+            $sheet->setCellValue(chr(65 + $i).'4', $h);
+        }
+        $this->headerStyle($spreadsheet, 'A4:K4');
+
+        $row = 5;
+        foreach ($ledger['rows'] as $r) {
+            $sheet->setCellValue("A{$row}", $r['ref']);
+            $sheet->setCellValue("B{$row}", $r['date']);
+            $sheet->setCellValue("C{$row}", $r['supplier_name']);
+            $sheet->setCellValue("D{$row}", (float) $r['quantity_kg']);
+            $sheet->setCellValue("E{$row}", (float) $r['unit_price']);
+            $sheet->setCellValue("F{$row}", (float) $r['transport_cost']);
+            $sheet->setCellValue("G{$row}", (float) $r['total_cost']);
+            $sheet->setCellValue("H{$row}", $r['voucher_no'] ?: ($r['status'] === 'PENDING' ? 'অপেক্ষমাণ' : '-'));
+            $sheet->setCellValue("I{$row}", $r['has_invoice'] ? 'আছে' : 'নেই');
+            $sheet->setCellValue("J{$row}", (float) $r['running_kg']);
+            $sheet->setCellValue("K{$row}", (float) $r['running_cost']);
+            $row++;
+        }
+
+        $t = $ledger['totals'];
+        $sheet->setCellValue("A{$row}", 'মোট');
+        $sheet->setCellValue("D{$row}", (float) $t['quantity_kg']);
+        $sheet->setCellValue("F{$row}", (float) $t['transport_cost']);
+        $sheet->setCellValue("G{$row}", (float) $t['total_cost']);
+        $sheet->getStyle("A{$row}:K{$row}")->getFont()->setBold(true);
+        $sheet->getStyle("D5:G{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle("J5:K{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+        $row += 2;
+        $sheet->setCellValue("A{$row}", 'গড় খরচ প্রতি কেজি (পরিবহনসহ)');
+        $sheet->setCellValue("G{$row}", (float) $t['avg_cost_per_kg']);
+        $sheet->setCellValue('A'.($row + 1), 'এ পর্যন্ত মোট কেনা (সব সময়)');
+        $sheet->setCellValue('D'.($row + 1), (float) $ledger['overall']['quantity_kg']);
+        $sheet->setCellValue('G'.($row + 1), (float) $ledger['overall']['total_cost']);
+
+        foreach (range('A', 'K') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        return $spreadsheet;
+    }
+
     public function incomeStatement(array $report): Spreadsheet
     {
         $spreadsheet = new Spreadsheet();
