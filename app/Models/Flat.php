@@ -62,4 +62,21 @@ class Flat extends Model
     {
         return $this->tenants()->where('status', 'ACTIVE');
     }
+
+    /**
+     * The names a list row shows for this flat: the owner, and the tenant when one is living there.
+     * Needs currentOwners.person and currentTenant.person to be loaded (it never queries on its own).
+     *
+     * @return array{owner:?string, tenant:?string}
+     */
+    public function occupantNames(): array
+    {
+        $name = fn ($person) => $person?->name_en ?: $person?->name_bn;
+        $join = fn ($rows) => $rows->map(fn ($r) => $name($r->person))->filter()->implode(', ') ?: null;
+
+        return [
+            'owner' => $this->relationLoaded('currentOwners') ? $join($this->currentOwners) : null,
+            'tenant' => $this->relationLoaded('currentTenant') ? $join($this->currentTenant) : null,
+        ];
+    }
 }
