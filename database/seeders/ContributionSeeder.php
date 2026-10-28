@@ -2,18 +2,20 @@
 
 namespace Database\Seeders;
 
+use App\Models\ChartOfAccount;
+use App\Models\Contribution;
+use App\Models\ContributionBook;
 use App\Models\ContributionHead;
-use App\Models\ContributionSetting;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * Construction-cost collection setup. The heads are the kinds of money that make up the building's
- * construction cost; the default target is the committee's figure per flat (editable in the app).
+ * Collection books setup. The books themselves (construction cost, flat, parking sale) are created by the
+ * migration; this adds their heads, the fund accounts receipts are credited to, and the permissions.
  * Role grants are made only when a permission is first created, so a re-run never undoes edits.
  *
- *  contribution.view     see the flat-wise statement and any flat's ledger
+ *  contribution.view     see statements and any flat's ledger
  *  contribution.collect  record a receipt
  *  contribution.manage   targets, loading earlier collections, reversing a wrong receipt
  */
@@ -25,6 +27,7 @@ class ContributionSeeder extends Seeder
         'contribution.manage' => ['admin', 'committee_president'],
     ];
 
+    /** The construction cost is made of these; the other books' heads come with the migration. */
     public const HEADS = [
         ['SUBSCRIPTION', 'চাঁদা (Subscription)', 'Subscription'],
         ['GAS_LINE', 'গ্যাস লাইন খরচ', 'Gas line'],
@@ -44,12 +47,24 @@ class ContributionSeeder extends Seeder
             }
         }
 
+        $construction = ContributionBook::where('code', 'CONSTRUCTION')->firstOrFail();
         foreach (self::HEADS as $i => [$code, $bn, $en]) {
-            ContributionHead::firstOrCreate(['code' => $code], ['name_bn' => $bn, 'name_en' => $en, 'counts_toward_target' => true, 'sort_order' => $i + 1]);
+            ContributionHead::firstOrCreate(['code' => $code], [
+                'contribution_book_id' => $construction->id, 'name_bn' => $bn, 'name_en' => $en,
+                'counts_toward_target' => true, 'sort_order' => $i + 1,
+            ]);
+        }
+        // The committee's figure: 25,50,000 per flat. Only filled in while untouched, so an edit is never undone.
+        if (bccomp((string) $construction->default_target, '0', 4) === 0 && ! Contribution::query()->exists()) {
+            $construction->update(['default_target' => 2550000]);
         }
 
-        if (! ContributionSetting::query()->exists()) {
-            ContributionSetting::create(['default_target' => 2550000]); // 25,50,000 per flat, as decided by the committee
+        // Flat and parking money is a fund of its own, not income: the accountant decides how to treat it later.
+        $parent = ChartOfAccount::where('code', '3000')->first();
+        if ($parent) {
+            foreach ([['3400', 'ফ্ল্যাট আদায় তহবিল', 'Flat Collections Fund'], ['3500', 'পার্কিং বিক্রয় আদায় তহবিল', 'Parking Sale Collections Fund']] as [$code, $bn, $en]) {
+                ChartOfAccount::firstOrCreate(['code' => $code], ['name_bn' => $bn, 'name_en' => $en, 'account_type' => 'FUND', 'parent_id' => $parent->id]);
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ import type { FlatLedger } from '../../api/contributions';
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 0 })}`;
 
-/** An owner's own construction-cost ledger: the target, every payment, and what is still owed. */
+/** An owner's own ledgers, one per book (construction cost, flat, parking sale) for each flat they own. */
 export default function OwnerContributionsPage() {
   const { t, lang } = useLanguage();
   const [ledgers, setLedgers] = useState<FlatLedger[] | null>(null);
@@ -16,6 +16,9 @@ export default function OwnerContributionsPage() {
   useEffect(() => {
     api.myLedgers().then(setLedgers).catch(() => setLedgers([]));
   }, []);
+
+  // a book with no target decided and nothing paid is just noise for the owner
+  const visible = (ledgers ?? []).filter((l) => l.target !== null || l.entries.length > 0);
 
   return (
     <div className="min-h-screen bg-brand-50 px-4 pb-24 pt-8">
@@ -38,24 +41,28 @@ export default function OwnerContributionsPage() {
           </button>
         )}
 
-        {ledgers?.map((l) => {
-          const bal = Number(l.balance);
+        {visible.map((l) => {
+          const bal = l.balance === null ? null : Number(l.balance);
           return (
-            <div key={l.flat_id} className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
-              <p className="font-semibold text-navy-900">{l.flat_no}</p>
+            <div key={`${l.flat_id}-${l.book.code}`} className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+              <p className="font-semibold text-navy-900">
+                {lang === 'bn' ? l.book.name_bn : l.book.name_en} <span className="text-sm font-normal text-navy-700">· {l.flat_no}</span>
+              </p>
               <div className="mt-2 space-y-1 rounded-lg bg-brand-50 p-3 text-sm text-navy-900">
                 <p className="flex justify-between">
                   <span>{t('contrib.target')}</span>
-                  <b>{money(l.target)}</b>
+                  <b>{l.target === null ? t('contrib.noTarget') : money(l.target)}</b>
                 </p>
                 <p className="flex justify-between">
                   <span>{t('contrib.collected')}</span>
                   <b>{money(l.collected)}</b>
                 </p>
-                <p className="flex justify-between">
-                  <span>{bal >= 0 ? t('contrib.stillDue') : t('contrib.paidExcess')}</span>
-                  <b className={bal > 0 ? 'text-status-due' : 'text-status-paid'}>{money(Math.abs(bal))}</b>
-                </p>
+                {bal !== null && (
+                  <p className="flex justify-between">
+                    <span>{bal >= 0 ? t('contrib.stillDue') : t('contrib.paidExcess')}</span>
+                    <b className={bal > 0 ? 'text-status-due' : 'text-status-paid'}>{money(Math.abs(bal))}</b>
+                  </p>
+                )}
               </div>
 
               {l.entries.length === 0 ? (
@@ -73,7 +80,7 @@ export default function OwnerContributionsPage() {
                       </span>
                       <span className="text-right">
                         {money(e.amount)}
-                        <span className="block text-xs text-navy-700">{money(e.balance_after)}</span>
+                        {e.balance_after !== null && <span className="block text-xs text-navy-700">{money(e.balance_after)}</span>}
                       </span>
                     </li>
                   ))}

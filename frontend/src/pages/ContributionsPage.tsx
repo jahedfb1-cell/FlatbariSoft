@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -8,7 +8,7 @@ import { localToday } from '../components/HallCalendar';
 import { apiError } from '../api/hall';
 import { blobErrorMessage } from '../utils/download';
 import * as api from '../api/contributions';
-import type { FlatLedger, ImportRow, Statement, StatementRow } from '../api/contributions';
+import type { Book, FlatLedger, ImportRow, Statement, StatementRow } from '../api/contributions';
 
 const money = (v: string | number) => Number(v).toLocaleString('en-BD', { maximumFractionDigits: 0 });
 const input = 'w-full rounded-lg border border-brand-200 px-3 py-2';
@@ -23,6 +23,8 @@ export default function ContributionsPage() {
   const canCollect = can('contribution.collect');
   const canManage = can('contribution.manage');
 
+  const [books, setBooks] = useState<Book[]>([]);
+  const [bookCode, setBookCode] = useState('CONSTRUCTION');
   const [data, setData] = useState<Statement | null>(null);
   const [onlyDue, setOnlyDue] = useState(false);
   const [openFlat, setOpenFlat] = useState<number | null>(null);
@@ -32,16 +34,28 @@ export default function ContributionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
+  useEffect(() => {
+    api.listBooks().then(setBooks).catch((e) => setError(apiError(e, t('somethingWrong'))));
+  }, [t]);
+
+  // Switching tabs quickly must not let a slow reply for the old book overwrite the new book's table.
+  const latest = useRef(0);
   const load = useCallback(() => {
+    const id = ++latest.current;
+    setData(null);
     api
-      .getStatement()
+      .getStatement(bookCode)
       .then((d) => {
+        if (id !== latest.current) return;
         setData(d);
         setDefaultTarget(String(Number(d.default_target)));
       })
-      .catch((e) => setError(apiError(e, t('somethingWrong'))));
-  }, [t]);
+      .catch((e) => id === latest.current && setError(apiError(e, t('somethingWrong'))));
+  }, [bookCode, t]);
   useEffect(load, [load]);
+
+  const book = books.find((b) => b.code === bookCode);
+  const bookName = (b: { name_bn: string; name_en: string }) => (lang === 'bn' ? b.name_bn : b.name_en);
 
   async function run(key: string, action: () => Promise<unknown>) {
     setError(null);
@@ -58,7 +72,7 @@ export default function ContributionsPage() {
   async function saveDefault(e: FormEvent) {
     e.preventDefault();
     await run('default', async () => {
-      await api.setDefaultTarget(defaultTarget);
+      await api.setDefaultTarget(bookCode, defaultTarget);
       setEditingDefault(false);
       load();
     });
@@ -80,6 +94,14 @@ export default function ContributionsPage() {
           <LanguageToggle />
         </div>
 
+        <div className="mb-3 flex flex-wrap gap-2">
+          {books.map((b) => (
+            <button key={b.code} className={b.code === bookCode ? btn : btnGhost} onClick={() => setBookCode(b.code)}>
+              {bookName(b)}
+            </button>
+          ))}
+        </div>
+
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-white p-3 shadow-sm">
           <span className="text-sm text-navy-700">{t('contrib.defaultTarget')}:</span>
           {editingDefault ? (
@@ -89,7 +111,7 @@ export default function ContributionsPage() {
             </form>
           ) : (
             <>
-              <b className="text-navy-900">৳{data ? money(data.default_target) : '…'}</b>
+              <b className="text-navy-900">{data ? (data.book.has_target ? `৳${money(data.default_target)}` : t('contrib.noTarget')) : '…'}</b>
               {canManage && (
                 <button className="text-sm text-brand-700 hover:underline" onClick={() => setEditingDefault(true)}>
                   {t('contrib.editTarget')}
@@ -101,13 +123,13 @@ export default function ContributionsPage() {
             <label className="flex items-center gap-1 text-sm text-navy-700">
               <input type="checkbox" checked={onlyDue} onChange={(e) => setOnlyDue(e.target.checked)} /> {t('contrib.onlyDue')}
             </label>
-            <button className={btnGhost} disabled={busy !== null} onClick={() => run('pdf', api.printStatement)}>
+            <button className={btnGhost} disabled={busy !== null} onClick={() => run('pdf', () => api.printStatement(bookCode))}>
               {t('contrib.pdf')}
             </button>
-            <button className={btnGhost} disabled={busy !== null} onClick={() => run('xlsx', api.downloadStatementExcel)}>
+            <button className={btnGhost} disabled={busy !== null} onClick={() => run('xlsx', () => api.downloadStatementExcel(bookCode))}>
               {t('contrib.excel')}
             </button>
-            <button className={btnGhost} disabled={busy !== null} onClick={() => run('all', api.printAllLedgers)}>
+            <button className={btnGhost} disabled={busy !== null} onClick={() => run('all', () => api.printAllLedgers(bookCode))}>
               {t('contrib.allLedgers')}
             </button>
             {canManage && (
@@ -163,10 +185,12 @@ export default function ContributionsPage() {
       </div>
 
       {openFlat !== null && data && (
-        <LedgerModal flatId={openFlat} data={data} canCollect={canCollect} canManage={canManage} onClose={() => setOpenFlat(null)} onChanged={load} />
+        <LedgerModal flatId={openFlat} books={books} startBook={bookCode} canCollect={canCollect} canManage={canManage} onClose={() => setOpenFlat(null)} onChanged={load} />
       )}
       {showImport && (
         <ImportModal
+          book={bookCode}
+          bookTitle={book ? bookName(book) : ''}
           heads={data?.heads ?? []}
           onClose={() => setShowImport(false)}
           onDone={() => {
@@ -180,7 +204,7 @@ export default function ContributionsPage() {
 }
 
 function Row({ r, heads, onOpen }: { r: StatementRow; heads: string[]; onOpen: () => void }) {
-  const bal = Number(r.balance);
+  const bal = r.balance === null ? null : Number(r.balance);
   return (
     <tr className="cursor-pointer border-t border-brand-100 hover:bg-brand-50" onClick={onOpen}>
       <td className="px-3 py-2 font-medium">{r.flat_no}</td>
@@ -192,35 +216,39 @@ function Row({ r, heads, onOpen }: { r: StatementRow; heads: string[]; onOpen: (
       ))}
       <td className="px-3 py-2 text-right">{money(r.collected)}</td>
       <td className="px-3 py-2 text-right">
-        {money(r.target)}
+        {r.target === null ? '–' : money(r.target)}
         {r.has_own_target && <span className="text-xs text-brand-700"> *</span>}
       </td>
-      <td className={`px-3 py-2 text-right font-medium ${bal > 0 ? 'text-status-due' : bal < 0 ? 'text-status-paid' : 'text-navy-700'}`}>
-        {bal === 0 ? '–' : bal > 0 ? money(bal) : `(${money(-bal)})`}
+      <td className={`px-3 py-2 text-right font-medium ${bal === null ? 'text-navy-700' : bal > 0 ? 'text-status-due' : bal < 0 ? 'text-status-paid' : 'text-navy-700'}`}>
+        {bal === null || bal === 0 ? '–' : bal > 0 ? money(bal) : `(${money(-bal)})`}
       </td>
     </tr>
   );
 }
 
+/** One flat owner's ledgers - one per book - with the receipt form, reversals and the flat's own targets. */
 function LedgerModal({
   flatId,
-  data,
+  books,
+  startBook,
   canCollect,
   canManage,
   onClose,
   onChanged,
 }: {
   flatId: number;
-  data: Statement;
+  books: Book[];
+  startBook: string;
   canCollect: boolean;
   canManage: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
   const { t, lang } = useLanguage();
-  const [ledger, setLedger] = useState<FlatLedger | null>(null);
+  const [ledgers, setLedgers] = useState<FlatLedger[] | null>(null);
+  const [bookCode, setBookCode] = useState(startBook);
   const [error, setError] = useState<string | null>(null);
-  const [headId, setHeadId] = useState(String(data.heads[0]?.id ?? ''));
+  const [headId, setHeadId] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('CASH');
   const [date, setDate] = useState(localToday());
@@ -231,14 +259,22 @@ function LedgerModal({
 
   const load = useCallback(() => {
     api
-      .getLedger(flatId)
-      .then((l) => {
-        setLedger(l);
-        setTarget(String(Number(l.target)));
-      })
+      .getFlatLedgers(flatId)
+      .then(setLedgers)
       .catch((e) => setError(apiError(e, t('somethingWrong'))));
   }, [flatId, t]);
   useEffect(load, [load]);
+
+  const ledger = ledgers?.find((l) => l.book.code === bookCode);
+  const book = books.find((b) => b.code === bookCode);
+
+  // keep the form in step with the book on screen
+  useEffect(() => {
+    setHeadId(String(book?.heads[0]?.id ?? ''));
+    setTarget(ledger?.target ? String(Number(ledger.target)) : '');
+    setReversing(null);
+    setError(null);
+  }, [bookCode, book, ledger?.target]);
 
   async function act(action: () => Promise<unknown>) {
     setError(null);
@@ -251,29 +287,41 @@ function LedgerModal({
     }
   }
 
-  if (!ledger) return <Modal title="…" onClose={onClose}>{error ? <p className="text-status-due">{error}</p> : t('loading')}</Modal>;
-  const bal = Number(ledger.balance);
+  if (!ledgers || !ledger || !book) return <Modal title="…" onClose={onClose}>{error ? <p className="text-status-due">{error}</p> : t('loading')}</Modal>;
+
+  const bal = ledger.balance === null ? null : Number(ledger.balance);
+  const nameOf = (x: { name_bn: string; name_en: string }) => (lang === 'bn' ? x.name_bn : x.name_en);
   const headName = (e: { head_name_bn: string; head_name_en: string }) => (lang === 'bn' ? e.head_name_bn : e.head_name_en);
 
   return (
     <Modal title={`${t('contrib.ledger')} — ${ledger.flat_no}${ledger.owner ? ` (${ledger.owner})` : ''}`} onClose={onClose}>
       <div className="max-h-[70vh] space-y-4 overflow-y-auto text-sm text-navy-900">
+        <div className="flex flex-wrap gap-2">
+          {ledgers.map((l) => (
+            <button key={l.book.code} className={l.book.code === bookCode ? btn : btnGhost} onClick={() => setBookCode(l.book.code)}>
+              {nameOf(l.book)}
+            </button>
+          ))}
+        </div>
+
         <div className="rounded-lg bg-brand-50 p-3">
           <p className="flex justify-between">
             <span>{t('contrib.target')}</span>
-            <b>৳{money(ledger.target)}</b>
+            <b>{ledger.target === null ? t('contrib.noTarget') : `৳${money(ledger.target)}`}</b>
           </p>
           <p className="flex justify-between">
             <span>{t('contrib.collected')}</span>
             <b>৳{money(ledger.collected)}</b>
           </p>
-          <p className="flex justify-between">
-            <span>{bal >= 0 ? t('contrib.stillDue') : t('contrib.paidExcess')}</span>
-            <b className={bal > 0 ? 'text-status-due' : 'text-status-paid'}>৳{money(Math.abs(bal))}</b>
-          </p>
+          {bal !== null && (
+            <p className="flex justify-between">
+              <span>{bal >= 0 ? t('contrib.stillDue') : t('contrib.paidExcess')}</span>
+              <b className={bal > 0 ? 'text-status-due' : 'text-status-paid'}>৳{money(Math.abs(bal))}</b>
+            </p>
+          )}
         </div>
 
-        <button className={btnGhost} onClick={() => api.printLedger(flatId, ledger.flat_no).catch(() => setError(t('somethingWrong')))}>
+        <button className={btnGhost} onClick={() => api.printFlatLedgers(flatId, ledger.flat_no).catch(() => setError(t('somethingWrong')))}>
           🖨 {t('contrib.ledgerPdf')}
         </button>
 
@@ -306,7 +354,7 @@ function LedgerModal({
                     </span>
                   </td>
                   <td className="pr-2 text-right align-top">{money(e.amount)}</td>
-                  <td className="pr-2 text-right align-top">{money(e.balance_after)}</td>
+                  <td className="pr-2 text-right align-top">{e.balance_after === null ? '–' : money(e.balance_after)}</td>
                   <td className="text-right align-top no-underline">
                     {canManage && !e.is_reversal && !e.is_reversed && (
                       <button className="text-status-due hover:underline" onClick={() => setReversing(e.id)}>
@@ -352,12 +400,14 @@ function LedgerModal({
               });
             }}
           >
-            <p className="font-medium">{t('contrib.collect')}</p>
+            <p className="font-medium">
+              {t('contrib.collect')} — {nameOf(book)}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <select className={input} value={headId} onChange={(e) => setHeadId(e.target.value)}>
-                {data.heads.map((h) => (
+                {book.heads.map((h) => (
                   <option key={h.id} value={h.id}>
-                    {lang === 'bn' ? h.name_bn : h.name_en}
+                    {nameOf(h)}
                   </option>
                 ))}
               </select>
@@ -380,10 +430,10 @@ function LedgerModal({
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 p-3">
             <span className="text-navy-700">{t('contrib.ownTarget')}:</span>
             <input type="number" min={0} className="w-32 rounded-lg border border-brand-200 px-2 py-1" value={target} onChange={(e) => setTarget(e.target.value)} />
-            <button className={btnGhost} onClick={() => act(() => api.setFlatTarget(flatId, target))}>
+            <button className={btnGhost} disabled={target === ''} onClick={() => act(() => api.setFlatTarget(bookCode, flatId, target))}>
               {t('hall.save')}
             </button>
-            <button className="text-sm text-brand-700 hover:underline" onClick={() => act(() => api.setFlatTarget(flatId, null))}>
+            <button className="text-sm text-brand-700 hover:underline" onClick={() => act(() => api.setFlatTarget(bookCode, flatId, null))}>
               {t('contrib.useDefault')}
             </button>
           </div>
@@ -409,8 +459,20 @@ function parsePaste(text: string, codes: string[]): ImportRow[] {
     }));
 }
 
-function ImportModal({ heads, onClose, onDone }: { heads: Statement['heads']; onClose: () => void; onDone: () => void }) {
-  const { t } = useLanguage();
+function ImportModal({
+  book,
+  bookTitle,
+  heads,
+  onClose,
+  onDone,
+}: {
+  book: string;
+  bookTitle: string;
+  heads: Statement['heads'];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { t, lang } = useLanguage();
   const [text, setText] = useState('');
   const [asOf, setAsOf] = useState(localToday());
   const [preview, setPreview] = useState<api.ImportResult | null>(null);
@@ -420,7 +482,7 @@ function ImportModal({ heads, onClose, onDone }: { heads: Statement['heads']; on
   async function submit(dry: boolean) {
     setError(null);
     try {
-      const res = await api.importOpening(parsePaste(text, codes), asOf, dry);
+      const res = await api.importOpening(book, parsePaste(text, codes), asOf, dry);
       if (dry) setPreview(res);
       else onDone();
     } catch (e: any) {
@@ -431,14 +493,19 @@ function ImportModal({ heads, onClose, onDone }: { heads: Statement['heads']; on
   }
 
   return (
-    <Modal title={t('contrib.import')} onClose={onClose}>
+    <Modal title={`${t('contrib.import')} — ${bookTitle}`} onClose={onClose}>
       <div className="space-y-3 text-sm">
-        <p className="text-navy-700">{t('contrib.importHelp')}</p>
+        <p className="text-navy-700">
+          {t('contrib.importHelp')}
+          <b className="mt-1 block text-navy-900">
+            {t('contrib.flat')}, {heads.map((h) => (lang === 'bn' ? h.name_bn : h.name_en)).join(', ')}
+          </b>
+        </p>
         <p className="rounded-lg bg-brand-50 p-2 text-navy-900">{t('contrib.importWarn')}</p>
         <textarea
           rows={8}
           className={`${input} font-mono text-xs`}
-          placeholder={`10A\t2450000\t30000\t10000\t10000\t65000`}
+          placeholder={`10A\t${heads.map(() => '0').join('\t')}`}
           value={text}
           onChange={(e) => {
             setText(e.target.value);

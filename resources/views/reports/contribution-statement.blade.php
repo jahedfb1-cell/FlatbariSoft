@@ -20,8 +20,8 @@
 <body>
 <div class="head">
     <h1>{{ $building->name ?? 'Green Valley' }}</h1>
-    <div>Construction Cost Collection - Flat-wise Statement</div>
-    <div class="muted">Default target {{ number_format((float) $report['default_target'], 2) }} per flat - printed {{ now()->format('d M Y') }}</div>
+    <div>{{ $report['book']['name_en'] }} - Flat-wise Statement</div>
+    <div class="muted">@if ($report['book']['has_target'])Default target {{ number_format((float) $report['default_target'], 2) }} per flat @else No target decided yet @endif - printed {{ now()->format('d M Y') }}</div>
 </div>
 
 <table>
@@ -37,8 +37,8 @@
             <td>{{ $r['owner'] ?: '-' }}</td>
             @foreach ($report['heads'] as $h)<td class="num">{{ (float) $r['heads'][$h['code']] ? number_format((float) $r['heads'][$h['code']], 0) : '-' }}</td>@endforeach
             <td class="num">{{ number_format((float) $r['collected'], 0) }}</td>
-            <td class="num">{{ number_format((float) $r['target'], 0) }}{{ $r['has_own_target'] ? '*' : '' }}</td>
-            <td class="num">{{ bccomp($r['balance'], '0', 4) === 0 ? '-' : (bccomp($r['balance'], '0', 4) > 0 ? number_format((float) $r['balance'], 0) : '('.number_format(abs((float) $r['balance']), 0).')') }}</td>
+            <td class="num">{{ $r['target'] === null ? '-' : number_format((float) $r['target'], 0).($r['has_own_target'] ? '*' : '') }}</td>
+            <td class="num">{{ $r['balance'] === null || bccomp($r['balance'], '0', 4) === 0 ? '-' : (bccomp($r['balance'], '0', 4) > 0 ? number_format((float) $r['balance'], 0) : '('.number_format(abs((float) $r['balance']), 0).')') }}</td>
         </tr>
     @endforeach
     <tr class="total">

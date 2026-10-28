@@ -1,12 +1,27 @@
 import client from './client';
 import { downloadFile, openPdf } from '../utils/download';
 
-export interface ContribHead {
+export interface BookHead {
   id: number;
   code: string;
   name_bn: string;
   name_en: string;
-  counts_toward_target: boolean;
+}
+
+export interface Book {
+  code: string;
+  name_bn: string;
+  name_en: string;
+  has_target: boolean;
+  heads: BookHead[];
+}
+
+export interface BookRef {
+  id: number;
+  code: string;
+  name_bn: string;
+  name_en: string;
+  has_target: boolean;
 }
 
 export interface StatementRow {
@@ -15,15 +30,16 @@ export interface StatementRow {
   owner: string | null;
   heads: Record<string, string>;
   collected: string;
-  target: string;
+  target: string | null; // null = no target decided for this book
   has_own_target: boolean;
-  balance: string; // > 0 owed, < 0 paid more than the target
-  status: 'DUE' | 'EXCESS' | 'CLEARED';
+  balance: string | null; // > 0 owed, < 0 paid more than the target
+  status: 'DUE' | 'EXCESS' | 'CLEARED' | 'NO_TARGET';
 }
 
 export interface Statement {
+  book: BookRef;
   default_target: string;
-  heads: ContribHead[];
+  heads: (BookHead & { counts_toward_target: boolean })[];
   rows: StatementRow[];
   totals: Record<string, string>;
 }
@@ -40,18 +56,19 @@ export interface LedgerEntry {
   reference_no: string | null;
   notes: string | null;
   amount: string;
-  balance_after: string;
+  balance_after: string | null;
   is_reversal: boolean;
   is_reversed: boolean;
 }
 
 export interface FlatLedger {
+  book: BookRef;
   flat_id: number;
   flat_no: string;
   owner: string | null;
-  target: string;
+  target: string | null;
   collected: string;
-  balance: string;
+  balance: string | null;
   entries: LedgerEntry[];
 }
 
@@ -67,23 +84,25 @@ export interface ImportResult {
   problems: string[];
 }
 
-export const getStatement = () => client.get<Statement>('/contributions/statement').then((r) => r.data);
-export const getLedger = (flatId: number) => client.get<FlatLedger>(`/contributions/flats/${flatId}/ledger`).then((r) => r.data);
+export const listBooks = () => client.get<Book[]>('/contributions/books').then((r) => r.data);
+export const getStatement = (book: string) => client.get<Statement>(`/contributions/books/${book}/statement`).then((r) => r.data);
+export const getFlatLedgers = (flatId: number) => client.get<FlatLedger[]>(`/contributions/flats/${flatId}/ledgers`).then((r) => r.data);
 export const collect = (
   flatId: number,
   d: { contribution_head_id: number; amount: string; received_on: string; method: string; reference_no?: string; notes?: string },
 ) => client.post(`/contributions/flats/${flatId}/collections`, d).then((r) => r.data);
 export const reverse = (id: number, reason: string) => client.post(`/contributions/collections/${id}/reverse`, { reason }).then((r) => r.data);
-export const setFlatTarget = (flatId: number, target_amount: string | null, note?: string) =>
-  client.put(`/contributions/flats/${flatId}/target`, { target_amount, note }).then((r) => r.data);
-export const setDefaultTarget = (target_amount: string) => client.put('/contributions/settings/default-target', { target_amount }).then((r) => r.data);
-export const importOpening = (rows: ImportRow[], as_of: string, dry_run: boolean) =>
-  client.post<ImportResult>('/contributions/import', { rows, as_of, dry_run }).then((r) => r.data);
+export const setFlatTarget = (book: string, flatId: number, target_amount: string | null, note?: string) =>
+  client.put(`/contributions/books/${book}/flats/${flatId}/target`, { target_amount, note }).then((r) => r.data);
+export const setDefaultTarget = (book: string, target_amount: string) =>
+  client.put(`/contributions/books/${book}/default-target`, { target_amount }).then((r) => r.data);
+export const importOpening = (book: string, rows: ImportRow[], as_of: string, dry_run: boolean) =>
+  client.post<ImportResult>(`/contributions/books/${book}/import`, { rows, as_of, dry_run }).then((r) => r.data);
 
-export const printStatement = () => downloadFile('/contributions/statement/pdf', 'construction-contributions.pdf');
-export const downloadStatementExcel = () => downloadFile('/contributions/statement/excel', 'construction-contributions.xlsx');
-export const printAllLedgers = () => openPdf('/contributions/ledgers/pdf', undefined, 'flat-ledgers.pdf');
-export const printLedger = (flatId: number, flatNo: string) => openPdf(`/contributions/flats/${flatId}/ledger/pdf`, undefined, `ledger-${flatNo}.pdf`);
+export const printStatement = (book: string) => downloadFile(`/contributions/books/${book}/statement/pdf`, `contributions-${book}.pdf`);
+export const downloadStatementExcel = (book: string) => downloadFile(`/contributions/books/${book}/statement/excel`, `contributions-${book}.xlsx`);
+export const printAllLedgers = (book: string) => openPdf(`/contributions/books/${book}/ledgers/pdf`, undefined, `ledgers-${book}.pdf`);
+export const printFlatLedgers = (flatId: number, flatNo: string) => openPdf(`/contributions/flats/${flatId}/ledgers/pdf`, undefined, `ledger-${flatNo}.pdf`);
 
 export const myLedgers = () => client.get<FlatLedger[]>('/me/contributions').then((r) => r.data);
 export const printMyLedger = () => openPdf('/me/contributions/pdf', undefined, 'my-ledger.pdf');

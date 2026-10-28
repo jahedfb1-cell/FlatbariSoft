@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class FlatContributionTarget extends Model
 {
-    protected $fillable = ['flat_id', 'target_amount', 'note'];
+    protected $fillable = ['flat_id', 'contribution_book_id', 'target_amount', 'note'];
 
     protected function casts(): array
     {
