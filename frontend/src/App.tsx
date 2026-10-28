@@ -29,6 +29,8 @@ import HallPage from './pages/HallPage';
 import UsersPage from './pages/UsersPage';
 import ParkingPage from './pages/ParkingPage';
 import GasLedgerPage from './pages/GasLedgerPage';
+import ContributionsPage from './pages/ContributionsPage';
+import OwnerContributionsPage from './pages/owner/OwnerContributionsPage';
 import OwnerParkingPage from './pages/owner/OwnerParkingPage';
 import OwnerHallPage from './pages/owner/OwnerHallPage';
 
@@ -90,6 +92,7 @@ function AppRoutes() {
       <Route path="/hall" element={<HallPage />} />
       <Route path="/users" element={<UsersPage />} />
       <Route path="/parking" element={<ParkingPage />} />
+      <Route path="/contributions" element={<ContributionsPage />} />
 
       {/* Owner/Tenant portal (5 screens, PRD's mobile-first cap) */}
       <Route path="/owner" element={<OwnerHomePage />} />
@@ -99,6 +102,7 @@ function AppRoutes() {
       <Route path="/owner/documents" element={<OwnerDocumentsPage />} />
       <Route path="/owner/hall" element={<OwnerHallPage />} />
       <Route path="/owner/parking" element={<OwnerParkingPage />} />
+      <Route path="/owner/contributions" element={<OwnerContributionsPage />} />
     </Routes>
   );
 }

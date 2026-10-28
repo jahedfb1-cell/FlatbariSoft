@@ -152,6 +152,61 @@ class ReportExportService
         return $spreadsheet;
     }
 
+    /** @param  array<string, mixed>  $report  from ContributionService::statement() */
+    public function contributionStatement(array $report): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Construction Cost');
+
+        $sheet->setCellValue('A1', 'গ্রীন ভ্যালি — নির্মাণ ব্যয় আদায় (ফ্ল্যাটভিত্তিক)');
+        $sheet->setCellValue('A2', 'ডিফল্ট টার্গেট: '.number_format((float) $report['default_target'], 2));
+
+        $headers = ['ক্রম', 'ফ্ল্যাট', 'মালিক'];
+        foreach ($report['heads'] as $h) {
+            $headers[] = $h['name_bn'];
+        }
+        array_push($headers, 'মোট জমা', 'টার্গেট', 'বকেয়া (+) / বেশি জমা (−)');
+
+        foreach ($headers as $i => $h) {
+            $sheet->setCellValue([$i + 1, 4], $h);
+        }
+        $last = count($headers);
+        $this->headerStyle($spreadsheet, 'A4:'.\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($last).'4');
+
+        $row = 5;
+        foreach ($report['rows'] as $n => $r) {
+            $col = 1;
+            $sheet->setCellValue([$col++, $row], $n + 1);
+            $sheet->setCellValue([$col++, $row], $r['flat_no']);
+            $sheet->setCellValue([$col++, $row], $r['owner']);
+            foreach ($report['heads'] as $h) {
+                $sheet->setCellValue([$col++, $row], (float) $r['heads'][$h['code']]);
+            }
+            $sheet->setCellValue([$col++, $row], (float) $r['collected']);
+            $sheet->setCellValue([$col++, $row], (float) $r['target']);
+            $sheet->setCellValue([$col++, $row], (float) $r['balance']);
+            $row++;
+        }
+
+        $col = 3;
+        $sheet->setCellValue([1, $row], 'মোট');
+        foreach ($report['heads'] as $h) {
+            $sheet->setCellValue([++$col, $row], (float) $report['totals'][$h['code']]);
+        }
+        $sheet->setCellValue([++$col, $row], (float) $report['totals']['collected']);
+        $sheet->setCellValue([++$col, $row], (float) $report['totals']['target']);
+        $sheet->setCellValue([++$col, $row], (float) $report['totals']['balance_due'] - (float) $report['totals']['excess']);
+        $sheet->getStyle("A{$row}:".\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($last)."{$row}")->getFont()->setBold(true);
+        $sheet->getStyle('D5:'.\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($last)."{$row}")->getNumberFormat()->setFormatCode('#,##0');
+
+        for ($c = 1; $c <= $last; $c++) {
+            $sheet->getColumnDimensionByColumn($c)->setAutoSize(true);
+        }
+
+        return $spreadsheet;
+    }
+
     public function incomeStatement(array $report): Spreadsheet
     {
         $spreadsheet = new Spreadsheet();

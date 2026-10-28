@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             CommunityHallSeeder::class,
             RoleCatalogSeeder::class,
             ParkingSeeder::class,
+            ContributionSeeder::class,
         ]);
     }
 }
