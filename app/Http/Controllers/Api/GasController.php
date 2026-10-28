@@ -15,7 +15,13 @@ class GasController extends Controller
 
     public function consumers()
     {
-        return GasConsumerResource::collection(GasConsumer::with('flat')->where('active', true)->get());
+        $this->service->syncFlatConsumers();
+
+        // the project office first, then the flats in flat-number order
+        return GasConsumerResource::collection(
+            GasConsumer::with('flat')->where('active', true)->get()
+                ->sortBy(fn ($c) => [$c->flat_id ? 1 : 0, $c->flat?->floor ?? 0, $c->flat?->flat_no ?? ''])->values()
+        );
     }
 
     public function storeReading(StoreGasReadingRequest $request)
