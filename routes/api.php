@@ -183,6 +183,8 @@ Route::prefix('complaints')->middleware('auth:sanctum')->group(function () {
 
 Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
     Route::get('/consumers', [GasController::class, 'consumers'])->middleware('permission:gas.view');
+    Route::post('/consumers', [GasController::class, 'storeConsumer'])->middleware('permission:gas.manage');
+    Route::put('/consumers/{consumer}', [GasController::class, 'updateConsumer'])->middleware('permission:gas.manage');
     Route::post('/readings', [GasController::class, 'storeReading'])->middleware('permission:gas.manage');
     Route::post('/periods/{billingPeriodId}/apply', [GasController::class, 'applyToBills'])->middleware('permission:gas.manage');
     Route::get('/periods/{billingPeriodId}/system-loss/{year}/{month}', [GasController::class, 'systemLoss'])->middleware('permission:gas.view');

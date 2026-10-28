@@ -6,6 +6,7 @@ import InvoicePicker from '../components/InvoicePicker';
 import InvoiceCell from '../components/InvoiceCell';
 import * as gasApi from '../api/gas';
 import * as billingApi from '../api/billing';
+import { listFlats, type Flat } from '../api/flats';
 import type { GasConsumer, GasPurchase } from '../api/gas';
 
 export default function GasPage() {
@@ -16,6 +17,17 @@ export default function GasPage() {
   const [consumers, setConsumers] = useState<GasConsumer[]>([]);
   const [readings, setReadings] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+
+  // adding / editing a gas consumer by hand
+  const [flats, setFlats] = useState<Flat[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [cFlat, setCFlat] = useState('');
+  const [cName, setCName] = useState('');
+  const [cMeter, setCMeter] = useState('');
+  const [cInternal, setCInternal] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [eName, setEName] = useState('');
+  const [eMeter, setEMeter] = useState('');
 
   const [purchases, setPurchases] = useState<GasPurchase[]>([]);
   const [pDate, setPDate] = useState(new Date().toISOString().slice(0, 10));
@@ -30,6 +42,7 @@ export default function GasPage() {
   function load() {
     gasApi.listGasConsumers().then(setConsumers);
     gasApi.listGasPurchases().then(setPurchases);
+    listFlats().then(setFlats).catch(() => undefined);
   }
 
   useEffect(load, []);
@@ -56,6 +69,51 @@ export default function GasPage() {
     } catch (err: any) {
       const errors = err.response?.data?.errors;
       setPError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+    }
+  }
+
+  const apiMessage = (err: any) =>
+    err.response?.data?.errors ? (Object.values(err.response.data.errors) as string[][]).flat().join(' ') : err.response?.data?.message || 'Error';
+
+  async function handleAddConsumer(e: FormEvent) {
+    e.preventDefault();
+    setMessage(null);
+    const flat = flats.find((f) => String(f.id) === cFlat);
+    try {
+      await gasApi.createGasConsumer({
+        flat_id: flat ? flat.id : null,
+        name: cName.trim() || (flat ? `Flat ${flat.flat_no}` : ''),
+        meter_no: cMeter.trim() || undefined,
+        is_internal: !flat && cInternal,
+      });
+      setCFlat('');
+      setCName('');
+      setCMeter('');
+      setCInternal(false);
+      setShowAdd(false);
+      setMessage(t('gas.consumerAdded'));
+      load();
+    } catch (err: any) {
+      setMessage(apiMessage(err));
+    }
+  }
+
+  async function saveEdit(id: number) {
+    try {
+      await gasApi.updateGasConsumer(id, { name: eName.trim(), meter_no: eMeter.trim() || null });
+      setEditId(null);
+      load();
+    } catch (err: any) {
+      setMessage(apiMessage(err));
+    }
+  }
+
+  async function toggleActive(c: GasConsumer) {
+    try {
+      await gasApi.updateGasConsumer(c.id, { active: !c.active });
+      load();
+    } catch (err: any) {
+      setMessage(apiMessage(err));
     }
   }
 
@@ -104,17 +162,87 @@ export default function GasPage() {
 
         {message && <p className="mb-4 text-sm text-navy-900">{message}</p>}
 
+        <div className="mb-3">
+          <button onClick={() => setShowAdd((v) => !v)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
+            + {t('gas.addConsumer')}
+          </button>
+        </div>
+
+        {showAdd && (
+          <form onSubmit={handleAddConsumer} className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-4">
+            <label className="text-sm text-navy-700">
+              {t('gas.consumerFlat')}
+              <select className="mt-1 block w-full rounded-lg border border-brand-200 px-3 py-2" value={cFlat} onChange={(e) => setCFlat(e.target.value)}>
+                <option value="">{t('gas.noFlat')}</option>
+                {flats.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.flat_no}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-navy-700">
+              {t('gas.consumerName')}
+              <input className="mt-1 block w-full rounded-lg border border-brand-200 px-3 py-2" value={cName} onChange={(e) => setCName(e.target.value)} required={!cFlat} />
+            </label>
+            <label className="text-sm text-navy-700">
+              {t('gas.meterNo')}
+              <input className="mt-1 block w-full rounded-lg border border-brand-200 px-3 py-2" value={cMeter} onChange={(e) => setCMeter(e.target.value)} />
+            </label>
+            <div className="flex items-end gap-3">
+              {!cFlat && (
+                <label className="flex items-center gap-1 text-sm text-navy-700">
+                  <input type="checkbox" checked={cInternal} onChange={(e) => setCInternal(e.target.checked)} />
+                  {t('gas.internalUse')}
+                </label>
+              )}
+              <button className="rounded-lg bg-brand-600 px-3 py-2 text-sm text-white hover:bg-brand-700">{t('gas.save')}</button>
+            </div>
+          </form>
+        )}
+
         <div className="space-y-2">
           {consumers.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+            <div key={c.id} className={`flex items-center justify-between rounded-xl border border-brand-200 bg-white p-4 shadow-sm ${c.active ? '' : 'opacity-60'}`}>
               <div>
-                <p className="font-medium text-navy-900">
-                  {c.name} {c.flat_no ? `(${c.flat_no})` : ''} {c.is_internal && '· অভ্যন্তরীণ'}
-                </p>
+                {editId === c.id ? (
+                  <div className="flex flex-wrap gap-2">
+                    <input className="w-40 rounded-lg border border-brand-200 px-2 py-1 text-sm" value={eName} onChange={(e) => setEName(e.target.value)} />
+                    <input className="w-32 rounded-lg border border-brand-200 px-2 py-1 text-sm" placeholder={t('gas.meterNo')} value={eMeter} onChange={(e) => setEMeter(e.target.value)} />
+                    <button onClick={() => saveEdit(c.id)} className="rounded-lg bg-brand-600 px-2 py-1 text-xs text-white">
+                      {t('gas.save')}
+                    </button>
+                    <button onClick={() => setEditId(null)} className="rounded-lg border border-brand-200 px-2 py-1 text-xs text-navy-700">
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <p className="font-medium text-navy-900">
+                    {c.name} {c.flat_no ? `(${c.flat_no})` : ''} {c.is_internal && '· অভ্যন্তরীণ'} {!c.active && `· ${t('gas.off')}`}
+                  </p>
+                )}
                 <p className="text-sm text-navy-700">
                   {t('gas.lastReading')}: {c.last_reading ?? '—'}
+                  {c.meter_no ? ` · ${t('gas.meterNo')}: ${c.meter_no}` : ''}
+                </p>
+                <p className="mt-1 text-xs">
+                  <button
+                    className="text-brand-700 hover:underline"
+                    onClick={() => {
+                      setEditId(c.id);
+                      setEName(c.name);
+                      setEMeter(c.meter_no ?? '');
+                    }}
+                  >
+                    {t('gas.edit')}
+                  </button>
+                  {' · '}
+                  <button className="text-navy-700 hover:underline" onClick={() => toggleActive(c)}>
+                    {c.active ? t('gas.switchOff') : t('gas.switchOn')}
+                  </button>
                 </p>
               </div>
+              {c.active && (
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -130,6 +258,7 @@ export default function GasPage() {
                   {t('gas.enterReading')}
                 </button>
               </div>
+              )}
             </div>
           ))}
         </div>

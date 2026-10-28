@@ -13,7 +13,7 @@ export interface GasConsumer {
 }
 
 export function listGasConsumers() {
-  return client.get<GasConsumer[]>('/gas/consumers').then((r) => r.data);
+  return client.get<GasConsumer[]>('/gas/consumers', { params: { all: 1 } }).then((r) => r.data);
 }
 
 export function recordGasReading(data: {
@@ -57,4 +57,12 @@ export function recordGasPurchase(data: {
 }) {
   // multipart, because the optional invoice photo is a file
   return client.post<GasPurchase>('/gas/purchases', toFormData(data)).then((r) => r.data);
+}
+
+export function createGasConsumer(data: { flat_id?: number | null; name: string; meter_no?: string; is_internal?: boolean }) {
+  return client.post<GasConsumer>('/gas/consumers', data).then((r) => r.data);
+}
+
+export function updateGasConsumer(id: number, data: { name?: string; meter_no?: string | null; active?: boolean }) {
+  return client.put<GasConsumer>(`/gas/consumers/${id}`, data).then((r) => r.data);
 }
