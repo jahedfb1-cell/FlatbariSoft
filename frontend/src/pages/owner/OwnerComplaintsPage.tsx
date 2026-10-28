@@ -71,6 +71,7 @@ export default function OwnerComplaintsPage() {
               <p className="font-medium text-navy-900">{c.category}</p>
               <p className="text-sm text-navy-700">{c.description}</p>
               <p className="mt-1 text-xs text-navy-700">{c.status}</p>
+              {c.resolution_note && <p className="mt-2 rounded-lg bg-green-50 p-2 text-sm text-navy-900">✔ {c.resolution_note}</p>}
             </div>
           ))}
         </div>

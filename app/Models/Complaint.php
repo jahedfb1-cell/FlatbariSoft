@@ -9,7 +9,7 @@ class Complaint extends Model
 {
     protected $fillable = [
         'flat_id', 'category', 'description', 'voice_note', 'images', 'priority',
-        'status', 'assigned_to', 'resolved_at', 'rating',
+        'status', 'assigned_to', 'resolution_note', 'resolved_by', 'resolved_at', 'rating',
     ];
 
     protected function casts(): array
@@ -28,5 +28,10 @@ class Complaint extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'assigned_to');
+    }
+
+    public function resolvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
     }
 }
