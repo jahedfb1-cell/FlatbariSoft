@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             RoleCatalogSeeder::class,
             ParkingSeeder::class,
             ContributionSeeder::class,
+            TreasurySeeder::class,
         ]);
     }
 }

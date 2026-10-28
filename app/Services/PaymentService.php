@@ -45,39 +45,48 @@ class PaymentService
 
             $particulars = "Money Receipt {$payment->receipt_no} — Flat #{$payment->flat_id}";
 
-            if ($payment->method === 'CASH') {
-                $this->accounting->postCashTransaction([
-                    'txn_date' => $payment->payment_date,
-                    'particulars' => $particulars,
-                    'in_amount' => $payment->amount,
-                    'fund_type' => 'OPERATING',
-                    'ref_type' => Payment::class,
-                    'ref_id' => $payment->id,
-                    'created_by' => $approvedBy,
-                ]);
-            } else {
-                // BANK/BKASH/NAGAD all settle into the one operating bank
-                // account — the payments table has no bank_account_id of
-                // its own, and this is a single-building system with one
-                // primary account in practice.
-                $bank = BankAccount::first();
-                if (! $bank) {
-                    throw ValidationException::withMessages(['bank' => 'কোনো ব্যাংক হিসাব সেটআপ করা নেই।']);
+            $lines = $this->creditLinesFor($payment);
+
+            // One receipt can carry both the service charge and the gas bill. The books keep them in their own
+            // funds (the gas bill belongs to the LPG gas account), so the cash/bank line is split the same way
+            // the income is - the journal below is unchanged.
+            $gasAccountId = ChartOfAccount::where('code', '4200')->value('id');
+            $gasShare = '0';
+            foreach ($lines as $line) {
+                if ($line['account_id'] === $gasAccountId) {
+                    $gasShare = bcadd($gasShare, (string) $line['credit'], 4);
                 }
-                $this->accounting->postBankTransaction($bank, [
+            }
+            $splits = [['OPERATING', bcsub((string) $payment->amount, $gasShare, 4)], ['GAS', $gasShare]];
+
+            $bank = null;
+            foreach ($splits as [$fund, $part]) {
+                if (bccomp($part, '0', 4) <= 0) {
+                    continue;
+                }
+                $base = [
                     'txn_date' => $payment->payment_date,
                     'particulars' => $particulars,
-                    'debit' => $payment->amount,
-                    'fund_type' => 'OPERATING',
+                    'fund_type' => $fund,
                     'ref_type' => Payment::class,
                     'ref_id' => $payment->id,
                     'created_by' => $approvedBy,
-                ]);
+                ];
+                if ($payment->method === 'CASH') {
+                    $this->accounting->postCashTransaction($base + ['in_amount' => $part]);
+                } else {
+                    // BANK/BKASH/NAGAD all settle into the one operating bank account - the payments table has
+                    // no bank_account_id of its own, and this is a single-building system with one primary
+                    // account in practice.
+                    $bank ??= BankAccount::first();
+                    if (! $bank) {
+                        throw ValidationException::withMessages(['bank' => 'কোনো ব্যাংক হিসাব সেটআপ করা নেই।']);
+                    }
+                    $this->accounting->postBankTransaction($bank, $base + ['debit' => $part]);
+                }
             }
 
             $assetAccount = ChartOfAccount::where('code', $payment->method === 'CASH' ? '1200' : '1100')->firstOrFail();
-            $lines = $this->creditLinesFor($payment);
-
             $this->accounting->postJournal(
                 array_merge(
                     [['account_id' => $assetAccount->id, 'debit' => $payment->amount]],

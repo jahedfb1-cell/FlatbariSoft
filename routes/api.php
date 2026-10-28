@@ -288,3 +288,21 @@ Route::prefix('contributions')->middleware('auth:sanctum')->group(function () {
 });
 Route::get('/me/contributions', [\App\Http\Controllers\Api\MyContributionController::class, 'index'])->middleware('auth:sanctum');
 Route::get('/me/contributions/pdf', [\App\Http\Controllers\Api\MyContributionController::class, 'pdf'])->middleware('auth:sanctum');
+
+// Monthly fund statements (receipts & payments per fund) and the treasury entries behind them.
+// Reading needs accounting.view; making an entry (opening balance, bank, loans) needs treasury.manage.
+Route::prefix('treasury')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\TreasuryController::class;
+    Route::get('/statement', [$c, 'statement'])->middleware('permission:accounting.view');
+    Route::get('/statement/pdf', [$c, 'pdf'])->middleware('permission:accounting.view');
+    Route::get('/statement/excel', [$c, 'excel'])->middleware('permission:accounting.view');
+    Route::get('/summary', [$c, 'summary'])->middleware('permission:accounting.view');
+    Route::get('/entries', [$c, 'entries'])->middleware('permission:accounting.view');
+    Route::post('/opening-balance', [$c, 'openingBalance'])->middleware('permission:treasury.manage');
+    Route::post('/bank-deposit', [$c, 'deposit'])->middleware('permission:treasury.manage');
+    Route::post('/bank-withdrawal', [$c, 'withdraw'])->middleware('permission:treasury.manage');
+    Route::post('/bank-profit', [$c, 'profit'])->middleware('permission:treasury.manage');
+    Route::post('/loans', [$c, 'lend'])->middleware('permission:treasury.manage');
+    Route::post('/loan-repayments', [$c, 'repay'])->middleware('permission:treasury.manage');
+    Route::post('/entries/{entry}/reverse', [$c, 'reverse'])->middleware('permission:treasury.manage');
+});
