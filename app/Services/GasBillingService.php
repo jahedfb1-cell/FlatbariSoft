@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Bill;
+use App\Models\Flat;
 use App\Models\GasConsumer;
 use App\Models\GasMeterReading;
 use App\Models\GasPurchase;
@@ -12,6 +13,24 @@ use Illuminate\Validation\ValidationException;
 
 class GasBillingService
 {
+    /**
+     * Every flat is a gas consumer. Flats are added without anyone registering a meter for them, so the consumer
+     * list calls this first: any flat without a consumer gets one (named after the flat, meter number copied from
+     * the flat). Idempotent; existing consumers are never touched, and the project office stays internal.
+     */
+    public function syncFlatConsumers(): void
+    {
+        $have = GasConsumer::whereNotNull('flat_id')->pluck('flat_id')->all();
+
+        Flat::whereNotIn('id', $have)->orderBy('id')->get()->each(fn (Flat $flat) => GasConsumer::create([
+            'flat_id' => $flat->id,
+            'name' => 'Flat '.$flat->flat_no,
+            'meter_no' => $flat->gas_meter_no,
+            'is_internal' => false,
+            'active' => true,
+        ]));
+    }
+
     /**
      * Confirmed rule #4: gas bill = (current - previous) × rate. Rejects a
      * current reading below the previous one outright — a meter cannot run
