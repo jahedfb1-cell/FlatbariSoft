@@ -21,6 +21,7 @@ export interface DashboardOverview {
     total_closing: string;
     funds: { code: string; name_bn: string; name_en: string; closing: string; cash: string; bank: string; receipts: string; payments: string }[];
   };
+  tenant_requests_pending?: number;
   approvals?: { payments: number | null; expenses: number | null };
   recent_payments?: { id: number; flat_id: number; flat_no: string | null; amount: string; date: string; status: 'PENDING' | 'APPROVED' }[];
   gas?: GasSummary;

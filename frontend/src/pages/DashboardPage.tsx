@@ -9,6 +9,7 @@ import type { DashboardOverview } from '../api/dashboard';
 // `perm` is the permission that opens the screen (the API enforces it too); super_admin sees every tile.
 const navItems: { to: string; key: any; perm: string; icon: string }[] = [
   { to: '/flats', key: 'home.flatManagement', perm: 'flat.view', icon: '🏢' },
+  { to: '/tenant-requests', key: 'nav.tenantRequests', perm: 'tenant.request|tenant.manage', icon: '🔑' },
   { to: '/billing', key: 'nav.billing', perm: 'billing.view', icon: '🧾' },
   { to: '/payments', key: 'nav.payments', perm: 'payment.view', icon: '💳' },
   { to: '/gas', key: 'nav.gas', perm: 'gas.view', icon: '🔥' },
@@ -52,7 +53,7 @@ export default function DashboardPage() {
   const [failed, setFailed] = useState(false);
 
   const can = (p: string) => !!user && (user.roles.includes('super_admin') || user.permissions.includes(p));
-  const visibleItems = navItems.filter((item) => can(item.perm));
+  const visibleItems = navItems.filter((item) => item.perm.split('|').some(can));
   // a committee member is usually also a flat owner: let them hop to their own flat's portal
   const isResident = !!user && user.roles.some((r) => r === 'flat_owner' || r === 'tenant');
 
@@ -79,6 +80,7 @@ export default function DashboardPage() {
   const attention: { icon: string; label: string; count: number; to: string; tone: 'due' | 'warn' }[] = [];
   if (data?.approvals?.payments) attention.push({ icon: '💳', label: t('dash.pendingPayments'), count: data.approvals.payments, to: '/payments', tone: 'warn' });
   if (data?.approvals?.expenses) attention.push({ icon: '💸', label: t('dash.pendingExpenses'), count: data.approvals.expenses, to: '/expenses', tone: 'warn' });
+  if (data?.tenant_requests_pending) attention.push({ icon: '🏠', label: t('dash.tenantRequests'), count: data.tenant_requests_pending, to: '/tenant-requests', tone: 'warn' });
   if (data?.hall?.pending_requests) attention.push({ icon: '🎉', label: t('dash.hallRequests'), count: data.hall.pending_requests, to: '/hall', tone: 'warn' });
   if (data?.complaints?.open) attention.push({ icon: '📣', label: t('dash.openComplaints'), count: data.complaints.open, to: '/complaints', tone: data.complaints.urgent ? 'due' : 'warn' });
 

@@ -18,6 +18,7 @@ use Spatie\Permission\Models\Role;
  *  visitor.manage   write visitors in and out (the gatekeeper)
  *  budget.view      see the budget against actual spending
  *  budget.manage    set the yearly budget
+ *  tenant.request   tell the office a flat has been rented (any flat); an admin accepts it
  */
 class OperationsPermissionSeeder extends Seeder
 {
@@ -29,6 +30,7 @@ class OperationsPermissionSeeder extends Seeder
         'visitor.manage' => ['admin', 'manager'],
         'budget.view' => ['admin', 'manager', 'committee_president', 'committee_secretary', 'committee_treasurer', 'committee_member'],
         'budget.manage' => ['admin', 'committee_president', 'committee_treasurer'],
+        'tenant.request' => ['admin', 'manager'],
     ];
 
     public function run(): void

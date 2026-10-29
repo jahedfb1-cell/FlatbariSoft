@@ -50,6 +50,9 @@ class DashboardService
                 'expenses' => $can('expense.view') ? Expense::where('status', 'PENDING')->count() : null,
             ];
         }
+        if ($can('tenant.manage') && \Illuminate\Support\Facades\Schema::hasTable('tenant_requests')) {
+            $out['tenant_requests_pending'] = \App\Models\TenantRequest::where('status', 'PENDING')->count();
+        }
         if ($can('payment.view')) {
             $out['recent_payments'] = Payment::with('flat')->latest('payment_date')->latest('id')->limit(5)->get()
                 ->map(fn ($p) => [
