@@ -951,6 +951,8 @@ export const translations = {
     'review.notePlaceholder': 'যেমন: বিল ও চুক্তি মিলিয়ে দেখেছি, টাকা ঠিক আছে।',
     'review.approveBtn': 'অনুমোদন দিন',
     'nav.treasury': 'ট্রেজারি (ব্যাংক ও তহবিল লেনদেন)',
+    'stmt.combined': 'সার্ভিস চার্জ + গ্যাস — একসাথে PDF',
+    'stmt.combinedAll': 'চারটি তহবিল — একসাথে PDF',
   },
   en: {
     appName: 'Green Valley BMS',
@@ -1883,6 +1885,8 @@ export const translations = {
     'review.notePlaceholder': 'e.g. Checked the bill against the contract; the amount is correct.',
     'review.approveBtn': 'Approve',
     'nav.treasury': 'Treasury',
+    'stmt.combined': 'Service charge + Gas - one PDF',
+    'stmt.combinedAll': 'All four funds - one PDF',
   },
 } as const;
 

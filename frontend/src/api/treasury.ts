@@ -77,6 +77,9 @@ export const getStatement = (fund: FundCode, year: number, month: number) =>
 export const getSummary = (year: number, month: number) => client.get<Summary>('/treasury/summary', { params: { year, month } }).then((r) => r.data);
 export const printStatement = (fund: FundCode, year: number, month: number) =>
   openPdf('/treasury/statement/pdf', { fund, year: String(year), month: String(month) }, `statement-${fund}-${year}-${month}.pdf`);
+/** Several funds in ONE document: an all-funds summary page, then each fund's full statement. */
+export const printCombinedStatement = (funds: FundCode[], year: number, month: number) =>
+  openPdf('/treasury/statement/combined/pdf', { year: String(year), month: String(month), ...Object.fromEntries(funds.map((f, i) => [`funds[${i}]`, f])) }, `statement-combined-${year}-${month}.pdf`);
 export const downloadStatementExcel = (fund: FundCode, year: number, month: number) =>
   downloadFile(`/treasury/statement/excel?fund=${fund}&year=${year}&month=${month}`, `statement-${fund}-${year}-${month}.xlsx`);
 

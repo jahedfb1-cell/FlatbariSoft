@@ -46,6 +46,18 @@ class TreasuryController extends Controller
             ->setPaper('a4', 'portrait')->stream("statement-{$report['fund']['code']}-{$v['year']}-{$v['month']}.pdf");
     }
 
+    /** Several funds in ONE document: an all-funds summary page, then each fund's full statement. Default: service charge + gas. */
+    public function combinedPdf(FundStatementRequest $request)
+    {
+        $v = $request->validated();
+        $order = ['OPERATING', 'GAS', 'CAPITAL', 'SINKING'];
+        $funds = array_values(array_intersect($order, $v['funds'] ?? ['OPERATING', 'GAS']));
+        $reports = array_map(fn ($f) => $this->statements->statement($f, (int) $v['year'], (int) $v['month']), $funds);
+
+        return Pdf::loadView('reports.fund-statement-combined', ['building' => Building::first(), 'reports' => $reports])
+            ->setPaper('a4', 'portrait')->stream("statement-combined-{$v['year']}-{$v['month']}.pdf");
+    }
+
     public function excel(FundStatementRequest $request, ReportExportService $exports)
     {
         $v = $request->validated();

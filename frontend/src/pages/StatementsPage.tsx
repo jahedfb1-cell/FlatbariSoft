@@ -89,6 +89,12 @@ export default function StatementsPage() {
             {t('stmt.allFunds')}
           </button>
           <div className="ml-auto flex flex-wrap gap-2">
+            <button className={btnGhost} disabled={busy !== null} onClick={() => run('combo', () => api.printCombinedStatement(['OPERATING', 'GAS'], year, month))}>
+              {t('stmt.combined')}
+            </button>
+            <button className={btnGhost} disabled={busy !== null} onClick={() => run('combo4', () => api.printCombinedStatement(['OPERATING', 'GAS', 'CAPITAL', 'SINKING'], year, month))}>
+              {t('stmt.combinedAll')}
+            </button>
             {fund !== 'ALL' && (
               <>
                 <button className={btnGhost} disabled={busy !== null} onClick={() => run('pdf', () => api.printStatement(fund, year, month))}>

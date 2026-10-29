@@ -308,6 +308,7 @@ Route::prefix('treasury')->middleware('auth:sanctum')->group(function () {
     $c = \App\Http\Controllers\Api\TreasuryController::class;
     Route::get('/statement', [$c, 'statement'])->middleware('permission:accounting.view');
     Route::get('/statement/pdf', [$c, 'pdf'])->middleware('permission:accounting.view');
+    Route::get('/statement/combined/pdf', [$c, 'combinedPdf'])->middleware('permission:accounting.view');
     Route::get('/statement/excel', [$c, 'excel'])->middleware('permission:accounting.view');
     Route::get('/summary', [$c, 'summary'])->middleware('permission:accounting.view');
     Route::get('/entries', [$c, 'entries'])->middleware('permission:accounting.view');
