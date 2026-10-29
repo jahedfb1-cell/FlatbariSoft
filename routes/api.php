@@ -327,3 +327,31 @@ foreach (['gas' => 'gas.view', 'materials' => 'expense.view'] as $supplierKind =
 
 // Home screen: one call, each block shown only to people allowed to open that part of the system.
 Route::get('/dashboard/overview', [\App\Http\Controllers\Api\DashboardController::class, 'overview'])->middleware('auth:sanctum');
+
+// Office settings (late fee, due day, reminders, SMS switch) and the SMS log.
+Route::prefix('settings')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\SettingsController::class, 'show'])->middleware('permission:setting.manage');
+    Route::put('/', [\App\Http\Controllers\Api\SettingsController::class, 'update'])->middleware('permission:setting.manage');
+    Route::get('/sms-logs', [\App\Http\Controllers\Api\SettingsController::class, 'smsLogs'])->middleware('permission:setting.manage');
+});
+
+Route::get('/audit-logs', [\App\Http\Controllers\Api\AuditLogController::class, 'index'])->middleware(['auth:sanctum', 'permission:audit.view']);
+
+// Yearly budget against actual spending.
+Route::get('/budget', [\App\Http\Controllers\Api\BudgetController::class, 'show'])->middleware(['auth:sanctum', 'permission:budget.view']);
+Route::put('/budget', [\App\Http\Controllers\Api\BudgetController::class, 'save'])->middleware(['auth:sanctum', 'permission:budget.manage']);
+
+// The gate book.
+Route::prefix('visitors')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\VisitorController::class, 'index'])->middleware('permission:visitor.view');
+    Route::post('/', [\App\Http\Controllers\Api\VisitorController::class, 'store'])->middleware('permission:visitor.manage');
+    Route::post('/{visitor}/checkout', [\App\Http\Controllers\Api\VisitorController::class, 'checkout'])->middleware('permission:visitor.manage');
+});
+Route::get('/me/visitors', [\App\Http\Controllers\Api\VisitorController::class, 'mine'])->middleware('auth:sanctum');
+
+Route::get('/backup/download', [\App\Http\Controllers\Api\BackupController::class, 'download'])->middleware(['auth:sanctum', 'permission:backup.manage']);
+
+// A resident's own payments (any logged-in resident; each action is scoped to the flats they hold).
+Route::get('/me/payments', [\App\Http\Controllers\Api\MyPaymentController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/me/payments', [\App\Http\Controllers\Api\MyPaymentController::class, 'store'])->middleware('auth:sanctum');
+Route::get('/me/payments/{payment}/receipt', [\App\Http\Controllers\Api\MyPaymentController::class, 'receipt'])->middleware('auth:sanctum');

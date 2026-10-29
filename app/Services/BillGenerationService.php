@@ -35,7 +35,7 @@ class BillGenerationService
         }
 
         return DB::transaction(function () use ($period, $year, $month, $generatedBy) {
-            $dueDate = Carbon::create($year, $month, 10);
+            $dueDate = Carbon::create($year, $month, app(SettingsService::class)->int('bill_due_day'));
             $serviceChargeHead = CollectionHead::where('code', 'SERVICE_CHARGE')->firstOrFail();
             $currentKey = $year * 100 + $month;
 

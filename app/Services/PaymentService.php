@@ -165,26 +165,37 @@ class PaymentService
             return [['account_id' => ChartOfAccount::where('code', '4900')->firstOrFail()->id, 'credit' => $amount]];
         }
 
-        $serviceBucket = bcadd((string) $bill->service_charge, (string) $bill->previous_due, 4);
-        $gasBucket = (string) $bill->gas_amount;
-        $total = bcadd($serviceBucket, $gasBucket, 4);
+        // every component of the bill has its own income account; a payment is credited across them in the
+        // same proportion as the bill is made up (service charge + previous due, gas, late fee, other charges)
+        $buckets = [
+            '4100' => bcadd((string) $bill->service_charge, (string) $bill->previous_due, 4),
+            '4200' => (string) $bill->gas_amount,
+            '4300' => (string) $bill->late_fee,
+            '4900' => (string) $bill->other_charges,
+        ];
+        $total = array_reduce($buckets, fn ($c, $v) => bcadd($c, $v, 4), '0');
 
-        $serviceIncome = ChartOfAccount::where('code', '4100')->firstOrFail();
-        $gasIncome = ChartOfAccount::where('code', '4200')->firstOrFail();
-
+        $accounts = ChartOfAccount::whereIn('code', array_keys($buckets))->pluck('id', 'code');
         if (bccomp($total, '0', 4) <= 0) {
-            return [['account_id' => $serviceIncome->id, 'credit' => $amount]];
+            return [['account_id' => $accounts['4100'], 'credit' => $amount]];
         }
-
-        $gasShare = bcdiv(bcmul($amount, $gasBucket, 10), $total, 4);
-        $serviceShare = bcsub($amount, $gasShare, 4);
 
         $lines = [];
-        if (bccomp($serviceShare, '0', 4) > 0) {
-            $lines[] = ['account_id' => $serviceIncome->id, 'credit' => $serviceShare];
+        $assigned = '0';
+        foreach (['4200', '4300', '4900'] as $code) {
+            if (bccomp($buckets[$code], '0', 4) <= 0) {
+                continue;
+            }
+            $share = bcdiv(bcmul($amount, $buckets[$code], 10), $total, 4);
+            if (bccomp($share, '0', 4) > 0) {
+                $lines[] = ['account_id' => $accounts[$code], 'credit' => $share];
+                $assigned = bcadd($assigned, $share, 4);
+            }
         }
-        if (bccomp($gasShare, '0', 4) > 0) {
-            $lines[] = ['account_id' => $gasIncome->id, 'credit' => $gasShare];
+        // service charge takes the rest, so the lines always add up to the payment exactly
+        $serviceShare = bcsub($amount, $assigned, 4);
+        if (bccomp($serviceShare, '0', 4) > 0) {
+            array_unshift($lines, ['account_id' => $accounts['4100'], 'credit' => $serviceShare]);
         }
 
         return $lines;
