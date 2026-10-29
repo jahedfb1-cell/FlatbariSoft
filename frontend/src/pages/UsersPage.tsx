@@ -154,7 +154,9 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
         <table className="w-full text-left text-sm">
           <thead className="text-navy-700">
             <tr>
-              <th className="py-2 pr-3">{t('users.name')}</th>
+              <th className="py-2 pr-3">{t('users.no')}</th>
+              <th className="pr-3">{t('users.flat')}</th>
+              <th className="pr-3">{t('users.name')}</th>
               <th className="pr-3">{t('users.mobile')}</th>
               <th className="pr-3">{t('users.roles')}</th>
               <th className="pr-3">{t('users.status')}</th>
@@ -163,8 +165,12 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {users.map((u, i) => (
               <tr key={u.id} className="border-t border-brand-100">
+                <td className="py-2 pr-3 text-navy-700">{i + 1}</td>
+                <td className="pr-3 font-semibold text-brand-700">
+                  {u.flats.length ? u.flats.map((f) => f.flat_no).join(', ') : '—'}
+                </td>
                 <td className="py-2 pr-3 font-medium">
                   {u.name ?? '—'}
                   {u.email && <span className="block text-xs font-normal text-navy-700">{u.email}</span>}

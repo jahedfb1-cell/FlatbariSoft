@@ -3,6 +3,7 @@ import client from './client';
 export interface ManagedUser {
   id: number;
   name: string | null;
+  flats: { flat_no: string; role: 'OWNER' | 'TENANT' }[];
   mobile: string;
   email: string | null;
   status: 'ACTIVE' | 'INACTIVE';

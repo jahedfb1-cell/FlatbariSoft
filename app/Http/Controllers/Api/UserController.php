@@ -17,7 +17,7 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        $users = User::with('person')
+        $users = User::with('person.flatParties.flat')
             ->when($request->filled('role'), fn ($q) => $q->role($request->role))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('q'), fn ($q) => $q->where(fn ($w) => $w
@@ -34,12 +34,12 @@ class UserController extends Controller
     {
         $user = $this->service->create($request->validated(), $request->user());
 
-        return (new ManagedUserResource($user->load('person')))->response()->setStatusCode(201);
+        return (new ManagedUserResource($user->load('person.flatParties.flat')))->response()->setStatusCode(201);
     }
 
     public function update(UpdateUserRequest $request, User $user)
     {
-        return new ManagedUserResource($this->service->update($user, $request->validated(), $request->user())->load('person'));
+        return new ManagedUserResource($this->service->update($user, $request->validated(), $request->user())->load('person.flatParties.flat'));
     }
 
     public function resetPassword(ResetUserPasswordRequest $request, User $user)
