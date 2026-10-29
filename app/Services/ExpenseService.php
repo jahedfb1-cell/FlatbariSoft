@@ -43,7 +43,7 @@ class ExpenseService
             && bccomp((string) $expense->amount, '100000', 4) >= 0
             && ! $expense->resolution_id) {
             throw ValidationException::withMessages([
-                'resolution_id' => '১,০০,০০০ টাকার বেশি Sinking Fund খরচের জন্য মিটিং রেজল্যুশন লিংক করা আবশ্যক।',
+                'resolution_id' => '১,০০,০০০ টাকার বেশি সঞ্চিত তহবিলের খরচের জন্য মিটিং রেজল্যুশন লিংক করা আবশ্যক।',
             ]);
         }
 
