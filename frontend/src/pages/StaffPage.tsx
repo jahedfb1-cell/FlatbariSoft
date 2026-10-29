@@ -31,7 +31,7 @@ export default function StaffPage() {
   return (
     <div className="min-h-screen bg-brand-50 px-4 py-8">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Link to="/" className="text-sm text-navy-700 hover:underline">
               ← {t('flats.home')}

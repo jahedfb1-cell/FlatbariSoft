@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import ResponsiveTables from './components/ResponsiveTables';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import FlatsPage from './pages/FlatsPage';
@@ -116,6 +117,7 @@ function App() {
     <BrowserRouter>
       <LanguageProvider>
         <AuthProvider>
+          <ResponsiveTables />
           <AppRoutes />
         </AuthProvider>
       </LanguageProvider>

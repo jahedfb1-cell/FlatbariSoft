@@ -149,7 +149,7 @@ export default function GasPage() {
   return (
     <div className="min-h-screen bg-brand-50 px-4 py-8">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Link to="/" className="text-sm text-navy-700 hover:underline">
               ← {t('nav.dashboard')}
@@ -183,7 +183,7 @@ export default function GasPage() {
           </div>
         )}
 
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-navy-900">{t('gas.purchasesTitle')}</h2>
           <Link to="/suppliers?kind=gas" className="ml-auto mr-2 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
             {t('suppliers.gas')}

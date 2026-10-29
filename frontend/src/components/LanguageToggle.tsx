@@ -6,7 +6,7 @@ export default function LanguageToggle() {
   return (
     <button
       onClick={toggle}
-      className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-medium text-navy-700 transition hover:bg-brand-100"
+      className="whitespace-nowrap rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-medium text-navy-700 transition hover:bg-brand-100"
       aria-label="Toggle language"
     >
       {lang === 'bn' ? 'বাং' : 'EN'} / {t('lang.toggleTo')}

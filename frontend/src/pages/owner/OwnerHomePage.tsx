@@ -19,7 +19,7 @@ export default function OwnerHomePage() {
   return (
     <div className="min-h-screen bg-brand-50 px-4 pb-20 pt-8">
       <div className="mx-auto max-w-md">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl font-semibold text-navy-900">{t('appName')}</h1>
           <div className="flex items-center gap-2">
             <LanguageToggle />

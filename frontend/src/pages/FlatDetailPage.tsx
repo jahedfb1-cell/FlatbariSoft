@@ -93,7 +93,7 @@ export default function FlatDetailPage() {
         </div>
 
         <div className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold text-navy-900">{t('flatDetail.owner')}</h2>
             <button
               onClick={() => setModal('owner')}
@@ -130,7 +130,7 @@ export default function FlatDetailPage() {
         </div>
 
         <div className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold text-navy-900">{t('flatDetail.tenant')}</h2>
             {(!flat.current_tenant || flat.current_tenant.length === 0) && (
               <button

@@ -45,3 +45,96 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ------------------------------------------------------------------
+ * Phones / WebView. Nothing may scroll sideways, nothing may be cut off.
+ * ----------------------------------------------------------------- */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+p,
+td,
+th,
+li,
+h1,
+h2,
+h3,
+label,
+button,
+a {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  /* 16px stops iOS/WebView from zooming the page when a field is focused */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+    max-width: 100%;
+  }
+
+  /* a table becomes one card per row; ResponsiveTables copies each heading onto its cell */
+  table:not(.no-stack):has(> thead) {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  table:not(.no-stack):has(> thead) thead {
+    display: none;
+  }
+  table:not(.no-stack):has(> thead) tbody,
+  table:not(.no-stack):has(> thead) tfoot {
+    display: block;
+    width: 100%;
+  }
+  table:not(.no-stack):has(> thead) tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border-top: 1px solid var(--color-brand-100);
+  }
+  table:not(.no-stack):has(> thead) tbody tr:first-child {
+    border-top: 0;
+  }
+  table:not(.no-stack):has(> thead) td {
+    display: block;
+    min-width: 0;
+    padding: 0.2rem 0 !important;
+    border: 0 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+  /* the first cell (the row's name) and action cells with no heading take the full width */
+  table:not(.no-stack):has(> thead) td:first-child,
+  table:not(.no-stack):has(> thead) td[data-label=''],
+  table:not(.no-stack):has(> thead) td[colspan] {
+    grid-column: 1 / -1;
+  }
+  table:not(.no-stack):has(> thead) td:empty {
+    display: none;
+  }
+  table:not(.no-stack):has(> thead) td[data-label]:not([data-label=''])::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    color: var(--color-navy-500);
+    opacity: 0.75;
+  }
+  /* the table's own scroll wrapper has nothing left to scroll */
+  .overflow-x-auto:has(> table:not(.no-stack):has(> thead)) {
+    overflow-x: visible;
+  }
+}
