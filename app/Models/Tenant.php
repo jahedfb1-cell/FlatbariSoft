@@ -21,6 +21,14 @@ class Tenant extends Model
         'monthly_rent',
         'security_deposit',
         'status',
+        'workplace',
+        'emergency_name',
+        'emergency_phone',
+        'previous_address',
+        'reference_name',
+        'reference_phone',
+        'other_info',
+        'kyc_submitted_at',
     ];
 
     protected function casts(): array
@@ -31,6 +39,7 @@ class Tenant extends Model
             'end_date' => 'date:Y-m-d',
             'monthly_rent' => 'decimal:4',
             'security_deposit' => 'decimal:4',
+            'kyc_submitted_at' => 'datetime',
         ];
     }
 
@@ -42,6 +51,11 @@ class Tenant extends Model
     public function person(): BelongsTo
     {
         return $this->belongsTo(Person::class);
+    }
+
+    public function familyMembers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TenantFamilyMember::class);
     }
 
     public function documents(): \Illuminate\Database\Eloquent\Relations\HasMany

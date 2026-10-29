@@ -66,6 +66,8 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
 
     Route::post('/flats/{flat}/tenants', [TenantController::class, 'store'])->middleware('permission:tenant.manage');
     Route::put('/tenants/{tenant}', [TenantController::class, 'update'])->middleware('permission:tenant.manage');
+    Route::get('/tenants/{tenant}/kyc', [\App\Http\Controllers\Api\TenantKycController::class, 'show'])->middleware('permission:tenant.manage');
+    Route::put('/tenants/{tenant}/kyc', [\App\Http\Controllers\Api\TenantKycController::class, 'update'])->middleware('permission:tenant.manage');
     Route::post('/tenants/{tenant}/vacate', [TenantController::class, 'vacate'])->middleware('permission:tenant.manage');
 
     Route::get('/persons', [PersonController::class, 'index'])->middleware('permission:person.view');
@@ -356,3 +358,7 @@ Route::get('/backup/download', [\App\Http\Controllers\Api\BackupController::clas
 Route::get('/me/payments', [\App\Http\Controllers\Api\MyPaymentController::class, 'index'])->middleware('auth:sanctum');
 Route::post('/me/payments', [\App\Http\Controllers\Api\MyPaymentController::class, 'store'])->middleware('auth:sanctum');
 Route::get('/me/payments/{payment}/receipt', [\App\Http\Controllers\Api\MyPaymentController::class, 'receipt'])->middleware('auth:sanctum');
+
+// A tenant's own KYC form (the tenant of the flat; scoped to the logged-in person's active tenancy).
+Route::get('/me/kyc', [\App\Http\Controllers\Api\TenantKycController::class, 'showMine'])->middleware('auth:sanctum');
+Route::put('/me/kyc', [\App\Http\Controllers\Api\TenantKycController::class, 'updateMine'])->middleware('auth:sanctum');
