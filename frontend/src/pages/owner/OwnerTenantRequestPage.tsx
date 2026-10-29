@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import LanguageToggle from '../../components/LanguageToggle';
 import OwnerNav from '../../components/OwnerNav';
+import TenantVacatePanel from '../../components/TenantVacatePanel';
 import TenantRequestPanel from '../../components/TenantRequestPanel';
 import * as myApi from '../../api/my';
 
@@ -28,6 +29,9 @@ export default function OwnerTenantRequestPage() {
           <LanguageToggle />
         </div>
         <TenantRequestPanel flats={flats} />
+        <div className="mt-8">
+          <TenantVacatePanel />
+        </div>
       </div>
       <OwnerNav />
     </div>

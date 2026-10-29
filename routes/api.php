@@ -377,3 +377,13 @@ Route::prefix('tenant-requests')->middleware('auth:sanctum')->group(function () 
     Route::post('/{tenantRequest}/reject', [$c, 'reject'])->middleware('permission:tenant.manage');
     Route::post('/{tenantRequest}/cancel', [$c, 'cancel']);
 });
+
+// "My tenant is leaving" - sent by the owner or the manager, accepted or rejected by an admin.
+Route::prefix('tenant-vacate-requests')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\TenantVacateRequestController::class;
+    Route::get('/', [$c, 'index']);
+    Route::post('/', [$c, 'store']);
+    Route::post('/{vacateRequest}/approve', [$c, 'approve'])->middleware('permission:tenant.manage');
+    Route::post('/{vacateRequest}/reject', [$c, 'reject'])->middleware('permission:tenant.manage');
+    Route::post('/{vacateRequest}/cancel', [$c, 'cancel']);
+});

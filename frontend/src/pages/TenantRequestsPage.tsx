@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import TenantVacatePanel from '../components/TenantVacatePanel';
 import TenantRequestPanel from '../components/TenantRequestPanel';
 import { listFlats } from '../api/flats';
 
@@ -31,6 +32,9 @@ export default function TenantRequestsPage() {
           <LanguageToggle />
         </div>
         <TenantRequestPanel flats={flats} />
+        <div className="mt-8">
+          <TenantVacatePanel />
+        </div>
       </div>
     </div>
   );

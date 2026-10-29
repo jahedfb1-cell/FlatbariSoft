@@ -51,7 +51,9 @@ class DashboardService
             ];
         }
         if ($can('tenant.manage') && \Illuminate\Support\Facades\Schema::hasTable('tenant_requests')) {
-            $out['tenant_requests_pending'] = \App\Models\TenantRequest::where('status', 'PENDING')->count();
+            $out['tenant_requests_pending'] = \App\Models\TenantRequest::where('status', 'PENDING')->count()
+                // requests to end a tenancy wait for the same admin, so they are counted in the same chip
+                + (\Illuminate\Support\Facades\Schema::hasTable('tenant_vacate_requests') ? \App\Models\TenantVacateRequest::where('status', 'PENDING')->count() : 0);
         }
         if ($can('payment.view')) {
             $out['recent_payments'] = Payment::with('flat')->latest('payment_date')->latest('id')->limit(5)->get()
