@@ -35,6 +35,9 @@ class SendSmsJob implements ShouldQueue
                 'cost' => $result['cost'],
                 'sent_at' => now(),
             ]);
+        } elseif ($result['gateway'] !== 'null') {
+            // a real gateway was tried and refused: record it so the office can see and retry
+            $log->update(['status' => 'FAILED', 'gateway' => $result['gateway']]);
         }
     }
 }

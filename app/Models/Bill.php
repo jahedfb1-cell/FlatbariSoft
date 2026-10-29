@@ -10,7 +10,7 @@ class Bill extends Model
 {
     protected $fillable = [
         'billing_period_id', 'flat_id', 'service_charge', 'gas_amount', 'other_charges',
-        'late_fee', 'previous_due', 'total_payable', 'paid_amount', 'due_date', 'status',
+        'late_fee', 'previous_due', 'total_payable', 'paid_amount', 'due_date', 'status', 'reminded_at',
     ];
 
     protected function casts(): array

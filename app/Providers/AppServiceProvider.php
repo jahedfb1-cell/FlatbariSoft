@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Phase 3.1 driver pattern: swap this binding for a real gateway
         // class later — SmsService and every caller never change.
-        $this->app->bind(SmsGatewayInterface::class, NullSmsGateway::class);
+        $this->app->bind(SmsGatewayInterface::class, fn () => config('sms.driver') === 'http' ? new \App\Services\Sms\HttpSmsGateway() : new NullSmsGateway());
     }
 
     /**
@@ -32,6 +32,16 @@ class AppServiceProvider extends ServiceProvider
         // (storage/app/* is not tracked) - create them on demand.
         File::ensureDirectoryExists((string) config('dompdf.options.font_cache'));
         File::ensureDirectoryExists((string) config('dompdf.options.temp_dir'));
+
+        // The audit trail: every create / change / delete of the records that matter is written to audit_logs.
+        foreach ([
+            'Payment', 'Expense', 'Bill', 'Flat', 'User', 'Person', 'Tenant', 'Staff', 'SalaryPayment', 'Contribution',
+            'FlatContributionTarget', 'TreasuryEntry', 'GasPurchase', 'ConstructionMaterialPurchase', 'Meeting', 'Resolution',
+            'Complaint', 'Notice', 'HallBooking', 'HallBookingPayment', 'ParkingCharge', 'ParkingPayment', 'ConstructionDue',
+            'Asset', 'BankAccount', 'AppSetting',
+        ] as $audited) {
+            ('App\\Models\\'.$audited)::observe(\App\Observers\AuditObserver::class);
+        }
 
         // Every API Resource returns its fields at the top level, never
         // wrapped in a "data" key — consistent whether a resource is
