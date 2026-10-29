@@ -1039,7 +1039,7 @@ export const translations = {
     'kpi.collection': "This month's collection",
     'kpi.outstandingDue': 'Total outstanding',
     'kpi.expense': "This month's expense",
-    'kpi.sinkingFund': 'Sinking Fund',
+    'kpi.sinkingFund': 'Reserve Fund',
     'kpi.gasConsumers': 'Gas consumers',
 
     'common.year': 'Year',
@@ -1457,7 +1457,7 @@ export const translations = {
     'stmt.fund.OPERATING': 'Service charge',
     'stmt.fund.GAS': 'LPG gas',
     'stmt.fund.CAPITAL': 'Project',
-    'stmt.fund.SINKING': 'Sinking fund',
+    'stmt.fund.SINKING': 'Reserve Fund',
     'stmt.receipts': 'Receipts',
     'stmt.payments': 'Payments',
     'stmt.opening': 'Opening balance',

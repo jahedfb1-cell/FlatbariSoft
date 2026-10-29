@@ -35,7 +35,7 @@ class ChartOfAccountsSeeder extends Seeder
             // Funds
             ['code' => '3100', 'name_bn' => 'পরিচালন তহবিল', 'name_en' => 'Operating Fund', 'account_type' => 'FUND', 'parent' => '3000'],
             ['code' => '3200', 'name_bn' => 'মূলধন তহবিল', 'name_en' => 'Capital Fund', 'account_type' => 'FUND', 'parent' => '3000'],
-            ['code' => '3300', 'name_bn' => 'সঞ্চিত তহবিল', 'name_en' => 'Sinking Fund', 'account_type' => 'FUND', 'parent' => '3000'],
+            ['code' => '3300', 'name_bn' => 'সঞ্চিত তহবিল', 'name_en' => 'Reserve Fund', 'account_type' => 'FUND', 'parent' => '3000'],
 
             // Income
             ['code' => '4100', 'name_bn' => 'সার্ভিস চার্জ আয়', 'name_en' => 'Service Charge Income', 'account_type' => 'INCOME', 'parent' => '4000'],
