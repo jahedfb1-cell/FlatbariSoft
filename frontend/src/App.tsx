@@ -1,6 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import SettingsPage from './pages/SettingsPage';
+import AuditLogsPage from './pages/AuditLogsPage';
+import VisitorsPage from './pages/VisitorsPage';
+import BudgetPage from './pages/BudgetPage';
+import OwnerPaymentsPage from './pages/owner/OwnerPaymentsPage';
+import OwnerVisitorsPage from './pages/owner/OwnerVisitorsPage';
 import ResponsiveTables from './components/ResponsiveTables';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -83,6 +89,10 @@ function AppRoutes() {
       <Route path="/gas" element={<GasPage />} />
       <Route path="/gas/ledger" element={<GasLedgerPage />} />
       <Route path="/suppliers" element={<SuppliersPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/audit-logs" element={<AuditLogsPage />} />
+      <Route path="/visitors" element={<VisitorsPage />} />
+      <Route path="/budget" element={<BudgetPage />} />
       <Route path="/payments" element={<PaymentsPage />} />
       <Route path="/expenses" element={<ExpensesPage />} />
       <Route path="/dues" element={<DuesPage />} />
@@ -107,6 +117,8 @@ function AppRoutes() {
       <Route path="/owner/documents" element={<OwnerDocumentsPage />} />
       <Route path="/owner/hall" element={<OwnerHallPage />} />
       <Route path="/owner/parking" element={<OwnerParkingPage />} />
+      <Route path="/owner/payments" element={<OwnerPaymentsPage />} />
+      <Route path="/owner/visitors" element={<OwnerVisitorsPage />} />
       <Route path="/owner/contributions" element={<OwnerContributionsPage />} />
     </Routes>
   );

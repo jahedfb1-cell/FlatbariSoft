@@ -27,6 +27,10 @@ const navItems: { to: string; key: any; perm: string; icon: string }[] = [
   { to: '/meetings', key: 'nav.meetings', perm: 'meeting.view', icon: '🗓️' },
   { to: '/complaints', key: 'nav.complaints', perm: 'complaint.view', icon: '📣' },
   { to: '/notices', key: 'nav.notices', perm: 'notice.view', icon: '📌' },
+  { to: '/visitors', key: 'nav.visitors', perm: 'visitor.view', icon: '🚪' },
+  { to: '/budget', key: 'nav.budget', perm: 'budget.view', icon: '🎯' },
+  { to: '/audit-logs', key: 'nav.audit', perm: 'audit.view', icon: '🔍' },
+  { to: '/settings', key: 'nav.settings', perm: 'setting.manage', icon: '⚙️' },
   { to: '/users', key: 'nav.users', perm: 'user.view', icon: '🔑' },
 ];
 

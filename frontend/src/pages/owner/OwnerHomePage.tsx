@@ -37,6 +37,12 @@ export default function OwnerHomePage() {
         <Link to="/owner/contributions" className="mt-4 block rounded-xl border border-brand-200 bg-white p-4 text-center font-medium text-navy-900 shadow-sm hover:bg-brand-100">
           🏗 {t('owner.contrib')}
         </Link>
+        <Link to="/owner/payments" className="mt-3 block rounded-xl border border-brand-200 bg-white p-4 text-center font-medium text-navy-900 shadow-sm hover:bg-brand-100">
+          💳 {t('owner.payments')}
+        </Link>
+        <Link to="/owner/visitors" className="mt-3 block rounded-xl border border-brand-200 bg-white p-4 text-center font-medium text-navy-900 shadow-sm hover:bg-brand-100">
+          🚪 {t('owner.visitors')}
+        </Link>
         <Link to="/owner/parking" className="mt-3 block rounded-xl border border-brand-200 bg-white p-4 text-center font-medium text-navy-900 shadow-sm hover:bg-brand-100">
           🚗 {t('owner.parking')}
         </Link>
