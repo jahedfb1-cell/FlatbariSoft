@@ -107,6 +107,10 @@ Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
 Route::prefix('expenses')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [ExpenseController::class, 'index'])->middleware('permission:expense.view');
     Route::post('/', [ExpenseController::class, 'store'])->middleware('permission:expense.create');
+    Route::get('/attachments/{attachment}', [ExpenseController::class, 'file'])->middleware('permission:expense.view');
+    Route::delete('/attachments/{attachment}', [ExpenseController::class, 'removeFile'])->middleware('permission:expense.create');
+    Route::get('/{expense}', [ExpenseController::class, 'show'])->middleware('permission:expense.view');
+    Route::post('/{expense}/attachments', [ExpenseController::class, 'attach'])->middleware('permission:expense.create');
     Route::post('/{expense}/approve', [ExpenseController::class, 'approve'])->middleware('permission:expense.approve');
 });
 
