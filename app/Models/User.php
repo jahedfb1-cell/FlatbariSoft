@@ -55,6 +55,12 @@ class User extends Authenticatable
         ];
     }
 
+    /** A name for screens and logs: the person's name, or the mobile number for a login with no person (office staff). */
+    public function displayName(): string
+    {
+        return $this->person?->name_bn ?: $this->person?->name_en ?: (string) $this->mobile;
+    }
+
     public function person(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Person::class);
