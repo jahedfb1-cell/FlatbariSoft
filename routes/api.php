@@ -367,3 +367,13 @@ Route::get('/me/payments/{payment}/receipt', [\App\Http\Controllers\Api\MyPaymen
 // A tenant's own KYC form (the tenant of the flat; scoped to the logged-in person's active tenancy).
 Route::get('/me/kyc', [\App\Http\Controllers\Api\TenantKycController::class, 'showMine'])->middleware('auth:sanctum');
 Route::put('/me/kyc', [\App\Http\Controllers\Api\TenantKycController::class, 'updateMine'])->middleware('auth:sanctum');
+
+// "This person is renting my flat" - sent by the owner or the manager, accepted or rejected by an admin.
+Route::prefix('tenant-requests')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\TenantRequestController::class;
+    Route::get('/', [$c, 'index']);
+    Route::post('/', [$c, 'store']);
+    Route::post('/{tenantRequest}/approve', [$c, 'approve'])->middleware('permission:tenant.manage');
+    Route::post('/{tenantRequest}/reject', [$c, 'reject'])->middleware('permission:tenant.manage');
+    Route::post('/{tenantRequest}/cancel', [$c, 'cancel']);
+});
