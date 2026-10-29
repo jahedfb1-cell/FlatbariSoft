@@ -182,7 +182,7 @@ export const translations = {
     'kpi.collection': 'এই মাসের আদায়',
     'kpi.outstandingDue': 'মোট বকেয়া',
     'kpi.expense': 'এই মাসের খরচ',
-    'kpi.sinkingFund': 'সংরক্ষিত তহবিল',
+    'kpi.sinkingFund': 'সঞ্চিত তহবিল',
     'kpi.gasConsumers': 'গ্যাস কনজিউমার',
 
     'common.year': 'বছর',
@@ -603,7 +603,7 @@ export const translations = {
     'stmt.fund.OPERATING': 'সার্ভিস চার্জ',
     'stmt.fund.GAS': 'এলপিজি গ্যাস',
     'stmt.fund.CAPITAL': 'প্রজেক্ট',
-    'stmt.fund.SINKING': 'সিঙ্কিং ফান্ড',
+    'stmt.fund.SINKING': 'সঞ্চিত তহবিল',
     'stmt.receipts': 'জমা',
     'stmt.payments': 'খরচ',
     'stmt.opening': 'শুরুর ব্যালেন্স',
