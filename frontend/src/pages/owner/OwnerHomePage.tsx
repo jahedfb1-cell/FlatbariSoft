@@ -5,15 +5,19 @@ import { Link } from 'react-router-dom';
 import LanguageToggle from '../../components/LanguageToggle';
 import OwnerNav from '../../components/OwnerNav';
 import * as myApi from '../../api/my';
+import * as kycApi from '../../api/kyc';
+import type { TenantKyc } from '../../api/kyc';
 import type { Flat } from '../../api/flats';
 
 export default function OwnerHomePage() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const [flats, setFlats] = useState<Flat[]>([]);
+  const [kyc, setKyc] = useState<TenantKyc | null>(null);
 
   useEffect(() => {
     myApi.myFlats().then(setFlats);
+    kycApi.getMyKyc().then(setKyc).catch(() => undefined);
   }, []);
 
   return (
@@ -34,6 +38,11 @@ export default function OwnerHomePage() {
           <p className="text-sm text-navy-700">{user?.roles.join(', ')}</p>
         </div>
 
+        {kyc && (
+          <Link to="/owner/kyc" className={`mt-4 block rounded-xl border p-4 text-center font-medium shadow-sm ${kyc.complete ? 'border-brand-200 bg-white text-navy-900 hover:bg-brand-100' : 'border-status-partial/40 bg-amber-50 text-status-partial'}`}>
+            📋 {kyc.complete ? t('kyc.title') : t('kyc.fillNow')}
+          </Link>
+        )}
         <Link to="/owner/contributions" className="mt-4 block rounded-xl border border-brand-200 bg-white p-4 text-center font-medium text-navy-900 shadow-sm hover:bg-brand-100">
           🏗 {t('owner.contrib')}
         </Link>

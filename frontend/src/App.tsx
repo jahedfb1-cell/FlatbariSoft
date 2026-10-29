@@ -7,6 +7,8 @@ import VisitorsPage from './pages/VisitorsPage';
 import BudgetPage from './pages/BudgetPage';
 import OwnerPaymentsPage from './pages/owner/OwnerPaymentsPage';
 import OwnerVisitorsPage from './pages/owner/OwnerVisitorsPage';
+import TenantKycPage from './pages/TenantKycPage';
+import OwnerKycPage from './pages/owner/OwnerKycPage';
 import ResponsiveTables from './components/ResponsiveTables';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -83,6 +85,7 @@ function AppRoutes() {
       {/* Admin/Manager */}
       <Route path="/flats" element={<FlatsPage />} />
       <Route path="/flats/:id" element={<FlatDetailPage />} />
+      <Route path="/tenants/:id/kyc" element={<TenantKycPage />} />
       <Route path="/print/nid" element={<NidPrintPage />} />
       <Route path="/staff" element={<StaffPage />} />
       <Route path="/billing" element={<BillingPage />} />
@@ -118,6 +121,7 @@ function AppRoutes() {
       <Route path="/owner/hall" element={<OwnerHallPage />} />
       <Route path="/owner/parking" element={<OwnerParkingPage />} />
       <Route path="/owner/payments" element={<OwnerPaymentsPage />} />
+      <Route path="/owner/kyc" element={<OwnerKycPage />} />
       <Route path="/owner/visitors" element={<OwnerVisitorsPage />} />
       <Route path="/owner/contributions" element={<OwnerContributionsPage />} />
     </Routes>

@@ -154,6 +154,9 @@ export default function FlatDetailPage() {
                 </p>
               </div>
               <div className="flex shrink-0 gap-3">
+                <Link to={`/tenants/${tenant.id}/kyc`} className="text-brand-700 hover:underline">
+                  {t('kyc.link')}
+                </Link>
                 <button
                   onClick={() => setDocTarget({ kind: 'tenant', tenantId: tenant.id })}
                   className="text-brand-700 hover:underline"

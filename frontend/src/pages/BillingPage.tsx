@@ -120,9 +120,9 @@ export default function BillingPage() {
               <thead className="bg-brand-100 text-navy-900">
                 <tr>
                   <th className="px-3 py-3">{t('billing.colFlat')}</th>
+                  <th className="px-3 py-3 text-right">{t('billing.colPrevDue')}</th>
                   <th className="px-3 py-3 text-right">{t('billing.colService')}</th>
                   <th className="px-3 py-3 text-right">{t('billing.colGas')}</th>
-                  <th className="px-3 py-3 text-right">{t('billing.colPrevDue')}</th>
                   <th className="px-3 py-3 text-right">{t('billing.colTotal')}</th>
                   <th className="px-3 py-3 text-right">{t('billing.colPaid')}</th>
                   <th className="px-3 py-3 text-right">{t('billing.colDue')}</th>
@@ -136,9 +136,9 @@ export default function BillingPage() {
                     <td className="px-3 py-2">
                       <FlatLabel flatId={b.flat_id} flatNo={b.flat_no} owner={b.owner} tenant={b.tenant} />
                     </td>
+                    <td className="px-3 py-2 text-right text-navy-700">{money(b.previous_due)}</td>
                     <td className="px-3 py-2 text-right">{money(b.service_charge)}</td>
                     <td className="px-3 py-2 text-right">{money(b.gas_amount)}</td>
-                    <td className="px-3 py-2 text-right text-navy-700">{money(b.previous_due)}</td>
                     <td className="px-3 py-2 text-right font-medium">{money(b.total_payable)}</td>
                     <td className="px-3 py-2 text-right">{money(b.paid_amount)}</td>
                     <td className="px-3 py-2 text-right font-medium">
@@ -245,16 +245,16 @@ function PayModal({ bill, canApprove, onClose, onDone }: { bill: BillRow; canApp
       <form onSubmit={submit} className="space-y-3 text-sm text-navy-900">
         <div className="rounded-lg bg-brand-50 p-3">
           <p className="flex justify-between">
+            <span>{t('billing.colPrevDue')}</span>
+            <span>{money(bill.previous_due)}</span>
+          </p>
+          <p className="flex justify-between">
             <span>{t('billing.colService')}</span>
             <span>{money(bill.service_charge)}</span>
           </p>
           <p className="flex justify-between">
             <span>{t('billing.colGas')}</span>
             <span>{money(bill.gas_amount)}</span>
-          </p>
-          <p className="flex justify-between">
-            <span>{t('billing.colPrevDue')}</span>
-            <span>{money(bill.previous_due)}</span>
           </p>
           <p className="flex justify-between border-t border-brand-200 pt-1 font-medium">
             <span>{t('billing.colTotal')}</span>
