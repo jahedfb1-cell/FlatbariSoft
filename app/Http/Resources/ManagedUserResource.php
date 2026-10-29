@@ -13,6 +13,9 @@ class ManagedUserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->person?->name_bn ?? $this->person?->name_en,
+            // the flats this person holds today (an owner or tenant login), e.g. [{flat_no: '10A', role: 'OWNER'}]
+            'flats' => $this->person?->flatParties->filter(fn ($p) => $p->to_date === null && $p->flat)
+                ->map(fn ($p) => ['flat_no' => $p->flat->flat_no, 'role' => $p->role])->values() ?? [],
             'mobile' => $this->mobile,
             'email' => $this->email,
             'status' => $this->status,
