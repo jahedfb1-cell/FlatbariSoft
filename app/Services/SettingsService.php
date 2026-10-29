@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AppSetting;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 /**
@@ -27,7 +28,8 @@ class SettingsService
 
     public function get(string $key): string
     {
-        $row = AppSetting::where('key', $key)->first();
+        // before the settings table exists (code deployed ahead of the database upgrade) every setting is its default
+        $row = Schema::hasTable('app_settings') ? AppSetting::where('key', $key)->first() : null;
 
         return $row?->value ?? self::DEFINITIONS[$key][0];
     }
@@ -45,7 +47,7 @@ class SettingsService
     /** @return array<string, string> */
     public function all(): array
     {
-        $rows = AppSetting::pluck('value', 'key');
+        $rows = Schema::hasTable('app_settings') ? AppSetting::pluck('value', 'key') : collect();
         $out = [];
         foreach (self::DEFINITIONS as $key => [$default]) {
             $out[$key] = (string) ($rows[$key] ?? $default);
