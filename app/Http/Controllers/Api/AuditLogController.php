@@ -16,7 +16,7 @@ class AuditLogController extends Controller
             'from' => ['nullable', 'date'], 'to' => ['nullable', 'date'], 'id' => ['nullable', 'integer'],
         ]);
 
-        $page = AuditLog::with('user:id,name,mobile')
+        $page = AuditLog::with('user.person')
             ->when($v['model'] ?? null, fn ($q, $m) => $q->where('auditable_type', $m))
             ->when($v['id'] ?? null, fn ($q, $id) => $q->where('auditable_id', $id))
             ->when($v['user'] ?? null, fn ($q, $u) => $q->where('user_id', $u))
@@ -28,7 +28,7 @@ class AuditLogController extends Controller
         return response()->json([
             'data' => $page->getCollection()->map(fn (AuditLog $l) => [
                 'id' => $l->id, 'when' => $l->created_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i:s'),
-                'user' => $l->user?->name ?: $l->user?->mobile, 'event' => $l->event,
+                'user' => $l->user?->displayName(), 'event' => $l->event,
                 'model' => $l->auditable_type, 'record_id' => $l->auditable_id,
                 'old' => $l->old_values, 'new' => $l->new_values, 'ip' => $l->ip,
             ]),

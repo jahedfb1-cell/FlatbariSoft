@@ -27,9 +27,9 @@ class TenantRequestController extends Controller
             'start_date' => $r->start_date?->toDateString(), 'monthly_rent' => $r->monthly_rent, 'security_deposit' => $r->security_deposit,
             'occupation' => $r->occupation, 'family_members_count' => $r->family_members_count, 'note' => $r->note,
             'status' => $r->status, 'reject_reason' => $r->reject_reason, 'tenant_id' => $r->tenant_id,
-            'requested_by' => $r->requester?->name ?: $r->requester?->mobile,
+            'requested_by' => $r->requester?->displayName(),
             'requested_at' => $r->created_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i'),
-            'decided_by' => $r->decider?->name ?: $r->decider?->mobile,
+            'decided_by' => $r->decider?->displayName(),
             'decided_at' => $r->decided_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i'),
         ];
     }

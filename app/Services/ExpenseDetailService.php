@@ -36,11 +36,11 @@ class ExpenseDetailService
             'resolution_id' => $expense->resolution_id,
             'voucher_no' => $expense->voucher_no,
             'status' => $expense->status,
-            'created_by' => $expense->creator?->name ?: $expense->creator?->mobile,
+            'created_by' => $expense->creator?->displayName(),
             'created_at' => $expense->created_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i'),
             'approvals_needed' => $this->expenses->requiredApprovals($expense),
             'approvals' => $expense->approvals->map(fn ($a) => [
-                'by' => $a->approver?->name ?: $a->approver?->mobile,
+                'by' => $a->approver?->displayName(),
                 'at' => $a->approved_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i'),
                 'note' => $a->note,
             ])->values(),

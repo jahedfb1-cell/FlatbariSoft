@@ -26,7 +26,7 @@ class ComplaintResource extends JsonResource
             'assignee' => $this->assignee?->name,
             'resolution_note' => $this->resolution_note,
             'resolved_at' => $this->resolved_at?->toIso8601String(),
-            'resolved_by' => $this->resolvedBy?->name ?? $this->resolvedBy?->mobile,
+            'resolved_by' => $this->resolvedBy?->displayName(),
             'created_at' => $this->created_at?->toIso8601String(),
             'rating' => $this->rating,
         ];

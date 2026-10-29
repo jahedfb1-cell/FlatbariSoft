@@ -28,9 +28,9 @@ class TenantVacateRequestController extends Controller
             'id' => $r->id, 'flat_id' => $r->flat_id, 'flat_no' => $r->flat?->flat_no, 'tenant_id' => $r->tenant_id,
             'tenant_name' => $r->tenant?->person?->name_bn, 'tenant_mobile' => $r->tenant?->person?->mobile,
             'end_date' => $r->end_date?->toDateString(), 'note' => $r->note, 'status' => $r->status, 'reject_reason' => $r->reject_reason,
-            'requested_by' => $r->requester?->name ?: $r->requester?->mobile,
+            'requested_by' => $r->requester?->displayName(),
             'requested_at' => $r->created_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i'),
-            'decided_by' => $r->decider?->name ?: $r->decider?->mobile,
+            'decided_by' => $r->decider?->displayName(),
             'decided_at' => $r->decided_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i'),
         ];
     }
