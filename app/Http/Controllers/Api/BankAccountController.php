@@ -25,4 +25,12 @@ class BankAccountController extends Controller
 
         return new BankAccountResource($account);
     }
+
+    /** Edit the details of an account (holders, phones, branch ...). The balance is never edited here. */
+    public function update(StoreBankAccountRequest $request, BankAccount $bankAccount)
+    {
+        $bankAccount->update($request->validated());
+
+        return new BankAccountResource($bankAccount->fresh());
+    }
 }

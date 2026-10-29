@@ -12,6 +12,7 @@ class BankAccount extends Model
 
     protected $fillable = [
         'bank_name', 'branch', 'account_no', 'account_title', 'mandate_rule',
+        'holder_1_name', 'holder_1_phone', 'holder_2_name', 'holder_2_phone', 'holder_3_name', 'holder_3_phone', 'sms_phone',
         'opening_balance', 'current_balance',
     ];
 

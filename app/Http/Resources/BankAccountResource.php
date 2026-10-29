@@ -15,6 +15,9 @@ class BankAccountResource extends JsonResource
             'branch' => $this->branch,
             'account_no' => $this->account_no,
             'account_title' => $this->account_title,
+            'mandate_rule' => $this->mandate_rule,
+            'holders' => collect([1, 2, 3])->map(fn ($n) => ['name' => $this->{"holder_{$n}_name"}, 'phone' => $this->{"holder_{$n}_phone"}])->all(),
+            'sms_phone' => $this->sms_phone,
             'opening_balance' => $this->opening_balance,
             'current_balance' => $this->current_balance,
         ];
