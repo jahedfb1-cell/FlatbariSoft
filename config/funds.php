@@ -9,6 +9,6 @@ return [
         'OPERATING' => ['bn' => 'সার্ভিস চার্জ হিসাব', 'en' => 'Service Charges'],
         'GAS' => ['bn' => 'এলপিজি গ্যাস হিসাব', 'en' => 'LPG Gas Bill'],
         'CAPITAL' => ['bn' => 'প্রজেক্ট হিসাব', 'en' => 'Project Account'],
-        'SINKING' => ['bn' => 'সঞ্চিত তহবিল', 'en' => 'Sinking Fund'],
+        'SINKING' => ['bn' => 'সঞ্চিত তহবিল', 'en' => 'Reserve Fund'],
     ],
 ];
