@@ -950,6 +950,7 @@ export const translations = {
     'review.noteLabel': 'আপনার মন্তব্য (কী দেখে অনুমোদন দিচ্ছেন)',
     'review.notePlaceholder': 'যেমন: বিল ও চুক্তি মিলিয়ে দেখেছি, টাকা ঠিক আছে।',
     'review.approveBtn': 'অনুমোদন দিন',
+    'nav.treasury': 'ট্রেজারি (ব্যাংক ও তহবিল লেনদেন)',
   },
   en: {
     appName: 'Green Valley BMS',
@@ -1881,6 +1882,7 @@ export const translations = {
     'review.noteLabel': 'Your note (what you checked before approving)',
     'review.notePlaceholder': 'e.g. Checked the bill against the contract; the amount is correct.',
     'review.approveBtn': 'Approve',
+    'nav.treasury': 'Treasury',
   },
 } as const;
 

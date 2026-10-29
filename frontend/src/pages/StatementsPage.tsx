@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { TranslationKey } from '../i18n/translations';
@@ -32,7 +32,8 @@ export default function StatementsPage() {
   const [stmt, setStmt] = useState<FundStatement | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showEntries, setShowEntries] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const [showEntries, setShowEntries] = useState(params.get('treasury') === '1' && canManage);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [year, month] = ym.split('-').map(Number);
@@ -112,7 +113,15 @@ export default function StatementsPage() {
         {stmt && <StatementView s={stmt} headName={headName} />}
       </div>
 
-      {showEntries && <EntriesModal onClose={() => setShowEntries(false)} onChanged={load} />}
+      {showEntries && (
+        <EntriesModal
+          onClose={() => {
+            setShowEntries(false);
+            if (params.has('treasury')) setParams({}, { replace: true });
+          }}
+          onChanged={load}
+        />
+      )}
     </div>
   );
 }

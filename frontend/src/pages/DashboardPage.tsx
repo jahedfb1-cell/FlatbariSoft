@@ -17,6 +17,7 @@ const navItems: { to: string; key: any; perm: string; icon: string }[] = [
   { to: '/construction-materials', key: 'nav.materials', perm: 'expense.view', icon: '🧱' },
   { to: '/suppliers', key: 'nav.suppliers', perm: 'expense.view', icon: '🚚' },
   { to: '/bank-accounts', key: 'bank.title', perm: 'accounting.view', icon: '🏦' },
+  { to: '/statements?treasury=1', key: 'nav.treasury', perm: 'treasury.manage', icon: '🏛️' },
   { to: '/statements', key: 'nav.statements', perm: 'accounting.view', icon: '📊' },
   { to: '/reports', key: 'nav.reports', perm: 'accounting.view', icon: '📑' },
   { to: '/dues', key: 'nav.dues', perm: 'due.view', icon: '🏗️' },
