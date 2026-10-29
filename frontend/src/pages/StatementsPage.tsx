@@ -87,16 +87,14 @@ export default function StatementsPage() {
   return (
     <div className="min-h-screen bg-brand-50 px-4 py-6 pb-16">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <Link to="/" className="text-sm text-navy-700 hover:underline">
-              ← {t('nav.dashboard')}
-            </Link>
-            <h1 className="mt-1 text-2xl font-semibold text-navy-900">{t('stmt.title')}</h1>
-            <p className="mt-1 max-w-xl text-sm text-navy-700">{t('stmt.intro')}</p>
-          </div>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <Link to="/" className="text-sm text-navy-700 hover:underline">
+            ← {t('nav.dashboard')}
+          </Link>
           <LanguageToggle />
         </div>
+        <h1 className="text-xl font-semibold text-navy-900 sm:text-2xl">{t('stmt.title')}</h1>
+        <p className="mb-4 mt-1 max-w-xl text-sm text-navy-700">{t('stmt.intro')}</p>
 
         {/* 1. which month */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -125,30 +123,34 @@ export default function StatementsPage() {
         </div>
 
         {/* 2. which fund - each button shows what is left in it */}
-        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-5">
           {FUND_ORDER.map((f) => (
             <button
               key={f}
               onClick={() => setFund(f)}
-              className={`rounded-2xl border-2 p-3 text-left transition ${fund === f ? `${FUND_LOOK[f].ring} shadow` : 'border-transparent bg-white shadow-sm hover:border-brand-200'}`}
+              className={`rounded-2xl border-2 p-2.5 text-left transition sm:p-3 ${fund === f ? `${FUND_LOOK[f].ring} shadow` : 'border-transparent bg-white shadow-sm hover:border-brand-200'}`}
             >
-              <span className="text-xl">{FUND_LOOK[f].icon}</span>
-              <span className="mt-1 block text-sm font-medium text-navy-900">{fundName(f)}</span>
+              <span className="flex items-center gap-1.5 text-sm font-medium text-navy-900">
+                <span className="text-lg">{FUND_LOOK[f].icon}</span>
+                {fundName(f)}
+              </span>
               <span className={`block text-base font-semibold ${Number(closingOf(f) ?? 0) < 0 ? 'text-status-due' : FUND_LOOK[f].text}`}>{summary ? taka(closingOf(f) ?? 0) : '…'}</span>
               <span className="block text-[11px] text-navy-700">{t('stmt.leftNow')}</span>
             </button>
           ))}
-          <button onClick={() => setFund('ALL')} className={`rounded-2xl border-2 p-3 text-left transition ${fund === 'ALL' ? 'border-navy-500 bg-white shadow' : 'border-transparent bg-white shadow-sm hover:border-brand-200'}`}>
-            <span className="text-xl">📊</span>
-            <span className="mt-1 block text-sm font-medium text-navy-900">{t('stmt.allFunds')}</span>
+          <button onClick={() => setFund('ALL')} className={`col-span-2 rounded-2xl border-2 p-2.5 text-left transition sm:p-3 md:col-span-1 ${fund === 'ALL' ? 'border-navy-500 bg-white shadow' : 'border-transparent bg-white shadow-sm hover:border-brand-200'}`}>
+            <span className="flex items-center gap-1.5 text-sm font-medium text-navy-900">
+              <span className="text-lg">📊</span>
+              {t('stmt.allFunds')}
+            </span>
             <span className="block text-base font-semibold text-navy-900">{summary ? taka(summary.total.closing) : '…'}</span>
             <span className="block text-[11px] text-navy-700">{t('stmt.leftNow')}</span>
           </button>
         </div>
 
         {/* 3. print / download / enter */}
-        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-100 bg-white p-3 shadow-sm">
-          <span className="mr-1 text-sm font-medium text-navy-900">{t('stmt.getCopy')}</span>
+        <div className="mb-5 grid grid-cols-2 items-center gap-2 rounded-2xl border border-brand-100 bg-white p-3 shadow-sm sm:flex sm:flex-wrap [&_button]:justify-center">
+          <span className="col-span-2 text-sm font-medium text-navy-900 sm:col-span-1 sm:mr-1">{t('stmt.getCopy')}</span>
           {fund !== 'ALL' && (
             <>
               <button className={btn} disabled={busy !== null} onClick={() => run('pdf', () => api.printStatement(fund, year, month))}>
@@ -166,7 +168,7 @@ export default function StatementsPage() {
             {t('stmt.combinedAll')}
           </button>
           {canManage && (
-            <button className="ml-auto rounded-lg border border-brand-600 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100" onClick={() => setShowEntries(true)}>
+            <button className="col-span-2 rounded-lg border border-brand-600 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 sm:ml-auto sm:col-span-1" onClick={() => setShowEntries(true)}>
               ✎ {t('stmt.entries')}
             </button>
           )}
@@ -234,10 +236,10 @@ function StatementView({ s, headName, canManage, onEntries }: { s: FundStatement
     const look = { start: 'bg-white', in: 'bg-green-50', out: 'bg-red-50', end: 'bg-brand-700 text-white' }[tone];
     const accent = { start: 'text-navy-900', in: 'text-status-paid', out: 'text-status-due', end: 'text-white' }[tone];
     return (
-      <div className={`rounded-2xl p-4 shadow-sm ${look}`}>
+      <div className={`rounded-2xl p-3 shadow-sm sm:p-4 ${look}`}>
         <p className={`text-xs ${tone === 'end' ? 'text-brand-100' : 'text-navy-700'}`}>{label}</p>
-        <p className={`mt-1 text-2xl font-semibold ${accent}`}>{value}</p>
-        {sub && <p className={`mt-1 text-xs ${tone === 'end' ? 'text-brand-100' : 'text-navy-700'}`}>{sub}</p>}
+        <p className={`mt-1 text-lg font-semibold sm:text-2xl ${accent}`}>{value}</p>
+        {sub && <p className={`mt-1 text-[11px] leading-snug sm:text-xs ${tone === 'end' ? 'text-brand-100' : 'text-navy-700'}`}>{sub}</p>}
       </div>
     );
   };
@@ -257,7 +259,7 @@ function StatementView({ s, headName, canManage, onEntries }: { s: FundStatement
       )}
 
       {/* the whole month in four steps */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <Step tone="start" label={t('stmt.stepStart')} value={taka(s.opening.total)} sub={`${t('stmt.cash')} ${taka(s.opening.cash)} · ${t('stmt.bank')} ${taka(s.opening.bank)}`} />
         <Step tone="in" label={`＋ ${t('stmt.stepIn')}`} value={taka(s.totals.receipts)} sub={`${s.receipts.length} ${t('stmt.times')}`} />
         <Step tone="out" label={`－ ${t('stmt.stepOut')}`} value={taka(s.totals.payments)} sub={`${s.payments.length} ${t('stmt.times')}`} />
