@@ -29,6 +29,16 @@ class Expense extends Model
         return $this->belongsTo(ExpenseHead::class);
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ExpenseAttachment::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function approvals(): HasMany
     {
         return $this->hasMany(ExpenseApproval::class);

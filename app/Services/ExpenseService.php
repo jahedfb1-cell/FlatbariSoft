@@ -33,7 +33,7 @@ class ExpenseService
         return $expense->fund_type === 'SINKING' && bccomp((string) $expense->amount, '25000', 4) >= 0 ? 2 : 1;
     }
 
-    public function approve(Expense $expense, int $approvedBy): Expense
+    public function approve(Expense $expense, int $approvedBy, ?string $note = null): Expense
     {
         if ($expense->status === 'APPROVED') {
             throw ValidationException::withMessages(['status' => 'এই খরচ ইতিমধ্যে অনুমোদিত।']);
@@ -51,8 +51,13 @@ class ExpenseService
             throw ValidationException::withMessages(['approved_by' => 'আপনি ইতিমধ্যে এই খরচ অনুমোদন করেছেন — অন্য একজন এডমিনের অনুমোদন প্রয়োজন।']);
         }
 
-        return DB::transaction(function () use ($expense, $approvedBy) {
-            $expense->approvals()->create(['approved_by' => $approvedBy, 'approved_at' => now()]);
+        return DB::transaction(function () use ($expense, $approvedBy, $note) {
+            $expense->approvals()->create(array_filter([
+                'approved_by' => $approvedBy,
+                'approved_at' => now(),
+                // the note column arrives with the database upgrade
+                'note' => \Illuminate\Support\Facades\Schema::hasColumn('expense_approvals', 'note') ? $note : null,
+            ], fn ($v) => $v !== null));
 
             if ($expense->approvals()->count() < $this->requiredApprovals($expense)) {
                 return $expense->fresh(); // still waiting on a second approver

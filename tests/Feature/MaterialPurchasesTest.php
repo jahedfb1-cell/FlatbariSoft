@@ -107,7 +107,7 @@ class MaterialPurchasesTest extends TestCase
         ])->assertStatus(201);
 
         $purchase = \App\Models\GasPurchase::first();
-        $this->actingAs($admin, 'sanctum')->postJson("/api/expenses/{$purchase->expense_id}/approve")->assertStatus(200);
+        $this->actingAs($admin, 'sanctum')->postJson("/api/expenses/{$purchase->expense_id}/approve", ["note" => "Checked the bill"])->assertStatus(200);
 
         $this->assertDatabaseHas('cash_ledger', ['out_amount' => 45000]);
         $this->assertSame('APPROVED', $purchase->expense->fresh()->status);
@@ -190,7 +190,7 @@ class MaterialPurchasesTest extends TestCase
         ])->assertStatus(201);
 
         $expenseId = \App\Models\ConstructionMaterialPurchase::first()->expense_id;
-        $this->actingAs($admin, 'sanctum')->postJson("/api/expenses/{$expenseId}/approve")->assertStatus(200);
+        $this->actingAs($admin, 'sanctum')->postJson("/api/expenses/{$expenseId}/approve", ["note" => "Checked the bill"])->assertStatus(200);
 
         $this->assertDatabaseHas('bank_transactions', ['credit' => 90000]);
         $this->assertSame('APPROVED', \App\Models\ConstructionMaterialPurchase::first()->expense->fresh()->status);

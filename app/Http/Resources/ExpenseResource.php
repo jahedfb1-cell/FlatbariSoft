@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Schema;
 
 class ExpenseResource extends JsonResource
 {
@@ -20,6 +21,8 @@ class ExpenseResource extends JsonResource
             'resolution_id' => $this->resolution_id,
             'voucher_no' => $this->voucher_no,
             'status' => $this->status,
+            'description' => $this->description,
+            'attachments_count' => $this->attachments_count ?? (Schema::hasTable('expense_attachments') ? $this->attachments()->count() : 0),
             'approvals_count' => $this->approvals()->count(),
         ];
     }

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import FlatLabel from '../components/FlatLabel';
 import * as flatsApi from '../api/flats';
 import type { Flat } from '../api/flats';
-import FlatFormModal from '../components/FlatFormModal';
 import LanguageToggle from '../components/LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
 import type { TranslationKey } from '../i18n/translations';
@@ -17,9 +16,7 @@ const occupancyClass: Record<Flat['occupancy_status'], string> = {
 export default function FlatsPage() {
   const { t } = useLanguage();
   const [flats, setFlats] = useState<Flat[]>([]);
-  const [buildingId, setBuildingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
 
   function load() {
@@ -29,10 +26,6 @@ export default function FlatsPage() {
       setLoading(false);
     });
   }
-
-  useEffect(() => {
-    flatsApi.listBuildings().then((buildings) => setBuildingId(buildings[0]?.id ?? null));
-  }, []);
 
   useEffect(() => {
     load();
@@ -51,13 +44,6 @@ export default function FlatsPage() {
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle />
-            <button
-              onClick={() => setShowForm(true)}
-              disabled={!buildingId}
-              className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
-            >
-              {t('flats.addNew')}
-            </button>
           </div>
         </div>
 
@@ -118,16 +104,6 @@ export default function FlatsPage() {
         </div>
       </div>
 
-      {showForm && buildingId && (
-        <FlatFormModal
-          buildingId={buildingId}
-          onClose={() => setShowForm(false)}
-          onSaved={() => {
-            setShowForm(false);
-            load();
-          }}
-        />
-      )}
     </div>
   );
 }

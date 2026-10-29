@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import FlatFormModal from '../components/FlatFormModal';
+import { listBuildings } from '../api/flats';
 import { blobErrorMessage } from '../utils/download';
 import * as ops from '../api/operations';
 import type { Settings, SmsLogRow } from '../api/operations';
@@ -19,6 +21,9 @@ export default function SettingsPage() {
   const [logs, setLogs] = useState<SmsLogRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const canAddFlat = !!user && (user.roles.includes('super_admin') || user.permissions.includes('flat.create'));
+  const [buildingId, setBuildingId] = useState<number | null>(null);
+  const [addingFlat, setAddingFlat] = useState(false);
   const canBackup = !!user && (user.roles.includes('super_admin') || user.permissions.includes('backup.manage'));
 
   useEffect(() => {
@@ -27,6 +32,7 @@ export default function SettingsPage() {
       setGateway(r.sms_gateway);
     });
     ops.getSmsLogs().then(setLogs).catch(() => undefined);
+    listBuildings().then((b) => setBuildingId(b[0]?.id ?? null)).catch(() => undefined);
   }, []);
 
   if (!s) return <div className="p-8 text-navy-700">{t('loading')}</div>;
@@ -86,6 +92,17 @@ export default function SettingsPage() {
 
         {msg && <div className="rounded-lg bg-green-50 p-3 text-sm text-status-paid">{msg}</div>}
         {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-status-due">{error}</div>}
+
+        {canAddFlat && (
+          <div className={card}>
+            <h2 className="mb-1 font-semibold text-navy-900">{t('settings.flats')}</h2>
+            <p className="mb-3 text-xs text-navy-700">{t('settings.flatsHint')}</p>
+            <button disabled={!buildingId} onClick={() => setAddingFlat(true)} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+              {t('flats.addNew')}
+            </button>
+            {msg === t('settings.flatAdded') && <p className="mt-2 text-sm text-status-paid">{msg}</p>}
+          </div>
+        )}
 
         <div className={card}>
           <h2 className="mb-3 font-semibold text-navy-900">{t('settings.billing')}</h2>
@@ -168,6 +185,17 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {addingFlat && buildingId && (
+        <FlatFormModal
+          buildingId={buildingId}
+          onClose={() => setAddingFlat(false)}
+          onSaved={() => {
+            setAddingFlat(false);
+            setMsg(t('settings.flatAdded'));
+          }}
+        />
+      )}
     </div>
   );
 }
