@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Writes one audit_logs row whenever a watched record is created, changed or deleted - who did it, from
@@ -35,8 +36,16 @@ class AuditObserver
         $this->write('deleted', $model, $model->getOriginal(), []);
     }
 
+    private static ?bool $ready = null;
+
     private function write(string $event, Model $model, array $old, array $new): void
     {
+        // a server upgraded in two steps (code first, tables after) must keep working in between
+        self::$ready ??= Schema::hasTable('audit_logs');
+        if (! self::$ready) {
+            return;
+        }
+
         $strip = fn (array $a) => array_diff_key($a, array_flip(self::NEVER));
 
         AuditLog::create([
