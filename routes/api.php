@@ -348,6 +348,9 @@ Route::get('/audit-logs', [\App\Http\Controllers\Api\AuditLogController::class, 
 // Yearly budget against actual spending.
 Route::get('/budget', [\App\Http\Controllers\Api\BudgetController::class, 'show'])->middleware(['auth:sanctum', 'permission:budget.view']);
 Route::put('/budget', [\App\Http\Controllers\Api\BudgetController::class, 'save'])->middleware(['auth:sanctum', 'permission:budget.manage']);
+Route::post('/budget/copy', [\App\Http\Controllers\Api\BudgetController::class, 'copy'])->middleware(['auth:sanctum', 'permission:budget.manage']);
+Route::get('/budget/pdf', [\App\Http\Controllers\Api\BudgetController::class, 'pdf'])->middleware(['auth:sanctum', 'permission:budget.view']);
+Route::get('/budget/excel', [\App\Http\Controllers\Api\BudgetController::class, 'excel'])->middleware(['auth:sanctum', 'permission:budget.view']);
 
 // The gate book.
 Route::prefix('visitors')->middleware('auth:sanctum')->group(function () {
