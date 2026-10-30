@@ -96,6 +96,84 @@ class ReportExportService
     }
 
     /** @param  array<string, mixed>  $ledger  from GasLedgerService::ledger() */
+    /** The yearly budget against actual spending, with last year and the twelve months, one sheet. */
+    public function budget(array $r): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Budget '.$r['label']);
+
+        $sheet->setCellValue('A1', 'গ্রীন ভ্যালি — বাজেট বনাম আসল খরচ, অর্থবছর '.$r['label']);
+        $sheet->mergeCells('A1:H1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->setCellValue('A2', $r['from'].' থেকে '.$r['to'].' — আসল খরচ = শুধু অনুমোদিত খরচ');
+
+        $heads = ['খাত', 'বাজেট', 'খরচ', 'বাকি', 'ব্যবহার %', 'গত বছরের বাজেট ('.$r['last_label'].')', 'গত বছরের খরচ', 'গত বছরের তুলনায় %'];
+        foreach ($heads as $i => $h) {
+            $sheet->setCellValue(chr(65 + $i).'4', $h);
+        }
+        $this->headerStyle($spreadsheet, 'A4:H4');
+
+        $row = 5;
+        foreach ($r['rows'] as $x) {
+            $sheet->setCellValue("A{$row}", $x['name_bn']);
+            $sheet->setCellValue("B{$row}", (float) $x['budget']);
+            $sheet->setCellValue("C{$row}", (float) $x['spent']);
+            $sheet->setCellValue("D{$row}", (float) $x['remaining']);
+            $sheet->setCellValue("E{$row}", $x['percent']);
+            $sheet->setCellValue("F{$row}", (float) $x['last_budget']);
+            $sheet->setCellValue("G{$row}", (float) $x['last_spent']);
+            $sheet->setCellValue("H{$row}", $x['spent_change_percent']);
+            $row++;
+        }
+        $t = $r['totals'];
+        $sheet->setCellValue("A{$row}", 'মোট');
+        foreach (['B' => 'budget', 'C' => 'spent', 'D' => 'remaining', 'E' => 'percent', 'F' => 'last_budget', 'G' => 'last_spent', 'H' => 'spent_change_percent'] as $col => $key) {
+            $sheet->setCellValue($col.$row, is_numeric($t[$key] ?? null) ? (float) $t[$key] : null);
+        }
+        $sheet->getStyle("A{$row}:H{$row}")->getFont()->setBold(true);
+        $sheet->getStyle("B5:G{$row}")->getNumberFormat()->setFormatCode('#,##0');
+
+        // month by month
+        $row += 3;
+        $sheet->setCellValue("A{$row}", 'মাসভিত্তিক খরচ');
+        $sheet->getStyle("A{$row}")->getFont()->setBold(true);
+        $row++;
+        $monthNames = ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'];
+        $sheet->setCellValue("A{$row}", 'খাত');
+        foreach ($r['months'] as $i => $m) {
+            $sheet->setCellValue(chr(66 + $i).$row, $monthNames[$m['month'] - 1].' '.substr((string) $m['year'], 2));
+        }
+        $sheet->setCellValue(chr(66 + 12).$row, 'বছর');
+        $this->headerStyle($spreadsheet, "A{$row}:".chr(66 + 12).$row);
+        $first = $row + 1;
+        foreach ($r['rows'] as $x) {
+            if (bccomp($x['spent'], '0', 4) <= 0) {
+                continue;
+            }
+            $row++;
+            $sheet->setCellValue("A{$row}", $x['name_bn']);
+            foreach ($x['monthly'] as $i => $v) {
+                $sheet->setCellValue(chr(66 + $i).$row, (float) $v);
+            }
+            $sheet->setCellValue(chr(66 + 12).$row, (float) $x['spent']);
+        }
+        $row++;
+        $sheet->setCellValue("A{$row}", 'মোট');
+        foreach ($r['months'] as $i => $m) {
+            $sheet->setCellValue(chr(66 + $i).$row, (float) $m['spent']);
+        }
+        $sheet->setCellValue(chr(66 + 12).$row, (float) $t['spent']);
+        $sheet->getStyle("A{$row}:".chr(66 + 12).$row)->getFont()->setBold(true);
+        $sheet->getStyle("B{$first}:".chr(66 + 12).$row)->getNumberFormat()->setFormatCode('#,##0');
+
+        foreach (range('A', chr(66 + 12)) as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        return $spreadsheet;
+    }
+
     public function supplierLedger(array $ledger): Spreadsheet
     {
         $spreadsheet = new Spreadsheet();

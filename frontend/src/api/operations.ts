@@ -1,5 +1,5 @@
 import client from './client';
-import { downloadFile } from '../utils/download';
+import { downloadFile, openPdf } from '../utils/download';
 
 // ---- settings
 export interface Settings {
@@ -87,18 +87,38 @@ export interface BudgetRow {
   remaining: string;
   percent: number | null;
   over: boolean;
+  last_budget: string;
+  last_spent: string;
+  spent_change_percent: number | null;
+  monthly: string[]; // twelve amounts, July first
 }
 export interface BudgetReport {
   fiscal_year: number;
   label: string;
+  last_label: string;
   from: string;
   to: string;
   rows: BudgetRow[];
-  totals: { budget: string; spent: string; remaining: string; percent: number | null };
+  months: { month: number; year: number; spent: string }[];
+  monthly_budget_share: string;
+  totals: {
+    budget: string;
+    spent: string;
+    remaining: string;
+    percent: number | null;
+    last_budget: string;
+    last_spent: string;
+    spent_change_percent: number | null;
+  };
 }
 export const getBudget = (fiscalYear: number) => client.get<BudgetReport>('/budget', { params: { fiscal_year: fiscalYear } }).then((r) => r.data);
 export const saveBudget = (fiscalYear: number, items: { expense_head_id: number; amount: string }[]) =>
   client.put<BudgetReport>('/budget', { fiscal_year: fiscalYear, items }).then((r) => r.data);
+/** Start a year's budget from another year's, optionally raised by a percentage. */
+export const copyBudget = (d: { from_year: number; to_year: number; increase_percent?: number; overwrite?: boolean }) =>
+  client.post<BudgetReport & { copied: number }>('/budget/copy', d).then((r) => r.data);
+export const printBudget = (fiscalYear: number) => openPdf('/budget/pdf', { fiscal_year: String(fiscalYear) }, `budget-${fiscalYear}.pdf`);
+export const downloadBudgetExcel = (fiscalYear: number) => downloadFile(`/budget/excel?fiscal_year=${fiscalYear}`, `budget-${fiscalYear}.xlsx`);
 
 // ---- resident payments
 export interface MyPayment {
