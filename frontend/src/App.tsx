@@ -11,6 +11,7 @@ import TenantKycPage from './pages/TenantKycPage';
 import OwnerKycPage from './pages/owner/OwnerKycPage';
 import TenantRequestsPage from './pages/TenantRequestsPage';
 import OwnerTenantRequestPage from './pages/owner/OwnerTenantRequestPage';
+import AppShell from './components/AppShell';
 import ResponsiveTables from './components/ResponsiveTables';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -49,17 +50,17 @@ import OwnerHallPage from './pages/owner/OwnerHallPage';
 
 const OWNER_ROLES = ['flat_owner', 'tenant'];
 
-function HomeRedirect() {
+/**
+ * The office frame (menu + page). A resident who holds only the owner / tenant role has no office screens at all, so
+ * they are sent to their own portal; a committee member who is also a flat owner holds both kinds of role and stays
+ * here (the menu links to their flat's portal). Both the spatie roles and the denormalised `role` column are checked,
+ * so routing never silently falls through to the office screens for an owner / tenant.
+ */
+function OfficeFrame() {
   const { user } = useAuth();
-  // Check both the spatie roles array (what actually gates permissions)
-  // and the denormalized `role` column (a display label that's always set,
-  // even in the rare case a roles assignment was missed) so routing never
-  // silently falls through to the admin dashboard for an owner/tenant.
-  // A committee member who is also a flat owner holds both kinds of role: they belong on the office
-  // dashboard (which links to their flat's portal), not trapped in the portal.
   const residentOnly = user ? user.roles.length > 0 && user.roles.every((r) => OWNER_ROLES.includes(r)) : false;
   const legacyOwner = user ? user.roles.length === 0 && OWNER_ROLES.includes(user.role) : false;
-  return residentOnly || legacyOwner ? <Navigate to="/owner" replace /> : <DashboardPage />;
+  return residentOnly || legacyOwner ? <Navigate to="/owner" replace /> : <AppShell />;
 }
 
 function AppRoutes() {
@@ -81,39 +82,41 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
-      <Route path="/" element={<HomeRedirect />} />
       <Route path="/change-password" element={<ChangePasswordPage />} />
 
-      {/* Admin/Manager */}
-      <Route path="/flats" element={<FlatsPage />} />
-      <Route path="/flats/:id" element={<FlatDetailPage />} />
-      <Route path="/tenants/:id/kyc" element={<TenantKycPage />} />
-      <Route path="/tenant-requests" element={<TenantRequestsPage />} />
+      {/* Admin/Manager: inside the menu shell */}
+      <Route element={<OfficeFrame />}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/flats" element={<FlatsPage />} />
+        <Route path="/flats/:id" element={<FlatDetailPage />} />
+        <Route path="/tenants/:id/kyc" element={<TenantKycPage />} />
+        <Route path="/tenant-requests" element={<TenantRequestsPage />} />
+        <Route path="/staff" element={<StaffPage />} />
+        <Route path="/billing" element={<BillingPage />} />
+        <Route path="/gas" element={<GasPage />} />
+        <Route path="/gas/ledger" element={<GasLedgerPage />} />
+        <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/audit-logs" element={<AuditLogsPage />} />
+        <Route path="/visitors" element={<VisitorsPage />} />
+        <Route path="/budget" element={<BudgetPage />} />
+        <Route path="/payments" element={<PaymentsPage />} />
+        <Route path="/expenses" element={<ExpensesPage />} />
+        <Route path="/dues" element={<DuesPage />} />
+        <Route path="/assets" element={<AssetsPage />} />
+        <Route path="/meetings" element={<MeetingsPage />} />
+        <Route path="/complaints" element={<ComplaintsPage />} />
+        <Route path="/notices" element={<NoticesPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/bank-accounts" element={<BankAccountsPage />} />
+        <Route path="/construction-materials" element={<ConstructionMaterialsPage />} />
+        <Route path="/hall" element={<HallPage />} />
+        <Route path="/users" element={<UsersPage />} />
+        <Route path="/parking" element={<ParkingPage />} />
+        <Route path="/contributions" element={<ContributionsPage />} />
+        <Route path="/statements" element={<StatementsPage />} />
+      </Route>
       <Route path="/print/nid" element={<NidPrintPage />} />
-      <Route path="/staff" element={<StaffPage />} />
-      <Route path="/billing" element={<BillingPage />} />
-      <Route path="/gas" element={<GasPage />} />
-      <Route path="/gas/ledger" element={<GasLedgerPage />} />
-      <Route path="/suppliers" element={<SuppliersPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/audit-logs" element={<AuditLogsPage />} />
-      <Route path="/visitors" element={<VisitorsPage />} />
-      <Route path="/budget" element={<BudgetPage />} />
-      <Route path="/payments" element={<PaymentsPage />} />
-      <Route path="/expenses" element={<ExpensesPage />} />
-      <Route path="/dues" element={<DuesPage />} />
-      <Route path="/assets" element={<AssetsPage />} />
-      <Route path="/meetings" element={<MeetingsPage />} />
-      <Route path="/complaints" element={<ComplaintsPage />} />
-      <Route path="/notices" element={<NoticesPage />} />
-      <Route path="/reports" element={<ReportsPage />} />
-      <Route path="/bank-accounts" element={<BankAccountsPage />} />
-      <Route path="/construction-materials" element={<ConstructionMaterialsPage />} />
-      <Route path="/hall" element={<HallPage />} />
-      <Route path="/users" element={<UsersPage />} />
-      <Route path="/parking" element={<ParkingPage />} />
-      <Route path="/contributions" element={<ContributionsPage />} />
-      <Route path="/statements" element={<StatementsPage />} />
 
       {/* Owner/Tenant portal (5 screens, PRD's mobile-first cap) */}
       <Route path="/owner" element={<OwnerHomePage />} />

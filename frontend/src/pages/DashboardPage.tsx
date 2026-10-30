@@ -3,38 +3,9 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import { ALL_NAV_ITEMS, canOpen } from '../config/nav';
 import * as dashApi from '../api/dashboard';
 import type { DashboardOverview } from '../api/dashboard';
-
-// `perm` is the permission that opens the screen (the API enforces it too); super_admin sees every tile.
-const navItems: { to: string; key: any; perm: string; icon: string }[] = [
-  { to: '/flats', key: 'home.flatManagement', perm: 'flat.view', icon: '🏢' },
-  { to: '/tenant-requests', key: 'nav.tenantRequests', perm: 'tenant.request|tenant.manage', icon: '🔑' },
-  { to: '/billing', key: 'nav.billing', perm: 'billing.view', icon: '🧾' },
-  { to: '/payments', key: 'nav.payments', perm: 'payment.view', icon: '💳' },
-  { to: '/gas', key: 'nav.gas', perm: 'gas.view', icon: '🔥' },
-  { to: '/contributions', key: 'nav.contrib', perm: 'contribution.view', icon: '📒' },
-  { to: '/expenses', key: 'nav.expenses', perm: 'expense.view', icon: '💸' },
-  { to: '/construction-materials', key: 'nav.materials', perm: 'expense.view', icon: '🧱' },
-  { to: '/suppliers', key: 'nav.suppliers', perm: 'expense.view', icon: '🚚' },
-  { to: '/bank-accounts', key: 'bank.title', perm: 'accounting.view', icon: '🏦' },
-  { to: '/statements?treasury=1', key: 'nav.treasury', perm: 'treasury.manage', icon: '🏛️' },
-  { to: '/statements', key: 'nav.statements', perm: 'accounting.view', icon: '📊' },
-  { to: '/reports', key: 'nav.reports', perm: 'accounting.view', icon: '📑' },
-  { to: '/dues', key: 'nav.dues', perm: 'due.view', icon: '🏗️' },
-  { to: '/hall', key: 'nav.hall', perm: 'hall.view', icon: '🎉' },
-  { to: '/parking', key: 'nav.parking', perm: 'parking.view', icon: '🅿️' },
-  { to: '/assets', key: 'nav.assets', perm: 'asset.view', icon: '🛠️' },
-  { to: '/staff', key: 'staff.title', perm: 'staff.view', icon: '👷' },
-  { to: '/meetings', key: 'nav.meetings', perm: 'meeting.view', icon: '🗓️' },
-  { to: '/complaints', key: 'nav.complaints', perm: 'complaint.view', icon: '📣' },
-  { to: '/notices', key: 'nav.notices', perm: 'notice.view', icon: '📌' },
-  { to: '/visitors', key: 'nav.visitors', perm: 'visitor.view', icon: '🚪' },
-  { to: '/budget', key: 'nav.budget', perm: 'budget.view', icon: '🎯' },
-  { to: '/audit-logs', key: 'nav.audit', perm: 'audit.view', icon: '🔍' },
-  { to: '/settings', key: 'nav.settings', perm: 'setting.manage', icon: '⚙️' },
-  { to: '/users', key: 'nav.users', perm: 'user.view', icon: '🔑' },
-];
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 0 })}`;
 const num = (v: string | number) => Number(v).toLocaleString('en-BD', { maximumFractionDigits: 1 });
@@ -53,7 +24,7 @@ export default function DashboardPage() {
   const [failed, setFailed] = useState(false);
 
   const can = (p: string) => !!user && (user.roles.includes('super_admin') || user.permissions.includes(p));
-  const visibleItems = navItems.filter((item) => item.perm.split('|').some(can));
+  const visibleItems = ALL_NAV_ITEMS.filter((item) => canOpen(item, can));
   // a committee member is usually also a flat owner: let them hop to their own flat's portal
   const isResident = !!user && user.roles.some((r) => r === 'flat_owner' || r === 'tenant');
 

@@ -1039,6 +1039,12 @@ export const translations = {
     'budget.overwriteHint': 'বন্ধ থাকলে আগে লেখা টাকা অক্ষত থাকবে, শুধু খালি খাতগুলো ভরবে।',
     'budget.copyDo': 'কপি করুন',
     'budget.copied': 'কপি হয়েছে — বাজেট সংরক্ষিত হয়ে গেছে। লেখা হয়েছে খাত',
+    'navgroup.people': 'মানুষ ও ফ্ল্যাট',
+    'navgroup.money': 'টাকা-পয়সা',
+    'navgroup.accounts': 'হিসাব ও রিপোর্ট',
+    'navgroup.purchases': 'ক্রয় ও সরবরাহ',
+    'navgroup.building': 'বিল্ডিং',
+    'navgroup.system': 'সিস্টেম',
   },
   en: {
     appName: 'Green Valley BMS',
@@ -2059,6 +2065,12 @@ export const translations = {
     'budget.overwriteHint': 'When off, amounts already typed stay as they are and only empty heads are filled.',
     'budget.copyDo': 'Copy',
     'budget.copied': 'Copied - the budget is already saved (heads written)',
+    'navgroup.people': 'People & flats',
+    'navgroup.money': 'Money',
+    'navgroup.accounts': 'Accounts & reports',
+    'navgroup.purchases': 'Purchases',
+    'navgroup.building': 'Building',
+    'navgroup.system': 'System',
   },
 } as const;
 
