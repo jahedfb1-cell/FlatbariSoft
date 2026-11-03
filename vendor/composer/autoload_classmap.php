@@ -114,6 +114,7 @@ return array(
     'App\\Http\\Requests\\SupplierLedgerRequest' => $baseDir . '/app/Http/Requests/SupplierLedgerRequest.php',
     'App\\Http\\Requests\\TenantKycRequest' => $baseDir . '/app/Http/Requests/TenantKycRequest.php',
     'App\\Http\\Requests\\TreasuryActionRequest' => $baseDir . '/app/Http/Requests/TreasuryActionRequest.php',
+    'App\\Http\\Requests\\UpdateBillRequest' => $baseDir . '/app/Http/Requests/UpdateBillRequest.php',
     'App\\Http\\Requests\\UpdateBuildingRequest' => $baseDir . '/app/Http/Requests/UpdateBuildingRequest.php',
     'App\\Http\\Requests\\UpdateComplaintStatusRequest' => $baseDir . '/app/Http/Requests/UpdateComplaintStatusRequest.php',
     'App\\Http\\Requests\\UpdateFlatRequest' => $baseDir . '/app/Http/Requests/UpdateFlatRequest.php',

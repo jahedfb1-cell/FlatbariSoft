@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\GenerateBillingPeriodRequest;
+use App\Http\Requests\UpdateBillRequest;
 use App\Http\Resources\BillResource;
+use App\Models\Bill;
 use App\Models\BillingPeriod;
 use App\Services\BillGenerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class BillingController extends Controller
 {
@@ -48,6 +51,14 @@ class BillingController extends Controller
         }
 
         return response()->json(['fiscal_year' => $fy, 'label' => $fy.'-'.substr((string) ($fy + 1), 2), 'months' => $out]);
+    }
+
+    public function update(UpdateBillRequest $request, Bill $bill)
+    {
+        $bill = $this->service->correct($bill, $request->validated());
+        Log::info('Bill corrected', ['bill_id' => $bill->id, 'by' => Auth::id(), 'reason' => $request->validated('reason')]);
+
+        return new BillResource($bill->load('flat.currentOwners.person', 'flat.currentTenant.person'));
     }
 
     public function show(int $year, int $month)

@@ -739,6 +739,7 @@ class ComposerStaticInit38374efba84c4668edf19017bd619d1a
         'App\\Http\\Requests\\SupplierLedgerRequest' => __DIR__ . '/../..' . '/app/Http/Requests/SupplierLedgerRequest.php',
         'App\\Http\\Requests\\TenantKycRequest' => __DIR__ . '/../..' . '/app/Http/Requests/TenantKycRequest.php',
         'App\\Http\\Requests\\TreasuryActionRequest' => __DIR__ . '/../..' . '/app/Http/Requests/TreasuryActionRequest.php',
+        'App\\Http\\Requests\\UpdateBillRequest' => __DIR__ . '/../..' . '/app/Http/Requests/UpdateBillRequest.php',
         'App\\Http\\Requests\\UpdateBuildingRequest' => __DIR__ . '/../..' . '/app/Http/Requests/UpdateBuildingRequest.php',
         'App\\Http\\Requests\\UpdateComplaintStatusRequest' => __DIR__ . '/../..' . '/app/Http/Requests/UpdateComplaintStatusRequest.php',
         'App\\Http\\Requests\\UpdateFlatRequest' => __DIR__ . '/../..' . '/app/Http/Requests/UpdateFlatRequest.php',

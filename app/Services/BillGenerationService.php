@@ -89,4 +89,45 @@ class BillGenerationService
             return $period->fresh();
         });
     }
+
+    /**
+     * Correct the amounts of one bill (a wrong service charge, a gas figure that was missed, an extra charge).
+     * The total is recomputed here, never trusted from the screen. Only the flat's latest bill can change - a later
+     * month has already carried its balance forward - and the total can never drop below what was already paid.
+     */
+    public function correct(Bill $bill, array $amounts): Bill
+    {
+        return DB::transaction(function () use ($bill, $amounts) {
+            $bill = Bill::whereKey($bill->id)->lockForUpdate()->firstOrFail();
+            $key = $bill->billingPeriod->year * 100 + $bill->billingPeriod->month;
+
+            $later = Bill::query()
+                ->join('billing_periods as bp', 'bills.billing_period_id', '=', 'bp.id')
+                ->where('bills.flat_id', $bill->flat_id)
+                ->whereRaw('(bp.year * 100 + bp.month) > ?', [$key])
+                ->exists();
+            if ($later) {
+                throw ValidationException::withMessages(['bill' => 'এই ফ্ল্যাটের পরের মাসের বিল ইতিমধ্যে হয়ে গেছে — আগের মাসের বিল আর বদলানো যাবে না।']);
+            }
+
+            $total = (string) $bill->previous_due;
+            foreach (['service_charge', 'gas_amount', 'other_charges', 'late_fee'] as $k) {
+                $total = bcadd($total, bcadd((string) $amounts[$k], '0', 4), 4);
+            }
+            if (bccomp($total, (string) $bill->paid_amount, 4) < 0) {
+                throw ValidationException::withMessages(['service_charge' => 'মোট বিল ইতিমধ্যে পরিশোধিত টাকার ('.bcadd((string) $bill->paid_amount, '0', 2).') চেয়ে কম হতে পারে না।']);
+            }
+
+            $paid = (string) $bill->paid_amount;
+            $status = bccomp($paid, $total, 4) >= 0 ? 'PAID' : (bccomp($paid, '0', 4) > 0 ? 'PARTIAL' : 'UNPAID');
+
+            $bill->update([
+                'service_charge' => $amounts['service_charge'], 'gas_amount' => $amounts['gas_amount'],
+                'other_charges' => $amounts['other_charges'], 'late_fee' => $amounts['late_fee'],
+                'total_payable' => $total, 'status' => $status,
+            ]);
+
+            return $bill->fresh();
+        });
+    }
 }
