@@ -70,4 +70,17 @@ class PaymentDetailsTest extends TestCase
     {
         $this->pay(['payment_date' => now()->addDays(3)->toDateString()])->assertStatus(422)->assertJsonValidationErrors('payment_date');
     }
+
+    public function test_the_register_filters_by_status_method_and_text_and_pages(): void
+    {
+        $this->pay(['method' => 'BKASH', 'reference_no' => 'TX-ALPHA'])->assertCreated();
+        $this->pay(['method' => 'CASH'])->assertCreated();
+        $api = $this->actingAs($this->admin, 'sanctum');
+
+        $this->assertSame(2, $api->getJson('/api/payments')->json('meta.total'));
+        $this->assertSame(1, $api->getJson('/api/payments?method=BKASH')->json('meta.total'));
+        $this->assertSame(1, $api->getJson('/api/payments?q=ALPHA')->json('meta.total'));
+        $this->assertSame(0, $api->getJson('/api/payments?status=APPROVED')->json('meta.total'));
+        $this->assertSame(2, $api->getJson('/api/payments?status=PENDING&per_page=1')->json('meta.last_page'));
+    }
 }

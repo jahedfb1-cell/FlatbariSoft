@@ -45,3 +45,13 @@ export function approvePayment(id: number) {
 export function printReceipt(id: number, receiptNo: string) {
   return openPdf(`/payments/${id}/receipt`, undefined, `receipt-${receiptNo}.pdf`);
 }
+
+export interface PaymentPage {
+  data: PaymentRow[];
+  meta: { current_page: number; last_page: number; total: number };
+}
+/** The payment register: every payment, filtered by status / method / dates / free text, a page at a time. */
+export function searchPayments(params: { status?: string; method?: string; q?: string; from?: string; to?: string; page?: number; per_page?: number }) {
+  const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v !== undefined));
+  return client.get<PaymentPage>('/payments', { params: clean }).then((r) => r.data);
+}

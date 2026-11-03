@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import * as staffApi from '../api/staff';
 import type { Staff } from '../api/staff';
 import StaffFormModal from '../components/StaffFormModal';
+import StaffKycModal from '../components/StaffKycModal';
 import LanguageToggle from '../components/LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function StaffPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const [kycFor, setKycFor] = useState<Staff | null>(null);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Staff | null | undefined>(undefined);
@@ -30,7 +32,7 @@ export default function StaffPage() {
 
   return (
     <div className="min-h-screen bg-brand-50 px-4 py-8">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Link to="/" className="text-sm text-navy-700 hover:underline">
@@ -57,20 +59,21 @@ export default function StaffPage() {
                 <th className="px-4 py-3">{t('staff.designation')}</th>
                 <th className="px-4 py-3">{t('staff.mobile')}</th>
                 <th className="px-4 py-3">{t('staff.salary')}</th>
+                <th className="px-4 py-3">KYC</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-navy-700">
+                  <td colSpan={6} className="px-4 py-6 text-center text-navy-700">
                     {t('loading')}
                   </td>
                 </tr>
               )}
               {!loading && staff.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-navy-700">
+                  <td colSpan={6} className="px-4 py-6 text-center text-navy-700">
                     {t('staff.empty')}
                   </td>
                 </tr>
@@ -81,7 +84,18 @@ export default function StaffPage() {
                   <td className="px-4 py-3 text-navy-900">{s.designation}</td>
                   <td className="px-4 py-3 text-navy-900">{s.mobile}</td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(s.monthly_salary).toLocaleString('en-BD')}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setKycFor(s)} className="text-left hover:underline">
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${s.kyc_updated_at ? 'bg-status-paid/15 text-status-paid' : 'bg-status-due/15 text-status-due'}`}>
+                        {s.kyc_updated_at ? (lang === 'bn' ? 'KYC আছে' : 'KYC filled') : lang === 'bn' ? 'KYC নেই' : 'No KYC'}
+                      </span>
+                      {!!s.documents_count && <span className="ml-1 text-xs text-navy-700">📎 {s.documents_count}</span>}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-right">
+                    <button onClick={() => setKycFor(s)} className="mr-3 text-brand-700 hover:underline">
+                      {lang === 'bn' ? 'KYC ও ফাইল' : 'KYC & files'}
+                    </button>
                     <button onClick={() => setEditing(s)} className="mr-3 text-brand-700 hover:underline">
                       {t('flatDetail.edit')}
                     </button>
@@ -95,6 +109,8 @@ export default function StaffPage() {
           </table>
         </div>
       </div>
+
+      {kycFor && <StaffKycModal staff={kycFor} onClose={() => { setKycFor(null); load(); }} />}
 
       {editing !== undefined && (
         <StaffFormModal
