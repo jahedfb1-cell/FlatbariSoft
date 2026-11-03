@@ -33,6 +33,15 @@ class StorePaymentRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'reference_no.required' => 'চেক / ট্রানজেকশন নম্বর আবশ্যক।',
+            'bank_name.required' => 'ব্যাংকের নাম আবশ্যক।',
+            'payment_date.before_or_equal' => 'ভবিষ্যতের তারিখে পেমেন্ট এন্ট্রি করা যাবে না।',
+        ];
+    }
+
     public function withValidator($validator): void
     {
         $validator->after(function ($v) {
