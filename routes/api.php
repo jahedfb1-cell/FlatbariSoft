@@ -93,6 +93,7 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
 
 Route::prefix('billing')->middleware('auth:sanctum')->group(function () {
     Route::post('/generate', [BillingController::class, 'generate'])->middleware('permission:billing.manage');
+    Route::get('/months', [BillingController::class, 'months'])->middleware('permission:billing.view');
     Route::get('/{year}/{month}', [BillingController::class, 'show'])->middleware('permission:billing.view');
     Route::post('/periods/{year}/{month}', [\App\Http\Controllers\Api\BillingPeriodController::class, 'findOrCreate'])->middleware('permission:gas.manage');
 });

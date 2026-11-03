@@ -30,13 +30,15 @@ const collectable = (b: BillRow) => Math.max(0, Number(b.due) - Number(b.pending
 /** The month's bills for every flat, with a one-click way to take a flat's payment (service charge, gas and previous due together). */
 export default function BillingPage() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const can = (p: string) => !!user && (user.roles.includes('super_admin') || user.permissions.includes(p));
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [bills, setBills] = useState<BillRow[]>([]);
+  const [fiscal, setFiscal] = useState<billingApi.BillingMonths | null>(null);
+  const fiscalYearOf = (y: number, m: number) => (m >= 7 ? y : y - 1);
   const [onlyDue, setOnlyDue] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,6 +54,27 @@ export default function BillingPage() {
   useEffect(() => {
     loadRegister();
   }, [loadRegister]);
+
+  // the strip of twelve months for the July-June year the chosen month falls in
+  const fy = fiscalYearOf(year, month);
+  const loadMonths = useCallback(async () => {
+    try {
+      setFiscal(await billingApi.getBillingMonths(fy));
+    } catch {
+      setFiscal(null);
+    }
+  }, [fy]);
+  useEffect(() => {
+    loadMonths();
+  }, [loadMonths, bills.length]);
+  const MONTHS = lang === 'bn'
+    ? ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর']
+    : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const step = (by: number) => {
+    const idx = year * 12 + (month - 1) + by;
+    setYear(Math.floor(idx / 12));
+    setMonth((idx % 12) + 1);
+  };
 
   async function handleGenerate() {
     setLoading(true);
@@ -84,13 +107,28 @@ export default function BillingPage() {
         </div>
 
         <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
-          <div>
-            <label className="mb-1 block text-sm text-navy-900">{t('common.year')}</label>
-            <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-24 rounded-lg border border-brand-200 px-3 py-2" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-navy-900">{t('common.month')}</label>
-            <input type="number" min={1} max={12} value={month} onChange={(e) => setMonth(Number(e.target.value))} className="w-20 rounded-lg border border-brand-200 px-3 py-2" />
+          <div className="flex items-end gap-1">
+            <button onClick={() => step(-1)} className={btnGhost} aria-label="previous month">‹</button>
+            <div>
+              <label className="mb-1 block text-sm text-navy-900">{t('common.month')}</label>
+              <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="rounded-lg border border-brand-200 px-3 py-2">
+                {MONTHS.map((n, i) => (
+                  <option key={n} value={i + 1}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-navy-900">{t('common.year')}</label>
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="rounded-lg border border-brand-200 px-3 py-2">
+                {Array.from({ length: 12 }, (_, i) => now.getFullYear() + 2 - i).map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={() => step(1)} className={btnGhost} aria-label="next month">›</button>
+            <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }} className={btnGhost}>
+              {lang === 'bn' ? 'এই মাস' : 'This month'}
+            </button>
           </div>
           {can('billing.manage') && (
             <button onClick={handleGenerate} disabled={loading} className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50">
@@ -101,6 +139,33 @@ export default function BillingPage() {
             <input type="checkbox" checked={onlyDue} onChange={(e) => setOnlyDue(e.target.checked)} /> {t('billing.onlyDue')}
           </label>
         </div>
+
+        {fiscal && (
+          <div className="mb-4 rounded-xl border border-brand-200 bg-white p-3 shadow-sm">
+            <p className="mb-2 text-xs font-medium text-navy-700">
+              {lang === 'bn' ? 'অর্থবছর' : 'Fiscal year'} {fiscal.label} {lang === 'bn' ? '(জুলাই–জুন)' : '(July–June)'}
+            </p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-12">
+              {fiscal.months.map((m) => {
+                const current = m.year === year && m.month === month;
+                const billed = m.bill_count > 0;
+                const owing = billed && Number(m.due) > 0;
+                return (
+                  <button
+                    key={`${m.year}-${m.month}`}
+                    onClick={() => { setYear(m.year); setMonth(m.month); }}
+                    className={`rounded-lg border px-2 py-2 text-left text-xs transition ${current ? 'border-brand-600 bg-brand-600 text-white' : 'border-brand-200 hover:bg-brand-100'}`}
+                  >
+                    <span className="block font-medium">{MONTHS[m.month - 1].slice(0, lang === 'bn' ? 6 : 3)} {String(m.year).slice(2)}</span>
+                    <span className={`block ${current ? 'text-white/90' : billed ? (owing ? 'text-status-due' : 'text-status-paid') : 'text-navy-700'}`}>
+                      {billed ? (owing ? money(m.due) + (lang === 'bn' ? ' বাকি' : ' due') : lang === 'bn' ? 'পরিশোধিত' : 'Paid') : lang === 'bn' ? 'বিল হয়নি' : 'Not billed'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {message && <p className="mb-4 text-sm text-navy-900">{message}</p>}
 

@@ -30,3 +30,21 @@ export function getBillingRegister(year: number, month: number) {
 export function findOrCreateBillingPeriod(year: number, month: number) {
   return client.post<{ id: number; status: string }>(`/billing/periods/${year}/${month}`).then((r) => r.data);
 }
+
+export interface BillingMonth {
+  year: number;
+  month: number;
+  bill_count: number;
+  billed: string;
+  paid: string;
+  due: string;
+}
+export interface BillingMonths {
+  fiscal_year: number;
+  label: string;
+  months: BillingMonth[];
+}
+/** The twelve months of a July-June year with what each was billed and collected; empty months included. */
+export function getBillingMonths(fiscalYear: number) {
+  return client.get<BillingMonths>('/billing/months', { params: { fiscal_year: fiscalYear } }).then((r) => r.data);
+}
