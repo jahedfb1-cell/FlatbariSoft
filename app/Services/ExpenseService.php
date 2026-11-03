@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BankAccount;
 use App\Models\ChartOfAccount;
 use App\Models\Expense;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ExpenseService
 {
-    public function __construct(private readonly AccountingService $accounting) {}
+    public function __construct(private readonly AccountingService $accounting, private readonly TreasuryService $treasury) {}
 
     public function create(array $data, int $createdBy): Expense
     {
@@ -31,6 +32,12 @@ class ExpenseService
     public function requiredApprovals(Expense $expense): int
     {
         return $expense->fund_type === 'SINKING' && bccomp((string) $expense->amount, '25000', 4) >= 0 ? 2 : 1;
+    }
+
+    /** Is there anyone besides $except who may approve expenses? (a one-admin building must still be able to run) */
+    private function anotherApproverExists(int $except): bool
+    {
+        return User::where('id', '!=', $except)->get()->contains(fn (User $u) => $u->hasRole('super_admin') || $u->can('expense.approve'));
     }
 
     public function approve(Expense $expense, int $approvedBy, ?string $note = null): Expense
@@ -49,6 +56,19 @@ class ExpenseService
 
         if ($expense->approvals()->where('approved_by', $approvedBy)->exists()) {
             throw ValidationException::withMessages(['approved_by' => 'আপনি ইতিমধ্যে এই খরচ অনুমোদন করেছেন — অন্য একজন এডমিনের অনুমোদন প্রয়োজন।']);
+        }
+
+        // maker-checker: whoever entered the expense does not also approve it - unless nobody else is able to
+        if ($expense->created_by === $approvedBy && $this->anotherApproverExists($approvedBy)) {
+            throw ValidationException::withMessages(['approved_by' => 'যিনি খরচ এন্ট্রি করেছেন তিনি নিজে অনুমোদন করতে পারবেন না — অন্য একজন অনুমোদনকারী প্রয়োজন।']);
+        }
+
+        // a fund can never spend more than it holds
+        $held = $expense->treasury_medium === 'CASH'
+            ? $this->treasury->cashBalance($expense->fund_type)
+            : $this->treasury->bankBalance($expense->fund_type);
+        if (bccomp((string) $expense->amount, $held, 4) > 0) {
+            throw ValidationException::withMessages(['amount' => ($expense->treasury_medium === 'CASH' ? 'ক্যাশে' : 'ব্যাংকে').' এই তহবিলের যথেষ্ট টাকা নেই (আছে '.$held.', খরচ '.bcadd((string) $expense->amount, '0', 4).')। আগে ওপেনিং ব্যালেন্স বা জমা এন্ট্রি করুন।']);
         }
 
         return DB::transaction(function () use ($expense, $approvedBy, $note) {
