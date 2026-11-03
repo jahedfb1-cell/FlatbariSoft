@@ -31,6 +31,7 @@ class MaterialPurchasesTest extends TestCase
         $this->seed(ExpenseHeadSeeder::class);
         $this->seed(RoleSeeder::class);
         $this->seed(MoneyCorePermissionSeeder::class);
+        $this->fundEverything();
     }
 
     private function manager(): User
@@ -50,6 +51,17 @@ class MaterialPurchasesTest extends TestCase
     }
 
     // --- Gas purchases -----------------------------------------------
+
+    /** An expense can only be approved from a fund that holds the money, so every test starts with the funds stocked. */
+    private function fundEverything(): void
+    {
+        $this->seed(\Database\Seeders\TreasurySeeder::class);
+        \App\Models\BankAccount::first() ?? \App\Models\BankAccount::create(['bank_name' => 'Test Bank', 'account_no' => '0', 'account_title' => 'GV']);
+        $by = \App\Models\User::factory()->create()->id;
+        foreach (['OPERATING', 'GAS', 'CAPITAL', 'SINKING'] as $fund) {
+            app(\App\Services\TreasuryService::class)->openingBalance($fund, '1000000', '1000000', '2026-01-01', null, $by);
+        }
+    }
 
     public function test_manager_can_record_a_gas_purchase_which_creates_a_pending_expense(): void
     {

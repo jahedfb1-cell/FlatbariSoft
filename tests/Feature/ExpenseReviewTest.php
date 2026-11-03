@@ -30,6 +30,7 @@ class ExpenseReviewTest extends TestCase
         $this->seed(ExpenseHeadSeeder::class);
         $this->seed(RoleSeeder::class);
         $this->seed(MoneyCorePermissionSeeder::class);
+        $this->fundEverything();
         $this->admin = User::factory()->create(['role' => 'admin']);
         $this->admin->assignRole('admin');
     }
@@ -42,6 +43,17 @@ class ExpenseReviewTest extends TestCase
         ], ['Accept' => 'application/json'])->assertSuccessful();
 
         return $res->json('id');
+    }
+
+    /** An expense can only be approved from a fund that holds the money, so every test starts with the funds stocked. */
+    private function fundEverything(): void
+    {
+        $this->seed(\Database\Seeders\TreasurySeeder::class);
+        \App\Models\BankAccount::first() ?? \App\Models\BankAccount::create(['bank_name' => 'Test Bank', 'account_no' => '0', 'account_title' => 'GV']);
+        $by = \App\Models\User::factory()->create()->id;
+        foreach (['OPERATING', 'GAS', 'CAPITAL', 'SINKING'] as $fund) {
+            app(\App\Services\TreasuryService::class)->openingBalance($fund, '1000000', '1000000', '2026-01-01', null, $by);
+        }
     }
 
     public function test_papers_are_uploaded_with_the_expense_and_shown_on_its_detail(): void

@@ -30,8 +30,20 @@ class Phase17ExpensesClosingTest extends TestCase
         $this->seed(\Database\Seeders\ExpenseHeadSeeder::class);
     }
 
+    /** An expense can only be approved from a fund that holds the money, so every test starts with the funds stocked. */
+    private function fundEverything(): void
+    {
+        $this->seed(\Database\Seeders\TreasurySeeder::class);
+        \App\Models\BankAccount::first() ?? \App\Models\BankAccount::create(['bank_name' => 'Test Bank', 'account_no' => '0', 'account_title' => 'GV']);
+        $by = \App\Models\User::factory()->create()->id;
+        foreach (['OPERATING', 'GAS', 'CAPITAL', 'SINKING'] as $fund) {
+            app(\App\Services\TreasuryService::class)->openingBalance($fund, '1000000', '1000000', '2026-01-01', null, $by);
+        }
+    }
+
     public function test_ordinary_expense_needs_only_one_approval(): void
     {
+        $this->fundEverything();
         $admin = User::factory()->create();
         $head = ExpenseHead::where('code', 'UTILITY')->first();
 
@@ -49,6 +61,7 @@ class Phase17ExpensesClosingTest extends TestCase
 
     public function test_sinking_fund_expense_over_25000_needs_two_distinct_approvers(): void
     {
+        $this->fundEverything();
         $admin1 = User::factory()->create();
         $admin2 = User::factory()->create();
         $head = ExpenseHead::where('code', 'MAINTENANCE')->first();
@@ -69,6 +82,7 @@ class Phase17ExpensesClosingTest extends TestCase
 
     public function test_same_admin_cannot_provide_both_sinking_fund_approvals(): void
     {
+        $this->fundEverything();
         $admin = User::factory()->create();
         $head = ExpenseHead::where('code', 'MAINTENANCE')->first();
         \App\Models\BankAccount::create(['bank_name' => 'Test', 'account_no' => '1', 'account_title' => 'GV']);
@@ -86,6 +100,7 @@ class Phase17ExpensesClosingTest extends TestCase
 
     public function test_sinking_fund_expense_over_100000_requires_a_resolution(): void
     {
+        $this->fundEverything();
         $admin1 = User::factory()->create();
         $admin2 = User::factory()->create();
         $head = ExpenseHead::where('code', 'MAINTENANCE')->first();

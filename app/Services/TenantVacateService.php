@@ -39,7 +39,7 @@ class TenantVacateService
                 : collect();
             $q->whereIn('flat_id', $own);
         }
-        $waiting = TenantVacateRequest::where('status', 'PENDING')->pluck('tenant_id')->all();
+        $waiting = $this->openRequests()->pluck('tenant_id')->all();
 
         return $q->orderBy('flat_id')->get()->map(fn ($t) => [
             'tenant_id' => $t->id, 'flat_id' => $t->flat_id, 'flat_no' => $t->flat?->flat_no,
@@ -58,7 +58,7 @@ class TenantVacateService
         if (! $this->canSpeakFor($by, $tenant->flat_id)) {
             throw ValidationException::withMessages(['tenant_id' => 'এটি আপনার ফ্ল্যাটের ভাড়াটিয়া নন।']);
         }
-        if (TenantVacateRequest::where('tenant_id', $tenant->id)->where('status', 'PENDING')->exists()) {
+        if ($this->openRequests()->where('tenant_id', $tenant->id)->exists()) {
             throw ValidationException::withMessages(['tenant_id' => 'এই ভাড়াটিয়ার জন্য একটি আবেদন আগেই জমা আছে — অ্যাডমিনের সিদ্ধান্তের অপেক্ষায়।']);
         }
         if ($endDate < $tenant->start_date->toDateString()) {
@@ -77,10 +77,35 @@ class TenantVacateService
             $request = TenantVacateRequest::whereKey($request->id)->lockForUpdate()->first();
             $this->mustBePending($request);
 
-            $this->occupancy->vacateTenant($request->tenant, $request->end_date->toDateString());
+            // the tenant stays on the books (and keeps being billed) until the leaving date; bms:daily then moves them out
+            if ($request->end_date->toDateString() <= now()->toDateString()) {
+                $this->occupancy->vacateTenant($request->tenant, $request->end_date->toDateString());
+            }
             $request->update(['status' => 'APPROVED', 'decided_by' => $admin->id, 'decided_at' => now()]);
 
             return $request->fresh();
+        });
+    }
+
+    /** Approved requests whose leaving date has come: the tenant moves out now. Returns how many. */
+    public function applyDue(): int
+    {
+        $due = TenantVacateRequest::with('tenant')->where('status', 'APPROVED')->whereDate('end_date', '<=', now()->toDateString())
+            ->whereHas('tenant', fn ($q) => $q->where('status', 'ACTIVE'))->get();
+
+        foreach ($due as $r) {
+            $this->occupancy->vacateTenant($r->tenant, $r->end_date->toDateString());
+        }
+
+        return $due->count();
+    }
+
+    /** Requests that still need an outcome: waiting for the admin, or approved for a leaving date not yet reached. */
+    private function openRequests()
+    {
+        return TenantVacateRequest::where(function ($q) {
+            $q->where('status', 'PENDING')
+                ->orWhere(fn ($w) => $w->where('status', 'APPROVED')->whereHas('tenant', fn ($t) => $t->where('status', 'ACTIVE')));
         });
     }
 

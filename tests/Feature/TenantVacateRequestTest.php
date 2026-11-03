@@ -66,15 +66,36 @@ class TenantVacateRequestTest extends TestCase
 
     public function test_the_admin_accepting_ends_the_tenancy_and_empties_the_flat(): void
     {
-        $id = $this->actingAs($this->owner, 'sanctum')->postJson('/api/tenant-vacate-requests', $this->body())->json('id');
+        $today = now()->toDateString();
+        $id = $this->actingAs($this->owner, 'sanctum')->postJson('/api/tenant-vacate-requests', $this->body(['end_date' => $today]))->json('id');
 
         $this->actingAs($this->admin, 'sanctum')->postJson("/api/tenant-vacate-requests/{$id}/approve")->assertOk()->assertJsonPath('status', 'APPROVED');
 
         $t = $this->tenant->fresh();
         $this->assertSame('VACATED', $t->status);
-        $this->assertSame('2026-12-31', $t->end_date->toDateString());
+        $this->assertSame($today, $t->end_date->toDateString());
         $this->assertSame('EMPTY', $this->flat->fresh()->occupancy_status);
         $this->assertNotNull(FlatParty::where('person_id', $t->person_id)->where('role', 'TENANT')->first()->to_date);
+    }
+
+    public function test_a_future_leaving_date_keeps_the_tenant_until_that_day(): void
+    {
+        $later = now()->addDays(20)->toDateString();
+        $id = $this->actingAs($this->owner, 'sanctum')->postJson('/api/tenant-vacate-requests', $this->body(['end_date' => $later]))->json('id');
+        $this->actingAs($this->admin, 'sanctum')->postJson("/api/tenant-vacate-requests/{$id}/approve")->assertOk()->assertJsonPath('status', 'APPROVED');
+
+        $this->assertSame('ACTIVE', $this->tenant->fresh()->status);
+        $this->assertSame('TENANTED', $this->flat->fresh()->occupancy_status);
+        // already scheduled: a second request for the same tenant is refused
+        $this->actingAs($this->owner, 'sanctum')->postJson('/api/tenant-vacate-requests', $this->body(['end_date' => $later]))->assertStatus(422);
+
+        $this->artisan('bms:daily')->assertExitCode(0);
+        $this->assertSame('ACTIVE', $this->tenant->fresh()->status);
+
+        $this->travelTo(now()->addDays(21));
+        $this->artisan('bms:daily')->assertExitCode(0);
+        $this->assertSame('VACATED', $this->tenant->fresh()->status);
+        $this->assertSame('EMPTY', $this->flat->fresh()->occupancy_status);
     }
 
     public function test_rejecting_needs_a_reason_and_keeps_the_tenancy(): void
