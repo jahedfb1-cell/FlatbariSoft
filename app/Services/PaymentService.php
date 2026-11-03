@@ -63,6 +63,10 @@ class PaymentService
             }
         }
 
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('payments', 'bank_name')) {
+            unset($data['bank_name'], $data['remarks']);
+        }
+
         return Payment::create(array_merge($data, [
             'received_by' => $receivedBy,
             'status' => 'PENDING',
