@@ -19,10 +19,17 @@ class PaymentController extends Controller
 
     public function index(Request $request)
     {
+        $q = trim((string) $request->query('q', ''));
         $payments = Payment::with('flat.currentOwners.person', 'flat.currentTenant.person')
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->latest('id')
-            ->paginate($request->integer('per_page', 20));
+            ->when($request->filled('status'), fn ($w) => $w->where('status', $request->status))
+            ->when($request->filled('method'), fn ($w) => $w->where('method', $request->method))
+            ->when($request->filled('from'), fn ($w) => $w->whereDate('payment_date', '>=', $request->from))
+            ->when($request->filled('to'), fn ($w) => $w->whereDate('payment_date', '<=', $request->to))
+            ->when($q !== '', fn ($w) => $w->where(fn ($x) => $x->where('receipt_no', 'like', "%{$q}%")
+                ->orWhere('reference_no', 'like', "%{$q}%")
+                ->orWhereHas('flat', fn ($fl) => $fl->where('flat_no', 'like', "%{$q}%"))))
+            ->latest('payment_date')->latest('id')
+            ->paginate(min(100, max(1, $request->integer('per_page', 20))));
 
         return PaymentResource::collection($payments);
     }

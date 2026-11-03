@@ -89,6 +89,12 @@ Route::prefix('masters')->middleware('auth:sanctum')->group(function () {
     Route::get('/staff/{staff}', [StaffController::class, 'show'])->middleware('permission:staff.view');
     Route::put('/staff/{staff}', [StaffController::class, 'update'])->middleware('permission:staff.manage');
     Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->middleware('permission:staff.manage');
+    // KYC form and the papers (CV, NID copy, photo ...) - kept privately, served only through these routes
+    Route::get('/staff/{staff}/kyc', [\App\Http\Controllers\Api\StaffKycController::class, 'show'])->middleware('permission:staff.view');
+    Route::put('/staff/{staff}/kyc', [\App\Http\Controllers\Api\StaffKycController::class, 'update'])->middleware('permission:staff.manage');
+    Route::post('/staff/{staff}/documents', [\App\Http\Controllers\Api\StaffKycController::class, 'upload'])->middleware('permission:staff.manage');
+    Route::get('/staff/documents/{document}', [\App\Http\Controllers\Api\StaffKycController::class, 'file'])->middleware('permission:staff.view');
+    Route::delete('/staff/documents/{document}', [\App\Http\Controllers\Api\StaffKycController::class, 'destroy'])->middleware('permission:staff.manage');
 });
 
 Route::prefix('billing')->middleware('auth:sanctum')->group(function () {

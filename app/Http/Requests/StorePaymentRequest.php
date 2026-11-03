@@ -36,6 +36,9 @@ class StorePaymentRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'flat_id.required' => 'ফ্ল্যাট নির্বাচন আবশ্যক।',
+            'amount.required' => 'পরিমাণ আবশ্যক।',
+            'amount.min' => 'পরিমাণ শূন্যের বেশি হতে হবে।',
             'reference_no.required' => 'চেক / ট্রানজেকশন নম্বর আবশ্যক।',
             'bank_name.required' => 'ব্যাংকের নাম আবশ্যক।',
             'payment_date.before_or_equal' => 'ভবিষ্যতের তারিখে পেমেন্ট এন্ট্রি করা যাবে না।',
@@ -52,12 +55,4 @@ class StorePaymentRequest extends FormRequest
         });
     }
 
-    public function messages(): array
-    {
-        return [
-            'flat_id.required' => 'ফ্ল্যাট নির্বাচন আবশ্যক।',
-            'amount.required' => 'পরিমাণ আবশ্যক।',
-            'amount.min' => 'পরিমাণ শূন্যের বেশি হতে হবে।',
-        ];
-    }
 }

@@ -13,7 +13,8 @@ class StaffController extends Controller
 {
     public function index(Request $request)
     {
-        $staff = Staff::when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->search.'%'))
+        $staff = Staff::when(\Illuminate\Support\Facades\Schema::hasTable('staff_documents'), fn ($q) => $q->withCount('documents'))
+            ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->search.'%'))
             ->orderBy('name')
             ->paginate($request->integer('per_page', 20));
 

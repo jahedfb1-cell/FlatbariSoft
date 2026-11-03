@@ -19,6 +19,9 @@ class StaffResource extends JsonResource
             'monthly_salary' => $this->monthly_salary,
             'photo' => $this->photo,
             'status' => $this->status,
+            // the KYC columns and the papers table arrive with the database upgrade
+            'kyc_updated_at' => \Illuminate\Support\Facades\Schema::hasColumn('staff', 'kyc_updated_at') ? $this->kyc_updated_at?->timezone('Asia/Dhaka')->format('Y-m-d') : null,
+            'documents_count' => $this->documents_count ?? 0,
         ];
     }
 }
