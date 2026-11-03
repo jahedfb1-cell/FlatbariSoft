@@ -39,7 +39,11 @@ class GasBillingService
      */
     public function recordReading(GasConsumer $consumer, int $billingPeriodId, float $currentReading, string $readingDate, int $enteredBy, ?string $photo = null): GasMeterReading
     {
+        // typing the same month's reading again is a correction: it replaces the earlier one
+        $existing = GasMeterReading::where('gas_consumer_id', $consumer->id)->where('billing_period_id', $billingPeriodId)->first();
+
         $previous = GasMeterReading::where('gas_consumer_id', $consumer->id)
+            ->where('billing_period_id', '!=', $billingPeriodId)
             ->orderByDesc('id')
             ->first();
 
@@ -53,16 +57,22 @@ class GasBillingService
 
         $unitsUsed = bcsub((string) $currentReading, (string) $previousReading, 4);
 
-        return GasMeterReading::create([
-            'gas_consumer_id' => $consumer->id,
-            'billing_period_id' => $billingPeriodId,
+        $values = [
             'previous_reading' => $previousReading,
             'current_reading' => $currentReading,
             'units_used' => $unitsUsed,
             'reading_date' => $readingDate,
             'entered_by' => $enteredBy,
-            'photo' => $photo,
-        ]);
+            'photo' => $photo ?? $existing?->photo,
+        ];
+
+        if ($existing) {
+            $existing->update($values);
+
+            return $existing->fresh();
+        }
+
+        return GasMeterReading::create(['gas_consumer_id' => $consumer->id, 'billing_period_id' => $billingPeriodId] + $values);
     }
 
     /**
