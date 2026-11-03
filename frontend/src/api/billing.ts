@@ -48,3 +48,15 @@ export interface BillingMonths {
 export function getBillingMonths(fiscalYear: number) {
   return client.get<BillingMonths>('/billing/months', { params: { fiscal_year: fiscalYear } }).then((r) => r.data);
 }
+
+export interface BillCorrection {
+  service_charge: string;
+  gas_amount: string;
+  other_charges: string;
+  late_fee: string;
+  reason: string;
+}
+/** Correct one bill's amounts (the server recomputes the total and keeps the reason in the audit log). */
+export function correctBill(id: number, d: BillCorrection) {
+  return client.put<BillRow>(`/billing/bills/${id}`, d).then((r) => r.data);
+}

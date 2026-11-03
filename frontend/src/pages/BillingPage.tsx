@@ -43,6 +43,7 @@ export default function BillingPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState<BillRow | null>(null);
+  const [editing, setEditing] = useState<BillRow | null>(null);
 
   const loadRegister = useCallback(async () => {
     try {
@@ -203,7 +204,7 @@ export default function BillingPage() {
                     </td>
                     <td className="px-3 py-2 text-right text-navy-700">{money(b.previous_due)}</td>
                     <td className="px-3 py-2 text-right">{money(b.service_charge)}</td>
-                    <td className="px-3 py-2 text-right">{money(b.gas_amount)}</td>
+                    <td className="px-3 py-2 text-right">{Number(b.gas_amount) > 0 ? money(b.gas_amount) : <span className="text-navy-700" title={lang === 'bn' ? 'গ্যাস বিল এখনো যোগ হয়নি' : 'Gas not added yet'}>—</span>}</td>
                     <td className="px-3 py-2 text-right font-medium">{money(b.total_payable)}</td>
                     <td className="px-3 py-2 text-right">{money(b.paid_amount)}</td>
                     <td className="px-3 py-2 text-right font-medium">
@@ -218,6 +219,11 @@ export default function BillingPage() {
                       <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[b.status]}`}>{t(`billing.status.${b.status}` as TranslationKey)}</span>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">
+                      {can('billing.manage') && (
+                        <button className="mr-3 font-medium text-navy-700 hover:underline" onClick={() => setEditing(b)}>
+                          {lang === 'bn' ? 'সংশোধন' : 'Edit'}
+                        </button>
+                      )}
                       {can('payment.create') && collectable(b) > 0 && (
                         <button className="font-medium text-brand-700 hover:underline" onClick={() => setPaying(b)}>
                           {t('billing.pay')}
@@ -230,7 +236,26 @@ export default function BillingPage() {
             </table>
           )}
         </div>
+        {bills.length > 0 && bills.some((b) => Number(b.gas_amount) === 0) && (
+          <p className="mt-2 text-xs text-navy-700">
+            {lang === 'bn'
+              ? '"—" মানে এই বিলে গ্যাস এখনো যোগ হয়নি। গ্যাস পেজে মিটার রিডিং দিয়ে "বিলে যোগ করুন" চাপলে যোগ হবে; ভুল হলে ডানের "সংশোধন" দিয়ে হাতে ঠিক করা যায়।'
+              : '"—" means gas is not on this bill yet. Enter the meter readings on the Gas page and apply them to the bills; a wrong bill can be fixed with "Edit".'}
+          </p>
+        )}
       </div>
+
+      {editing && (
+        <EditBillModal
+          bill={editing}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            loadRegister();
+            loadMonths();
+          }}
+        />
+      )}
 
       {paying && (
         <PayModal
@@ -370,6 +395,72 @@ function PayModal({ bill, canApprove, onClose, onDone }: { bill: BillRow; canApp
         <button type="submit" disabled={busy} className={`${btn} w-full`}>
           {t('billing.pay')}
         </button>
+      </form>
+    </Modal>
+  );
+}
+
+/** Fix a bill's amounts by hand. The server recomputes the total; a written reason is required and kept in the audit log. */
+function EditBillModal({ bill, onClose, onDone }: { bill: BillRow; onClose: () => void; onDone: () => void }) {
+  const { lang } = useLanguage();
+  const bn = lang === 'bn';
+  const num = (v: string | number) => String(Number(v));
+  const [f, setF] = useState({ service_charge: num(bill.service_charge), gas_amount: num(bill.gas_amount), other_charges: num(bill.other_charges), late_fee: num(bill.late_fee) });
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const total = Number(bill.previous_due) + Number(f.service_charge || 0) + Number(f.gas_amount || 0) + Number(f.other_charges || 0) + Number(f.late_fee || 0);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await billingApi.correctBill(bill.id, { ...f, reason });
+      onDone();
+    } catch (err) {
+      setError(apiError(err, bn ? 'কিছু একটা সমস্যা হয়েছে।' : 'Something went wrong.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const field = (key: keyof typeof f, label: string) => (
+    <label className="block">
+      <span className="mb-1 block text-navy-900">{label}</span>
+      <input type="number" min={0} step="0.01" required value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} className={input} />
+    </label>
+  );
+
+  return (
+    <Modal title={`${bn ? 'বিল সংশোধন' : 'Correct bill'} — ${bill.flat_no ?? bill.flat_id}`} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3 text-sm text-navy-900">
+        <p className="rounded-lg bg-brand-50 p-2 text-navy-700">
+          {bn ? 'আগের বাকি' : 'Previous due'}: {money(bill.previous_due)} · {bn ? 'ইতিমধ্যে পরিশোধিত' : 'Already paid'}: {money(bill.paid_amount)}
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {field('service_charge', bn ? 'সার্ভিস চার্জ' : 'Service charge')}
+          {field('gas_amount', bn ? 'গ্যাস বিল' : 'Gas bill')}
+          {field('other_charges', bn ? 'অন্যান্য চার্জ' : 'Other charges')}
+          {field('late_fee', bn ? 'বিলম্ব ফি' : 'Late fee')}
+        </div>
+        <p className="flex justify-between border-t border-brand-200 pt-2 font-medium">
+          <span>{bn ? 'নতুন মোট' : 'New total'}</span>
+          <span>{money(total)}</span>
+        </p>
+        <label className="block">
+          <span className="mb-1 block">{bn ? 'সংশোধনের কারণ (আবশ্যক)' : 'Reason (required)'}</span>
+          <input value={reason} onChange={(e) => setReason(e.target.value)} required minLength={3} maxLength={500} className={input} />
+        </label>
+        {error && <p className="text-status-due">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" className={btnGhost} onClick={onClose}>
+            {bn ? 'বাতিল' : 'Cancel'}
+          </button>
+          <button className={btn} disabled={busy}>
+            {bn ? 'সংরক্ষণ' : 'Save'}
+          </button>
+        </div>
       </form>
     </Modal>
   );
