@@ -37,7 +37,7 @@
     <tr>
         <th>Towards</th>
         <td>{{ $payment->bill ? 'Bill of '.date('F Y', mktime(0, 0, 0, $payment->bill->billingPeriod->month, 1, $payment->bill->billingPeriod->year)) : 'Payment' }}</td>
-        <th>Paid by</th><td>{{ $payment->method }}{{ $payment->reference_no ? ' / '.$payment->reference_no : '' }}</td>
+        <th>Paid by</th><td>{{ $payment->method }}{{ $payment->bank_name ? ' - '.$payment->bank_name : '' }}{{ $payment->reference_no ? ' / '.$payment->reference_no : '' }}</td>
     </tr>
 </table>
 

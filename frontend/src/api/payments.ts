@@ -10,7 +10,10 @@ export interface PaymentRow {
   bill_id: number | null;
   amount: string;
   payment_date: string;
-  method: 'CASH' | 'BANK' | 'BKASH' | 'NAGAD';
+  method: 'CASH' | 'BANK' | 'BKASH' | 'NAGAD' | 'ROCKET' | 'UPAY';
+  reference_no?: string | null;
+  bank_name?: string | null;
+  remarks?: string | null;
   receipt_no: string | null;
   status: 'PENDING' | 'APPROVED';
 }
@@ -28,6 +31,8 @@ export function createPayment(data: {
   payment_date: string;
   method: string;
   reference_no?: string;
+  bank_name?: string;
+  remarks?: string;
 }) {
   return client.post<PaymentRow>('/payments', data).then((r) => r.data);
 }

@@ -13,6 +13,8 @@ export default function PaymentsPage() {
   const [billId, setBillId] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('CASH');
+  const [reference, setReference] = useState('');
+  const [bankName, setBankName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   function load() {
@@ -31,7 +33,11 @@ export default function PaymentsPage() {
         amount,
         payment_date: new Date().toISOString().slice(0, 10),
         method,
+        reference_no: method === 'CASH' ? undefined : reference.trim(),
+        bank_name: method === 'BANK' ? bankName.trim() : undefined,
       });
+      setReference('');
+      setBankName('');
       setFlatId('');
       setBillId('');
       setAmount('');
@@ -69,7 +75,11 @@ export default function PaymentsPage() {
             <option value="BANK">BANK</option>
             <option value="BKASH">BKASH</option>
             <option value="NAGAD">NAGAD</option>
+            <option value="ROCKET">ROCKET</option>
+            <option value="UPAY">UPAY</option>
           </select>
+          {method === 'BANK' && <input required placeholder="Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />}
+          {method !== 'CASH' && <input required placeholder={method === 'BANK' ? 'Cheque / Ref no.' : 'TxnID'} value={reference} onChange={(e) => setReference(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />}
           <button type="submit" className="rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700">
             {t('common.submit')}
           </button>

@@ -260,6 +260,7 @@ export default function BillingPage() {
       {paying && (
         <PayModal
           bill={paying}
+          period={`${MONTHS[month - 1]} ${year}`}
           canApprove={can('payment.approve')}
           onClose={() => setPaying(null)}
           onDone={() => {
@@ -282,22 +283,58 @@ function Card({ label, value, tone }: { label: string; value: string; tone?: 'pa
   );
 }
 
-function PayModal({ bill, canApprove, onClose, onDone }: { bill: BillRow; canApprove: boolean; onClose: () => void; onDone: () => void }) {
-  const { t } = useLanguage();
-  const [amount, setAmount] = useState(String(collectable(bill)));
-  const [method, setMethod] = useState('CASH');
-  const [date, setDate] = useState(localToday());
+const BANKS = ['Dutch-Bangla Bank', 'Islami Bank Bangladesh', 'Sonali Bank', 'Janata Bank', 'Agrani Bank', 'BRAC Bank', 'City Bank', 'Eastern Bank', 'Prime Bank', 'Mutual Trust Bank', 'Southeast Bank', 'Standard Chartered'];
+const PROVIDERS: { value: string; label: string }[] = [
+  { value: 'BKASH', label: 'bKash' },
+  { value: 'NAGAD', label: 'Nagad' },
+  { value: 'ROCKET', label: 'Rocket' },
+  { value: 'UPAY', label: 'Upay' },
+];
+
+/**
+ * Taking a payment on one bill: what the bill is made of, how much to take now (this month's bill, the whole balance, or any amount
+ * typed in), and how it was paid - cash, bank / cheque, or mobile banking, each with the reference the books need to match it later.
+ */
+function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow; period: string; canApprove: boolean; onClose: () => void; onDone: () => void }) {
+  const { t, lang } = useLanguage();
+  const bn = lang === 'bn';
+  const owing = collectable(bill);
+  // this month's own charges, as far as they are still unpaid - the previous balance is only taken on request
+  const thisMonth = Math.min(owing, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee));
+  const [amount, setAmount] = useState(String(thisMonth > 0 ? thisMonth : owing));
+  const [kind, setKind] = useState<'CASH' | 'BANK' | 'MOBILE'>('CASH');
+  const [provider, setProvider] = useState('BKASH');
+  const [bankName, setBankName] = useState('');
   const [reference, setReference] = useState('');
+  const [date, setDate] = useState(localToday());
+  const [remarks, setRemarks] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ id: number; approved: boolean; receipt: string | null } | null>(null);
 
+  const entered = Number(amount) || 0;
+  const over = entered > owing + 0.0001;
+  const remaining = Math.max(0, owing - entered);
+  const needsRef = kind !== 'CASH';
+  const ready = entered > 0 && !over && (kind === 'CASH' || (reference.trim() !== '' && (kind !== 'BANK' || bankName.trim() !== '')));
+
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!ready) return;
     setError(null);
     setBusy(true);
     try {
-      let p = await paymentsApi.createPayment({ flat_id: bill.flat_id, bill_id: bill.id, amount, payment_date: date, method, reference_no: reference || undefined });
+      const method = kind === 'MOBILE' ? provider : kind;
+      let p = await paymentsApi.createPayment({
+        flat_id: bill.flat_id,
+        bill_id: bill.id,
+        amount,
+        payment_date: date,
+        method,
+        reference_no: needsRef ? reference.trim() : undefined,
+        bank_name: kind === 'BANK' ? bankName.trim() : undefined,
+        remarks: remarks.trim() || undefined,
+      });
       // whoever may approve (admin, president) posts it straight away; everyone else leaves it for them
       if (canApprove) p = await paymentsApi.approvePayment(p.id);
       setResult({ id: p.id, approved: p.status === 'APPROVED', receipt: p.receipt_no });
@@ -311,10 +348,16 @@ function PayModal({ bill, canApprove, onClose, onDone }: { bill: BillRow; canApp
   if (result) {
     return (
       <Modal title={t('billing.payTitle')} onClose={onDone}>
-        <div className="space-y-3 text-sm">
-          <p className={result.approved ? 'text-status-paid' : 'text-navy-900'}>{result.approved ? t('billing.paidOk') : t('billing.sentForApproval')}</p>
-          {result.receipt && <p className="font-medium text-navy-900">{t('billing.receipt')}: {result.receipt}</p>}
-          <div className="flex gap-2">
+        <div className="space-y-4 text-center text-sm">
+          <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full text-3xl ${result.approved ? 'bg-status-paid/15 text-status-paid' : 'bg-status-partial/15 text-status-partial'}`}>{result.approved ? '✓' : '⏳'}</div>
+          <p className={`text-base font-medium ${result.approved ? 'text-status-paid' : 'text-navy-900'}`}>{result.approved ? t('billing.paidOk') : t('billing.sentForApproval')}</p>
+          <p className="text-2xl font-semibold text-navy-900">{money(amount)}</p>
+          {result.receipt && (
+            <p className="text-navy-700">
+              {t('billing.receipt')}: <span className="font-medium text-navy-900">{result.receipt}</span>
+            </p>
+          )}
+          <div className="flex justify-center gap-2">
             {result.approved && (
               <button className={btn} onClick={() => paymentsApi.printReceipt(result.id, result.receipt ?? String(result.id)).catch(async (e) => setError(await blobErrorMessage(e, t('somethingWrong'))))}>
                 🖨 {t('billing.printReceipt')}
@@ -330,70 +373,146 @@ function PayModal({ bill, canApprove, onClose, onDone }: { bill: BillRow; canApp
     );
   }
 
-  return (
-    <Modal title={`${t('billing.payTitle')} — ${bill.flat_no ?? bill.flat_id}${bill.owner ? ` (${bill.owner})` : ''}`} onClose={onClose}>
-      <form onSubmit={submit} className="space-y-3 text-sm text-navy-900">
-        <div className="rounded-lg bg-brand-50 p-3">
-          <p className="flex justify-between">
-            <span>{t('billing.colPrevDue')}</span>
-            <span>{money(bill.previous_due)}</span>
-          </p>
-          <p className="flex justify-between">
-            <span>{t('billing.colService')}</span>
-            <span>{money(bill.service_charge)}</span>
-          </p>
-          <p className="flex justify-between">
-            <span>{t('billing.colGas')}</span>
-            <span>{money(bill.gas_amount)}</span>
-          </p>
-          <p className="flex justify-between border-t border-brand-200 pt-1 font-medium">
-            <span>{t('billing.colTotal')}</span>
-            <span>{money(bill.total_payable)}</span>
-          </p>
-          <p className="flex justify-between">
-            <span>{t('billing.colPaid')}</span>
-            <span>{money(bill.paid_amount)}</span>
-          </p>
-          {Number(bill.pending_amount) > 0 && (
-            <p className="flex justify-between text-status-partial">
-              <span>{t('billing.pendingNote')}</span>
-              <span>{money(bill.pending_amount)}</span>
-            </p>
-          )}
-          <p className="flex justify-between font-semibold">
-            <span>{t('billing.collectable')}</span>
-            <span>{money(collectable(bill))}</span>
-          </p>
-        </div>
-        <p className="text-xs text-navy-700">{t('billing.breakdown')}</p>
+  const line = (label: string, value: string, strong = false) => (
+    <p className={`flex justify-between ${strong ? 'border-t border-brand-200 pt-1 font-semibold text-navy-900' : 'text-navy-700'}`}>
+      <span>{label}</span>
+      <span>{value}</span>
+    </p>
+  );
+  const tile = (value: typeof kind, icon: string, label: string) => (
+    <button
+      type="button"
+      onClick={() => setKind(value)}
+      className={`flex flex-col items-center gap-1 rounded-xl border-2 px-2 py-3 text-xs font-medium transition ${kind === value ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-brand-200 text-navy-700 hover:bg-brand-50'}`}
+    >
+      <span className="text-2xl leading-none">{icon}</span>
+      {label}
+    </button>
+  );
+  const quick = (label: string, value: number) => (
+    <button
+      type="button"
+      disabled={value <= 0}
+      onClick={() => setAmount(String(value))}
+      className={`rounded-lg border px-3 py-2 text-left text-xs transition disabled:opacity-40 ${Number(amount) === value && value > 0 ? 'border-brand-600 bg-brand-600 text-white' : 'border-brand-200 text-navy-900 hover:bg-brand-50'}`}
+    >
+      <span className="block">{label}</span>
+      <span className="block text-sm font-semibold">{money(value)}</span>
+    </button>
+  );
 
-        <div className="grid grid-cols-2 gap-2">
-          <label className="col-span-2 text-navy-700">
-            {t('common.amount')}
-            <div className="mt-1 flex gap-2">
-              <input required type="number" min="0.01" step="0.01" max={collectable(bill)} className={input} value={amount} onChange={(e) => setAmount(e.target.value)} />
-              <button type="button" className={btnGhost} onClick={() => setAmount(String(collectable(bill)))}>
-                {t('billing.fullDue')}
-              </button>
+  return (
+    <Modal title={t('billing.payTitle')} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4 text-sm text-navy-900">
+        {/* who and which month */}
+        <div className="rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 p-3 text-white">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-lg font-semibold">{bn ? 'ফ্ল্যাট' : 'Flat'} {bill.flat_no ?? bill.flat_id}</p>
+              {bill.owner && <p className="text-xs text-white/85">{bn ? 'মালিক' : 'Owner'}: {bill.owner}</p>}
+              {bill.tenant && <p className="text-xs text-white/85">{bn ? 'ভাড়াটিয়া' : 'Tenant'}: {bill.tenant}</p>}
             </div>
-          </label>
+            <div className="text-right text-xs">
+              <p className="font-medium">{period}</p>
+              <p className="text-white/85">{bn ? 'শেষ তারিখ' : 'Due date'}: {bill.due_date}</p>
+              <span className="mt-1 inline-block rounded-full bg-white/20 px-2 py-0.5">{t(`billing.status.${bill.status}` as TranslationKey)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* what the bill is made of */}
+        <div className="space-y-1 rounded-xl border border-brand-200 bg-brand-50/60 p-3">
+          {Number(bill.previous_due) > 0 && line(t('billing.colPrevDue'), money(bill.previous_due))}
+          {line(t('billing.colService'), money(bill.service_charge))}
+          {line(t('billing.colGas'), Number(bill.gas_amount) > 0 ? money(bill.gas_amount) : bn ? 'যোগ হয়নি' : 'not added')}
+          {Number(bill.other_charges) > 0 && line(bn ? 'অন্যান্য চার্জ' : 'Other charges', money(bill.other_charges))}
+          {Number(bill.late_fee) > 0 && line(bn ? 'বিলম্ব ফি' : 'Late fee', money(bill.late_fee))}
+          {line(t('billing.colTotal'), money(bill.total_payable), true)}
+          {Number(bill.paid_amount) > 0 && line(t('billing.colPaid'), '− ' + money(bill.paid_amount))}
+          {Number(bill.pending_amount) > 0 && <p className="flex justify-between text-status-partial"><span>{t('billing.pendingNote')}</span><span>− {money(bill.pending_amount)}</span></p>}
+          <p className="flex items-center justify-between border-t border-brand-200 pt-1 text-base font-semibold text-status-due">
+            <span>{t('billing.collectable')}</span>
+            <span>{money(owing)}</span>
+          </p>
+        </div>
+
+        {/* how much */}
+        <div>
+          <p className="mb-1 font-medium">{t('common.amount')} *</p>
+          <div className="mb-2 grid grid-cols-2 gap-2">
+            {quick(bn ? 'এই মাসের বিল' : "This month's bill", thisMonth)}
+            {quick(bn ? 'পুরো বকেয়া' : 'Full balance', owing)}
+          </div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-700">৳</span>
+            <input required type="number" min="0.01" step="0.01" max={owing} className={`${input} pl-8 text-lg font-semibold`} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          {over ? (
+            <p className="mt-1 text-xs text-status-due">{bn ? 'বকেয়ার বেশি নেওয়া যাবে না' : 'More than the balance'} ({money(owing)})</p>
+          ) : (
+            <p className="mt-1 text-xs text-navy-700">{bn ? 'এই পেমেন্টের পর বাকি থাকবে' : 'Balance after this payment'}: <span className="font-medium">{money(remaining)}</span></p>
+          )}
+        </div>
+
+        {/* how it was paid */}
+        <div>
+          <p className="mb-1 font-medium">{t('billing.method')} *</p>
+          <div className="grid grid-cols-3 gap-2">
+            {tile('CASH', '💵', bn ? 'নগদ' : 'Cash')}
+            {tile('BANK', '🏦', bn ? 'ব্যাংক / চেক' : 'Bank / Cheque')}
+            {tile('MOBILE', '📱', bn ? 'মোবাইল ব্যাংকিং' : 'Mobile banking')}
+          </div>
+        </div>
+
+        {kind === 'BANK' && (
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-brand-200 p-3 sm:grid-cols-2">
+            <label className="text-navy-700">
+              {bn ? 'ব্যাংকের নাম' : 'Bank name'} *
+              <input required list="bank-names" className={`${input} mt-1`} placeholder="e.g. Dutch-Bangla Bank" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+              <datalist id="bank-names">
+                {BANKS.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+            </label>
+            <label className="text-navy-700">
+              {bn ? 'চেক / রেফারেন্স নম্বর' : 'Cheque / Ref number'} *
+              <input required className={`${input} mt-1`} placeholder={bn ? 'চেক নং' : 'Cheque No.'} value={reference} onChange={(e) => setReference(e.target.value)} />
+            </label>
+          </div>
+        )}
+        {kind === 'MOBILE' && (
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-brand-200 p-3 sm:grid-cols-2">
+            <label className="text-navy-700">
+              {bn ? 'মোবাইল ব্যাংকিং সেবা' : 'Mobile provider'} *
+              <select className={`${input} mt-1`} value={provider} onChange={(e) => setProvider(e.target.value)}>
+                {PROVIDERS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-navy-700">
+              {bn ? 'ট্রানজেকশন আইডি (TxnID)' : 'Transaction ID (TxnID)'} *
+              <input required className={`${input} mt-1`} placeholder="e.g. 9J58AXK2" value={reference} onChange={(e) => setReference(e.target.value)} />
+            </label>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="text-navy-700">
-            {t('billing.method')}
-            <select className={`${input} mt-1`} value={method} onChange={(e) => setMethod(e.target.value)}>
-              {['CASH', 'BANK', 'BKASH', 'NAGAD'].map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </select>
+            {bn ? 'পেমেন্টের তারিখ' : 'Payment date'} *
+            <input required type="date" max={localToday()} className={`${input} mt-1`} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
-          <label className="text-navy-700">
-            {t('billing.date')}
-            <input required type="date" className={`${input} mt-1`} value={date} onChange={(e) => setDate(e.target.value)} />
+          <label className="text-navy-700 sm:col-span-2">
+            {bn ? 'মন্তব্য / নোট' : 'Remarks / Notes'}
+            <textarea rows={2} maxLength={500} className={`${input} mt-1`} placeholder={bn ? 'ঐচ্ছিক — যেমন কে টাকা দিলেন' : 'Optional - e.g. who handed over the money'} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
           </label>
         </div>
-        <input className={input} placeholder={t('billing.reference')} value={reference} onChange={(e) => setReference(e.target.value)} />
-        {error && <p className="text-status-due">{error}</p>}
-        <button type="submit" disabled={busy} className={`${btn} w-full`}>
-          {t('billing.pay')}
+
+        {error && <p className="rounded-lg bg-status-due/10 p-2 text-status-due">{error}</p>}
+        <p className="text-xs text-navy-700">{canApprove ? (bn ? 'আপনি অনুমোদন করতে পারেন — পেমেন্ট সঙ্গে সঙ্গে খাতায় উঠবে ও রসিদ পাবেন।' : 'You can approve - the payment posts at once and a receipt is issued.') : bn ? 'পেমেন্টটি অনুমোদনের জন্য জমা হবে।' : 'The payment goes for approval.'}</p>
+        <button type="submit" disabled={busy || !ready} className={`${btn} w-full py-3 text-base`}>
+          {busy ? '…' : `${bn ? 'পেমেন্ট নিন' : 'Take payment'} · ${money(entered)}`}
         </button>
       </form>
     </Modal>
