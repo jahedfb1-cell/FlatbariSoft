@@ -15,7 +15,7 @@ class StoreExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
             'expense_head_id' => ['required', 'exists:expense_heads,id'],
             'payee' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -24,5 +24,10 @@ class StoreExpenseRequest extends FormRequest
             'fund_type' => ['nullable', Rule::in(['OPERATING', 'GAS', 'CAPITAL', 'SINKING'])],
             'resolution_id' => ['nullable', 'integer'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['date.before_or_equal' => 'ভবিষ্যতের তারিখে খরচ এন্ট্রি করা যাবে না।'];
     }
 }
