@@ -78,7 +78,7 @@ class TenantVacateService
             $this->mustBePending($request);
 
             // the tenant stays on the books (and keeps being billed) until the leaving date; bms:daily then moves them out
-            if ($request->end_date->toDateString() <= now()->toDateString()) {
+            if ($request->end_date->toDateString() <= now('Asia/Dhaka')->toDateString()) {
                 $this->occupancy->vacateTenant($request->tenant, $request->end_date->toDateString());
             }
             $request->update(['status' => 'APPROVED', 'decided_by' => $admin->id, 'decided_at' => now()]);
@@ -90,7 +90,7 @@ class TenantVacateService
     /** Approved requests whose leaving date has come: the tenant moves out now. Returns how many. */
     public function applyDue(): int
     {
-        $due = TenantVacateRequest::with('tenant')->where('status', 'APPROVED')->whereDate('end_date', '<=', now()->toDateString())
+        $due = TenantVacateRequest::with('tenant')->where('status', 'APPROVED')->whereDate('end_date', '<=', now('Asia/Dhaka')->toDateString())
             ->whereHas('tenant', fn ($q) => $q->where('status', 'ACTIVE'))->get();
 
         foreach ($due as $r) {
