@@ -19,6 +19,7 @@ class ExpenseResource extends JsonResource
             'treasury_medium' => $this->treasury_medium,
             'fund_type' => $this->fund_type,
             'resolution_id' => $this->resolution_id,
+            'work_budget_id' => $this->work_budget_id,
             'voucher_no' => $this->voucher_no,
             'status' => $this->status,
             'description' => $this->description,

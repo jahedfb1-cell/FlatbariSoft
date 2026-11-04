@@ -34,6 +34,8 @@ class ExpenseDetailService
             'treasury_medium' => $expense->treasury_medium,
             'fund_type' => $expense->fund_type,
             'resolution_id' => $expense->resolution_id,
+            'work_budget_id' => $expense->work_budget_id,
+            'work_title' => $expense->work_budget_id ? $expense->workBudget?->title : null,
             'voucher_no' => $expense->voucher_no,
             'status' => $expense->status,
             'created_by' => $expense->creator?->displayName(),

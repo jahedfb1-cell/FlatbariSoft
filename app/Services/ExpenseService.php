@@ -22,6 +22,14 @@ class ExpenseService
 
     public function create(array $data, int $createdBy): Expense
     {
+        // an expense for a one-off work is paid from the project fund, and only while the work is open
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('expenses', 'work_budget_id')) {
+            unset($data['work_budget_id']);
+        } elseif (! empty($data['work_budget_id'])) {
+            app(WorkBudgetService::class)->checkExpense(\App\Models\WorkBudget::findOrFail($data['work_budget_id']), (string) $data['amount']);
+            $data['fund_type'] = 'CAPITAL';
+        }
+
         return Expense::create(array_merge($data, [
             'created_by' => $createdBy,
             'status' => 'PENDING',
@@ -61,6 +69,10 @@ class ExpenseService
         // maker-checker: whoever entered the expense does not also approve it - unless nobody else is able to
         if ($expense->created_by === $approvedBy && $this->anotherApproverExists($approvedBy)) {
             throw ValidationException::withMessages(['approved_by' => 'যিনি খরচ এন্ট্রি করেছেন তিনি নিজে অনুমোদন করতে পারবেন না — অন্য একজন অনুমোদনকারী প্রয়োজন।']);
+        }
+
+        if ($expense->work_budget_id) {
+            app(WorkBudgetService::class)->checkExpense($expense->workBudget, (string) $expense->amount, $expense->id, forApproval: true);
         }
 
         // a fund can never spend more than it holds

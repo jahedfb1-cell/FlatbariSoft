@@ -13,7 +13,7 @@ class Expense extends Model
 
     protected $fillable = [
         'date', 'expense_head_id', 'payee', 'amount', 'description', 'treasury_medium',
-        'fund_type', 'resolution_id', 'voucher_no', 'voucher_image', 'created_by', 'approved_by', 'status',
+        'fund_type', 'resolution_id', 'work_budget_id', 'voucher_no', 'voucher_image', 'created_by', 'approved_by', 'status',
     ];
 
     protected function casts(): array
@@ -42,5 +42,10 @@ class Expense extends Model
     public function approvals(): HasMany
     {
         return $this->hasMany(ExpenseApproval::class);
+    }
+
+    public function workBudget(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(WorkBudget::class);
     }
 }
