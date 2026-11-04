@@ -10,7 +10,7 @@ import { downloadFile, openPdf } from '../utils/download';
 import { localToday } from './HallCalendar';
 import { useEffect } from 'react';
 
-type Kind = 'dues' | 'collections' | 'expenses' | 'flat' | 'cashbook';
+type Kind = 'dues' | 'purposes' | 'collections' | 'expenses' | 'flat' | 'cashbook';
 
 interface Column {
   key: string;
@@ -34,6 +34,7 @@ const btnGhost = 'rounded-lg border border-brand-200 px-3 py-2 text-sm text-navy
 
 const CARDS: { kind: Kind; icon: string; bn: string; en: string; hintBn: string; hintEn: string; dates: boolean }[] = [
   { kind: 'dues', icon: '📋', bn: 'বকেয়া তালিকা', en: 'Dues list', hintBn: 'কোন ফ্ল্যাটের কাছে কত টাকা পাওনা — ফোন নম্বরসহ', hintEn: 'Which flat owes how much, with phone numbers', dates: false },
+  { kind: 'purposes', icon: '🧾', bn: 'খাত অনুযায়ী বকেয়া', en: 'Dues by purpose', hintBn: 'মাসিক চাঁদা, গ্যাস লাইন, জেনারেটর, পুরনো পানির বকেয়া ... প্রতিটির আলাদা বকেয়া', hintEn: 'Subscription, gas line, generator, old water dues ... each owed separately', dates: false },
   { kind: 'collections', icon: '💰', bn: 'আদায় রিপোর্ট', en: 'Collections', hintBn: 'এই সময়ে কত টাকা আদায় হলো, কোন মাধ্যমে', hintEn: 'What was collected in the period, and how', dates: true },
   { kind: 'expenses', icon: '💸', bn: 'খরচের রিপোর্ট', en: 'Expenses', hintBn: 'কোন খাতে কত খরচ — ভাউচার নম্বরসহ', hintEn: 'Spending by head, with voucher numbers', dates: true },
   { kind: 'flat', icon: '🏠', bn: 'ফ্ল্যাটের হিসাব বিবরণী', en: 'Flat statement', hintBn: 'একটি ফ্ল্যাটের মাসওয়ারি বিল, পরিশোধ ও বাকি', hintEn: 'One flat: bills, payments and balance by month', dates: true },

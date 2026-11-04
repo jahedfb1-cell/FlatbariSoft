@@ -182,4 +182,46 @@ class WorkBudgetTest extends TestCase
         $api->putJson("/api/work-budgets/{$id}/schedule", ['installments' => [['due_date' => $d(5), 'percent' => 33.3333], ['due_date' => $d(9), 'percent' => 66.6667]]])->assertOk()->assertJsonCount(2, 'schedule');
         $api->putJson("/api/work-budgets/{$id}/schedule", ['installments' => []])->assertOk()->assertJsonCount(0, 'schedule'); // removed again
     }
+
+    public function test_each_purpose_is_paid_and_owed_separately(): void
+    {
+        $api = $this->actingAs($this->admin, 'sanctum');
+        $gasLine = $api->postJson('/api/work-budgets', ['title' => 'Gas line', 'estimated_cost' => 40000, 'split_method' => 'MANUAL', 'shares' => [['flat_id' => $this->flats[0]->id, 'amount' => 20000], ['flat_id' => $this->flats[1]->id, 'amount' => 20000]]])->json();
+        $generator = $api->postJson('/api/work-budgets', ['title' => 'Generator', 'estimated_cost' => 30000, 'split_method' => 'MANUAL', 'shares' => [['flat_id' => $this->flats[0]->id, 'amount' => 30000]]])->json();
+        $flat = $this->flats[0];
+
+        // the pop-up offers every special collection this flat still owes - and only those
+        $offered = $api->getJson("/api/work-budgets/for-flat/{$flat->id}")->assertOk()->json();
+        $this->assertSame(['Gas line', 'Generator'], array_column($offered, 'title'));
+        $this->assertCount(1, $api->getJson("/api/work-budgets/for-flat/{$this->flats[1]->id}")->json());
+
+        // paying for the gas line reduces the gas line's dues and leaves the generator's untouched
+        $paid = $api->postJson("/api/work-budgets/{$gasLine['id']}/collect", ['flat_id' => $flat->id, 'amount' => 5000, 'received_on' => now()->toDateString(), 'method' => 'CASH'])->assertCreated();
+        $this->assertStringStartsWith('CC-', $paid->json('receipt_no'));
+        $byTitle = collect($api->getJson("/api/work-budgets/for-flat/{$flat->id}")->json())->keyBy('title');
+        $this->assertSame('15000.0000', $byTitle['Gas line']['due']);
+        $this->assertSame('30000.0000', $byTitle['Generator']['due']);
+
+        // a flat cannot pay more than it owes for that purpose, nor for a work it has no share in
+        $api->postJson("/api/work-budgets/{$gasLine['id']}/collect", ['flat_id' => $flat->id, 'amount' => 15001, 'received_on' => now()->toDateString(), 'method' => 'CASH'])->assertStatus(422)->assertJsonValidationErrors('amount');
+        $api->postJson("/api/work-budgets/{$generator['id']}/collect", ['flat_id' => $this->flats[2]->id, 'amount' => 100, 'received_on' => now()->toDateString(), 'method' => 'CASH'])->assertStatus(422)->assertJsonValidationErrors('flat_id');
+        // a mobile or bank payment needs its reference
+        $api->postJson("/api/work-budgets/{$gasLine['id']}/collect", ['flat_id' => $flat->id, 'amount' => 100, 'received_on' => now()->toDateString(), 'method' => 'BKASH'])->assertStatus(422)->assertJsonValidationErrors('reference_no');
+    }
+
+    public function test_the_by_purpose_report_has_a_column_for_each_purpose(): void
+    {
+        $api = $this->actingAs($this->admin, 'sanctum');
+        $gasLine = $api->postJson('/api/work-budgets', ['title' => 'Gas line', 'estimated_cost' => 40000, 'split_method' => 'MANUAL', 'shares' => [['flat_id' => $this->flats[0]->id, 'amount' => 20000], ['flat_id' => $this->flats[1]->id, 'amount' => 20000]]])->json();
+        $api->postJson('/api/work-budgets', ['title' => 'East wall', 'estimated_cost' => 9000, 'split_method' => 'MANUAL', 'shares' => [['flat_id' => $this->flats[1]->id, 'amount' => 9000]]]);
+        $api->postJson("/api/work-budgets/{$gasLine['id']}/collect", ['flat_id' => $this->flats[0]->id, 'amount' => 20000, 'received_on' => now()->toDateString(), 'method' => 'CASH'])->assertCreated();
+
+        $r = $api->getJson('/api/reports/simple/purposes')->assertOk()->json();
+
+        $this->assertSame(['Gas line', 'East wall'], array_slice(array_column($r['columns'], 'label'), 4, 2));
+        $this->assertCount(1, $r['rows']); // A1 has paid everything; only A2 still owes
+        $this->assertSame('A2', $r['rows'][0]['flat']);
+        $this->assertSame('29000.00', $r['rows'][0]['total']); // 20000 gas line + 9000 east wall
+        $this->assertSame('29000.00', $r['totals']['total']);
+    }
 }

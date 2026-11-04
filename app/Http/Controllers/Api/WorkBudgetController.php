@@ -85,6 +85,28 @@ class WorkBudgetController extends Controller
         return response()->json($this->detail($workBudget->fresh()));
     }
 
+    /** The special collections one flat still has to pay - what the payment pop-up offers besides the monthly bill. */
+    public function forFlat(\App\Models\Flat $flat)
+    {
+        return response()->json($this->service->forFlat($flat));
+    }
+
+    /** One payment for one work: its own receipt, its own ledger. */
+    public function collect(Request $request, WorkBudget $workBudget)
+    {
+        $v = $request->validate([
+            'flat_id' => ['required', 'integer', 'exists:flats,id'],
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:999999999'],
+            'received_on' => ['required', 'date', 'before_or_equal:'.now('Asia/Dhaka')->toDateString()],
+            'method' => ['required', Rule::in(\App\Http\Requests\StoreContributionRequest::methods())],
+            'reference_no' => [Rule::requiredIf(fn () => $request->input('method') !== 'CASH'), 'nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], ['reference_no.required' => 'চেক / ট্রানজেকশন নম্বর আবশ্যক।', 'received_on.before_or_equal' => 'ভবিষ্যতের তারিখ দেওয়া যাবে না।']);
+        $row = $this->service->collect($workBudget, \App\Models\Flat::findOrFail($v['flat_id']), $v, Auth::id());
+
+        return response()->json(['receipt_no' => $row->receipt_no, 'amount' => (string) $row->amount, 'work' => $this->service->forFlat(\App\Models\Flat::find($v['flat_id']), all: true)], 201);
+    }
+
     public function schedule(Request $request, WorkBudget $workBudget)
     {
         $v = $request->validate([

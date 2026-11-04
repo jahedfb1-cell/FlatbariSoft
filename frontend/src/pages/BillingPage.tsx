@@ -12,6 +12,8 @@ import { apiError } from '../api/hall';
 import { blobErrorMessage } from '../utils/download';
 import * as billingApi from '../api/billing';
 import * as paymentsApi from '../api/payments';
+import * as workApi from '../api/workBudgets';
+import type { FlatCollection } from '../api/workBudgets';
 import type { BillRow } from '../api/billing';
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 })}`;
@@ -301,10 +303,26 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
   const { t, lang } = useLanguage();
   const bn = lang === 'bn';
   const L = (b: string, e: string) => (bn ? b : e);
-  const owing = collectable(bill);
+  const { user } = useAuth();
+  const canCollect = !!user && (user.roles.includes('super_admin') || user.permissions.includes('contribution.collect'));
+  // every purpose is paid and owed on its own: the monthly subscription (this bill) or one special collection
+  const [purpose, setPurpose] = useState<'BILL' | number>('BILL');
+  const [collections, setCollections] = useState<FlatCollection[]>([]);
+  useEffect(() => {
+    if (canCollect) workApi.collectionsForFlat(bill.flat_id).then(setCollections).catch(() => undefined);
+  }, [bill.flat_id, canCollect]);
+  const work = typeof purpose === 'number' ? collections.find((c) => c.work_id === purpose) : undefined;
+  const owing = work ? Number(work.due) : collectable(bill);
   // this month's own charges as far as they are still unpaid - the previous balance is only taken on request
-  const thisMonth = Math.min(owing, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee));
+  const thisMonth = work ? owing : Math.min(owing, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee));
   const [amount, setAmount] = useState(String(thisMonth > 0 ? thisMonth : owing));
+  const choosePurpose = (p: 'BILL' | number) => {
+    setPurpose(p);
+    const w = typeof p === 'number' ? collections.find((c) => c.work_id === p) : undefined;
+    const o = w ? Number(w.due) : collectable(bill);
+    setAmount(String(w ? o : Math.min(o, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee)) || o));
+    setError(null);
+  };
   const [kind, setKind] = useState<'CASH' | 'BANK' | 'MOBILE'>('CASH');
   const [provider, setProvider] = useState('BKASH');
   const [bankName, setBankName] = useState('');
@@ -315,7 +333,7 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ id: number; approved: boolean; receipt: string | null } | null>(null);
+  const [result, setResult] = useState<{ id: number; approved: boolean; receipt: string | null; special?: string } | null>(null);
 
   const entered = Number(amount) || 0;
   const over = entered > owing + 0.0001;
@@ -331,6 +349,16 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
     setError(null);
     setBusy(true);
     try {
+      if (work) {
+        // a special collection: its own receipt and its own ledger
+        const r = await workApi.collectForWork(work.work_id, {
+          flat_id: bill.flat_id, amount, received_on: date, method: kind === 'MOBILE' ? provider : kind,
+          reference_no: needsRef ? reference.trim() : undefined,
+          notes: [kind === 'BANK' && bankName.trim() ? `${bankName.trim()}` : '', remarks.trim()].filter(Boolean).join(' — ') || undefined,
+        });
+        setResult({ id: 0, approved: true, receipt: r.receipt_no, special: work.title });
+        return;
+      }
       let p = await paymentsApi.createPayment({
         flat_id: bill.flat_id,
         bill_id: bill.id,
@@ -357,14 +385,14 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
         <div className="space-y-3 py-4 text-center">
           <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full text-3xl ${result.approved ? 'bg-status-paid/15 text-status-paid' : 'bg-status-partial/15 text-status-partial'}`}>{result.approved ? '✓' : '⏳'}</div>
           <p className="text-3xl font-bold text-navy-900">{money(amount)}</p>
-          <p className={`text-sm font-medium ${result.approved ? 'text-status-paid' : 'text-navy-900'}`}>{result.approved ? t('billing.paidOk') : t('billing.sentForApproval')}</p>
+          <p className={`text-sm font-medium ${result.approved ? 'text-status-paid' : 'text-navy-900'}`}>{result.special ? `${result.special} — ${L('আদায় নেওয়া হয়েছে', 'collected')}` : result.approved ? t('billing.paidOk') : t('billing.sentForApproval')}</p>
           {result.receipt && (
             <p className="text-sm text-navy-700">
               {t('billing.receipt')}: <span className="font-semibold text-navy-900">{result.receipt}</span>
             </p>
           )}
           <div className="flex justify-center gap-2 pt-2">
-            {result.approved && (
+            {result.approved && !result.special && (
               <button className={btn} onClick={() => paymentsApi.printReceipt(result.id, result.receipt ?? String(result.id)).catch(async (e) => setError(await blobErrorMessage(e, t('somethingWrong'))))}>
                 🖨 {t('billing.printReceipt')}
               </button>
@@ -418,12 +446,35 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
           <button type="button" onClick={() => submit()} disabled={busy || !ready} className="w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white shadow transition hover:bg-brand-700 disabled:opacity-40">
             {busy ? '…' : `${L('পেমেন্ট নিন', 'Take payment')} · ${money(entered)}`}
           </button>
-          <p className="text-center text-[11px] text-navy-700">{canApprove ? L('সঙ্গে সঙ্গে খাতায় উঠবে ও রসিদ পাবেন', 'Posts at once and a receipt is issued') : L('অনুমোদনের জন্য জমা হবে', 'Goes for approval')}</p>
+          <p className="text-center text-[11px] text-navy-700">{work ? L('এই খাতের নিজস্ব খাতায় সঙ্গে সঙ্গে উঠবে ও রসিদ নম্বর পাবেন', 'Goes into this collection\u2019s own ledger at once, with a receipt number') : canApprove ? L('সঙ্গে সঙ্গে খাতায় উঠবে ও রসিদ পাবেন', 'Posts at once and a receipt is issued') : L('অনুমোদনের জন্য জমা হবে', 'Goes for approval')}</p>
         </div>
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        {/* the balance, in one line; the breakdown folds away */}
+        {collections.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs font-medium text-navy-700">{L('কীসের জন্য টাকা?', 'What is this payment for?')}</p>
+            <div className="flex flex-wrap gap-1.5">
+              <button type="button" onClick={() => choosePurpose('BILL')} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${purpose === 'BILL' ? 'border-brand-600 bg-brand-600 text-white' : 'border-brand-200 text-navy-700 hover:bg-brand-50'}`}>
+                {L('মাসিক চাঁদা', 'Subscription')} · {money(collectable(bill))}
+              </button>
+              {collections.map((c) => (
+                <button key={c.work_id} type="button" onClick={() => choosePurpose(c.work_id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${purpose === c.work_id ? 'border-brand-600 bg-brand-600 text-white' : 'border-brand-200 text-navy-700 hover:bg-brand-50'}`}>
+                  {c.title} · {money(c.due)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {work ? (
+          <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-600 p-4 text-white">
+            <p className="text-xs text-white/80">{work.title} — {L('এই খাতে বাকি', 'still due for this')}</p>
+            <p className="text-2xl font-bold leading-tight">{money(work.due)}</p>
+            <p className="mt-1 text-xs text-white/85">{L('ভাগ', 'Share')} {money(work.share)} · {L('দিয়েছেন', 'paid')} {money(work.paid)}</p>
+          </div>
+        ) : (
+        /* the balance, in one line; the breakdown folds away */
         <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-600 p-4 text-white">
           <div className="flex items-end justify-between">
             <div>
@@ -450,6 +501,7 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
             </div>
           )}
         </div>
+        )}
 
         {/* how much */}
         <div>
@@ -469,7 +521,7 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
             />
           </div>
           <div className="mt-2 flex gap-2">
-            {chip(L('এই মাস', 'This month'), thisMonth)}
+            {!work && chip(L('এই মাস', 'This month'), thisMonth)}
             {chip(L('পুরো বকেয়া', 'Full balance'), owing)}
           </div>
           <p className={`mt-1.5 text-xs ${over ? 'text-status-due' : 'text-navy-700'}`}>

@@ -103,3 +103,17 @@ export const updateWork = (id: number, d: Partial<{ title: string; description: 
   client.put<WorkDetail>(`/work-budgets/${id}`, d).then((r) => r.data);
 export const saveShares = (id: number, shares: ShareInput[]) => client.put<WorkDetail>(`/work-budgets/${id}/shares`, { shares }).then((r) => r.data);
 export const saveSchedule = (id: number, installments: InstallmentInput[]) => client.put<WorkDetail>(`/work-budgets/${id}/schedule`, { installments }).then((r) => r.data);
+
+/** A special collection (gas line, generator, east wall ...) one flat still has to pay. */
+export interface FlatCollection {
+  work_id: number;
+  title: string;
+  status: WorkStatus;
+  share: string;
+  paid: string;
+  due: string;
+  head_id: number;
+}
+export const collectionsForFlat = (flatId: number) => client.get<FlatCollection[]>(`/work-budgets/for-flat/${flatId}`).then((r) => r.data);
+export const collectForWork = (workId: number, d: { flat_id: number; amount: string; received_on: string; method: string; reference_no?: string; notes?: string }) =>
+  client.post<{ receipt_no: string; amount: string }>(`/work-budgets/${workId}/collect`, d).then((r) => r.data);
