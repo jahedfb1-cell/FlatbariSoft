@@ -20,6 +20,7 @@ class GasPurchaseService
     public function __construct(
         private readonly ExpenseService $expenses,
         private readonly InvoiceImageService $images,
+        private readonly SupplierService $suppliers,
     ) {}
 
     /** $data['invoice_image'] (an UploadedFile) is optional — see InvoiceImageService. */
@@ -39,11 +40,18 @@ class GasPurchaseService
     private function create(array $data, int $createdBy, ?string $invoicePath): GasPurchase
     {
         return DB::transaction(function () use ($data, $createdBy, $invoicePath) {
-            $totalCost = bcadd(
-                bcmul((string) $data['quantity_kg'], (string) $data['unit_price'], 4),
-                (string) ($data['transport_cost'] ?? 0),
-                4,
-            );
+            $supplierName = $this->suppliers->nameFor($data['supplier_id'] ?? null, $data['supplier_name'] ?? null, 'GAS');
+            $data['supplier_name'] = $supplierName;
+
+            // by the cylinder: the total is cylinders x price of one, exactly; the kg and the per-kg rate follow from it
+            if (! empty($data['cylinders'])) {
+                $data['quantity_kg'] = bcmul((string) $data['cylinders'], (string) $data['cylinder_kg'], 4);
+                $data['unit_price'] = bcdiv((string) $data['price_per_cylinder'], (string) $data['cylinder_kg'], 4);
+                $goods = bcmul((string) $data['cylinders'], (string) $data['price_per_cylinder'], 4);
+            } else {
+                $goods = bcmul((string) $data['quantity_kg'], (string) $data['unit_price'], 4);
+            }
+            $totalCost = bcadd($goods, (string) ($data['transport_cost'] ?? 0), 4);
 
             $expenseHead = ExpenseHead::where('code', 'GAS_PURCHASE')->firstOrFail();
 
@@ -52,10 +60,12 @@ class GasPurchaseService
                 'expense_head_id' => $expenseHead->id,
                 'payee' => $data['supplier_name'],
                 'amount' => $totalCost,
-                'description' => "গ্যাস ক্রয় — {$data['quantity_kg']} কেজি",
+                'description' => ! empty($data['cylinders']) ? "গ্যাস ক্রয় — {$data['cylinders']} সিলিন্ডার × {$data['cylinder_kg']} কেজি" : "গ্যাস ক্রয় — {$data['quantity_kg']} কেজি",
                 'treasury_medium' => $data['treasury_medium'],
                 'fund_type' => 'GAS',
             ], $createdBy);
+
+            $upgraded = \Illuminate\Support\Facades\Schema::hasColumn('gas_purchases', 'supplier_id');
 
             return GasPurchase::create([
                 'date' => $data['date'],
@@ -66,7 +76,10 @@ class GasPurchaseService
                 'total_cost' => $totalCost,
                 'invoice_file' => $invoicePath,
                 'expense_id' => $expense->id,
-            ]);
+            ] + ($upgraded ? [
+                'supplier_id' => $data['supplier_id'] ?? null, 'cylinders' => $data['cylinders'] ?? null,
+                'cylinder_kg' => $data['cylinder_kg'] ?? null, 'price_per_cylinder' => $data['price_per_cylinder'] ?? null,
+            ] : []));
         });
     }
 }

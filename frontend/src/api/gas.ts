@@ -48,9 +48,13 @@ export function listGasPurchases() {
 
 export function recordGasPurchase(data: {
   date: string;
-  supplier_name: string;
-  quantity_kg: number | string;
-  unit_price: number | string;
+  supplier_id?: number | string;
+  supplier_name?: string;
+  cylinders?: number | string;
+  cylinder_kg?: number | string;
+  price_per_cylinder?: number | string;
+  quantity_kg?: number | string;
+  unit_price?: number | string;
   transport_cost?: number | string;
   treasury_medium: 'CASH' | 'BANK';
   invoice_image?: File | null;

@@ -20,6 +20,7 @@ class StoreConstructionMaterialPurchaseRequest extends FormRequest
             'quantity' => ['required', 'numeric', 'min:0.01'],
             'unit' => ['required', 'string', 'max:50'],
             'unit_rate' => ['required', 'numeric', 'min:0.01'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_name' => ['nullable', 'string', 'max:255'],
             'transport_cost' => ['nullable', 'numeric', 'min:0'],
             'treasury_medium' => ['required', Rule::in(['CASH', 'BANK'])],

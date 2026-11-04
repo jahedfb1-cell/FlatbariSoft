@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import InvoicePicker from '../components/InvoicePicker';
+import SupplierPicker from '../components/SupplierPicker';
 import InvoiceCell from '../components/InvoiceCell';
 import * as materialsApi from '../api/constructionMaterials';
 import type { ConstructionMaterialPurchase } from '../api/constructionMaterials';
@@ -15,6 +16,7 @@ export default function ConstructionMaterialsPage() {
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
   const [unitRate, setUnitRate] = useState('');
+  const [supplierId, setSupplierId] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [transportCost, setTransportCost] = useState('0');
   const [medium, setMedium] = useState<'CASH' | 'BANK'>('CASH');
@@ -37,7 +39,8 @@ export default function ConstructionMaterialsPage() {
         quantity,
         unit,
         unit_rate: unitRate,
-        supplier_name: supplierName || undefined,
+        supplier_id: supplierId || undefined,
+        supplier_name: supplierId ? undefined : supplierName || undefined,
         transport_cost: transportCost,
         treasury_medium: medium,
         invoice_image: invoice,
@@ -48,6 +51,7 @@ export default function ConstructionMaterialsPage() {
       setUnit('');
       setUnitRate('');
       setSupplierName('');
+      setSupplierId('');
       setTransportCost('0');
       load();
     } catch (err: any) {
@@ -75,7 +79,9 @@ export default function ConstructionMaterialsPage() {
           <input required type="number" step="0.01" placeholder={t('materials.quantity')} value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <input required placeholder={t('materials.unit')} value={unit} onChange={(e) => setUnit(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <input required type="number" step="0.01" placeholder={t('materials.unitRate')} value={unitRate} onChange={(e) => setUnitRate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input placeholder={t('materials.supplierName')} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <div className="col-span-2 sm:col-span-2">
+            <SupplierPicker kind="MATERIALS" required={false} value={supplierId} onChange={(id, name) => { setSupplierId(id); setSupplierName(name); }} />
+          </div>
           <input type="number" step="0.01" placeholder={t('materials.transportCost')} value={transportCost} onChange={(e) => setTransportCost(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <select value={medium} onChange={(e) => setMedium(e.target.value as 'CASH' | 'BANK')} className="rounded-lg border border-brand-200 px-3 py-2">
             <option value="CASH">CASH</option>

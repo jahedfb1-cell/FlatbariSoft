@@ -8,11 +8,12 @@ import * as gasApi from '../api/gas';
 import * as billingApi from '../api/billing';
 import { listFlats, type Flat } from '../api/flats';
 import type { GasConsumer, GasPurchase, GasSummary } from '../api/gas';
+import SupplierPicker from '../components/SupplierPicker';
 
 const kgFmt = (v: string | number) => Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 });
 
 export default function GasPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const now = new Date();
   const [year] = useState(now.getFullYear());
   const [month] = useState(now.getMonth() + 1);
@@ -35,8 +36,9 @@ export default function GasPage() {
   const [purchases, setPurchases] = useState<GasPurchase[]>([]);
   const [pDate, setPDate] = useState(new Date().toISOString().slice(0, 10));
   const [pSupplier, setPSupplier] = useState('');
-  const [pQty, setPQty] = useState('');
-  const [pRate, setPRate] = useState('');
+  const [pCylinders, setPCylinders] = useState('1');
+  const [pCylKg, setPCylKg] = useState('45');
+  const [pCylPrice, setPCylPrice] = useState('');
   const [pTransport, setPTransport] = useState('0');
   const [pMedium, setPMedium] = useState<'CASH' | 'BANK'>('CASH');
   const [pInvoice, setPInvoice] = useState<File | null>(null);
@@ -57,17 +59,18 @@ export default function GasPage() {
     try {
       await gasApi.recordGasPurchase({
         date: pDate,
-        supplier_name: pSupplier,
-        quantity_kg: pQty,
-        unit_price: pRate,
+        supplier_id: pSupplier,
+        cylinders: pCylinders,
+        cylinder_kg: pCylKg,
+        price_per_cylinder: pCylPrice,
         transport_cost: pTransport,
         treasury_medium: pMedium,
         invoice_image: pInvoice,
       });
       setPInvoice(null);
       setPSupplier('');
-      setPQty('');
-      setPRate('');
+      setPCylinders('1');
+      setPCylPrice('');
       setPTransport('0');
       load();
     } catch (err: any) {
@@ -193,22 +196,56 @@ export default function GasPage() {
           </Link>
         </div>
 
-        <form onSubmit={handleRecordPurchase} className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-6">
-          <input type="date" required value={pDate} onChange={(e) => setPDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required placeholder={t('gas.supplierName')} value={pSupplier} onChange={(e) => setPSupplier(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required type="number" step="0.01" placeholder={t('gas.quantityKg')} value={pQty} onChange={(e) => setPQty(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required type="number" step="0.01" placeholder={t('gas.unitPrice')} value={pRate} onChange={(e) => setPRate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input type="number" step="0.01" placeholder={t('gas.transportCost')} value={pTransport} onChange={(e) => setPTransport(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <select value={pMedium} onChange={(e) => setPMedium(e.target.value as 'CASH' | 'BANK')} className="rounded-lg border border-brand-200 px-3 py-2">
-            <option value="CASH">CASH</option>
-            <option value="BANK">BANK</option>
-          </select>
-          <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
-            {t('gas.recordPurchase')}
-          </button>
-          <div className="col-span-2 sm:col-span-6">
-            <InvoicePicker file={pInvoice} onChange={setPInvoice} />
+        <form onSubmit={handleRecordPurchase} className="mb-4 space-y-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold text-navy-900">{t('gas.recordPurchase')}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block text-xs text-navy-700">
+              {t('gas.supplierName')} *
+              <div className="mt-1">
+                <SupplierPicker kind="GAS" value={pSupplier} onChange={(id) => setPSupplier(id)} />
+              </div>
+            </label>
+            <label className="block text-xs text-navy-700">
+              {lang === 'bn' ? 'তারিখ' : 'Date'} *
+              <input type="date" required value={pDate} onChange={(e) => setPDate(e.target.value)} className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm" />
+            </label>
           </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <label className="block text-xs text-navy-700">
+              {lang === 'bn' ? 'সিলিন্ডার (টি) *' : 'Cylinders *'}
+              <input required type="number" min={1} step={1} value={pCylinders} onChange={(e) => setPCylinders(e.target.value)} className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm" />
+            </label>
+            <label className="block text-xs text-navy-700">
+              {lang === 'bn' ? 'প্রতি সিলিন্ডারে কেজি *' : 'kg per cylinder *'}
+              <input required type="number" min={0.1} step="0.01" value={pCylKg} onChange={(e) => setPCylKg(e.target.value)} className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm" />
+            </label>
+            <label className="block text-xs text-navy-700">
+              {lang === 'bn' ? 'একটি সিলিন্ডারের দাম (৳) *' : 'Price of one cylinder (৳) *'}
+              <input required type="number" min={1} step="0.01" value={pCylPrice} onChange={(e) => setPCylPrice(e.target.value)} className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm" />
+            </label>
+            <label className="block text-xs text-navy-700">
+              {t('gas.transportCost')}
+              <input type="number" min={0} step="0.01" value={pTransport} onChange={(e) => setPTransport(e.target.value)} className="mt-1 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm" />
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg bg-brand-50 p-3 text-sm text-navy-900">
+            <span>{lang === 'bn' ? 'মোট গ্যাস' : 'Total gas'}: <b>{(Number(pCylinders || 0) * Number(pCylKg || 0)).toLocaleString('en-BD')} kg</b></span>
+            <span>{lang === 'bn' ? 'কেজি প্রতি' : 'Per kg'}: <b>৳{Number(pCylKg) > 0 && Number(pCylPrice) > 0 ? (Number(pCylPrice) / Number(pCylKg)).toLocaleString('en-BD', { maximumFractionDigits: 2 }) : '—'}</b></span>
+            <span className="ml-auto text-base">{lang === 'bn' ? 'মোট টাকা' : 'Total'}: <b>৳{(Number(pCylinders || 0) * Number(pCylPrice || 0) + Number(pTransport || 0)).toLocaleString('en-BD', { maximumFractionDigits: 2 })}</b></span>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block text-xs text-navy-700">
+              {lang === 'bn' ? 'কোথা থেকে দেবেন' : 'Paid from'}
+              <select value={pMedium} onChange={(e) => setPMedium(e.target.value as 'CASH' | 'BANK')} className="mt-1 block rounded-lg border border-brand-200 px-3 py-2 text-sm">
+                <option value="CASH">{lang === 'bn' ? 'ক্যাশ' : 'Cash'}</option>
+                <option value="BANK">{lang === 'bn' ? 'ব্যাংক' : 'Bank'}</option>
+              </select>
+            </label>
+            <button type="submit" disabled={!pSupplier} className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+              {t('gas.recordPurchase')}
+            </button>
+          </div>
+          <InvoicePicker file={pInvoice} onChange={setPInvoice} />
         </form>
         {pError && <p className="mb-4 text-sm text-status-due">{pError}</p>}
 

@@ -10,7 +10,7 @@ class GasPurchase extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['date', 'supplier_name', 'quantity_kg', 'unit_price', 'transport_cost', 'total_cost', 'expense_id', 'invoice_file'];
+    protected $fillable = ['date', 'supplier_name', 'quantity_kg', 'unit_price', 'transport_cost', 'total_cost', 'expense_id', 'invoice_file', 'supplier_id', 'cylinders', 'cylinder_kg', 'price_per_cylinder'];
 
     protected function casts(): array
     {

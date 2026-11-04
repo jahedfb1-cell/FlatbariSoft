@@ -26,6 +26,7 @@ export function recordMaterialPurchase(data: {
   quantity: number | string;
   unit: string;
   unit_rate: number | string;
+  supplier_id?: number | string;
   supplier_name?: string;
   transport_cost?: number | string;
   treasury_medium: 'CASH' | 'BANK';

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import LanguageToggle from '../components/LanguageToggle';
+import { NewSupplierForm } from '../components/SupplierPicker';
 import { blobErrorMessage } from '../utils/download';
 import * as api from '../api/suppliers';
 import type { SupplierKind, SupplierLedger, SupplierList } from '../api/suppliers';
@@ -32,6 +33,8 @@ export default function SuppliersPage() {
   const [ledger, setLedger] = useState<SupplierLedger | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let current = true;
@@ -47,7 +50,7 @@ export default function SuppliersPage() {
     return () => {
       current = false;
     };
-  }, [kind, supplier, from, to, t]);
+  }, [kind, supplier, from, to, t, reload]);
 
   const go = useCallback((next: Record<string, string>) => setParams(next), [setParams]);
 
@@ -97,6 +100,25 @@ export default function SuppliersPage() {
             <input type="date" className="mt-1 block rounded-lg border border-brand-200 px-3 py-2" value={to} onChange={(e) => setTo(e.target.value)} />
           </label>
         </div>
+
+        {!supplier && can('expense.create') && (
+          <div className="mb-3">
+            {adding ? (
+              <NewSupplierForm
+                kind={kind === 'gas' ? 'GAS' : 'MATERIALS'}
+                onCancel={() => setAdding(false)}
+                onCreated={() => {
+                  setAdding(false);
+                  setReload((n) => n + 1);
+                }}
+              />
+            ) : (
+              <button onClick={() => setAdding(true)} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+                + {kind === 'gas' ? 'নতুন গ্যাস সরবরাহকারী' : 'নতুন সরবরাহকারী'}
+              </button>
+            )}
+          </div>
+        )}
 
         {error && <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 

@@ -20,6 +20,7 @@ class ConstructionMaterialPurchaseService
     public function __construct(
         private readonly ExpenseService $expenses,
         private readonly InvoiceImageService $images,
+        private readonly SupplierService $suppliers,
     ) {}
 
     /** $data['invoice_image'] (an UploadedFile) is optional — see InvoiceImageService. */
@@ -38,6 +39,7 @@ class ConstructionMaterialPurchaseService
     private function create(array $data, int $createdBy, ?string $invoicePath): ConstructionMaterialPurchase
     {
         return DB::transaction(function () use ($data, $createdBy, $invoicePath) {
+            $supplierName = $this->suppliers->nameFor($data['supplier_id'] ?? null, $data['supplier_name'] ?? null, 'MATERIALS');
             $totalCost = bcadd(
                 bcmul((string) $data['quantity'], (string) $data['unit_rate'], 4),
                 (string) ($data['transport_cost'] ?? 0),
@@ -49,7 +51,7 @@ class ConstructionMaterialPurchaseService
             $expense = $this->expenses->create([
                 'date' => $data['date'],
                 'expense_head_id' => $expenseHead->id,
-                'payee' => $data['supplier_name'] ?? $data['item_name'],
+                'payee' => $supplierName ?? $data['item_name'],
                 'amount' => $totalCost,
                 'description' => "নির্মাণ সামগ্রী — {$data['item_name']} ({$data['quantity']} {$data['unit']})",
                 'treasury_medium' => $data['treasury_medium'],
@@ -62,13 +64,13 @@ class ConstructionMaterialPurchaseService
                 'quantity' => $data['quantity'],
                 'unit' => $data['unit'],
                 'unit_rate' => $data['unit_rate'],
-                'supplier_name' => $data['supplier_name'] ?? null,
+                'supplier_name' => $supplierName,
                 'transport_cost' => $data['transport_cost'] ?? 0,
                 'total_cost' => $totalCost,
                 'invoice_file' => $invoicePath,
                 'expense_id' => $expense->id,
                 'created_by' => $createdBy,
-            ]);
+            ] + (\Illuminate\Support\Facades\Schema::hasColumn('construction_material_purchases', 'supplier_id') ? ['supplier_id' => $data['supplier_id'] ?? null] : []));
         });
     }
 }
