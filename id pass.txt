@@ -1,5 +1,0 @@
-URL	http://localhost:4000
-Email	admin@greenvalley.com
-Password	02c7f4b72f8a
-
-01700000001 super_admin 
