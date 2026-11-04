@@ -102,6 +102,9 @@ export default function DashboardPage() {
         {failed && <div className="rounded-xl bg-white p-4 text-sm text-status-due shadow">{t('somethingWrong')}</div>}
         {!data && !failed && <div className="h-40 animate-pulse rounded-2xl bg-white/70 shadow" />}
 
+        {/* the three numbers that matter most */}
+        {data?.headline && Object.keys(data.headline).length > 0 && <Headline h={data.headline} bn={bn} monthName={monthName(data.month)} />}
+
         {/* headline numbers */}
         {data && (b || data.funds) && (
           <div className="grid gap-4 md:grid-cols-3">
@@ -394,5 +397,93 @@ function Trend({ items, label }: { items: { year: number; month: number; billed:
         </div>
       ))}
     </div>
+  );
+}
+
+type HeadlineData = NonNullable<DashboardOverview['headline']>;
+
+/** Surplus (green) or deficit (red) at a glance, with the figures behind it. */
+function Position({ value, bn }: { value: number; bn: boolean }) {
+  const ok = value >= 0;
+  return (
+    <div>
+      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${ok ? 'bg-status-paid/15 text-status-paid' : 'bg-status-due/15 text-status-due'}`}>
+        {ok ? '▲' : '▼'} {ok ? (bn ? 'বাড়তি' : 'Surplus') : bn ? 'ঘাটতি' : 'Deficit'}
+      </span>
+      <p className={`mt-1 text-3xl font-bold tracking-tight ${ok ? 'text-navy-900' : 'text-status-due'}`}>{money(Math.abs(value))}</p>
+    </div>
+  );
+}
+
+function Line({ label, value, tone }: { label: string; value: string; tone?: 'due' | 'paid' | 'strong' }) {
+  const color = tone === 'due' ? 'text-status-due' : tone === 'paid' ? 'text-status-paid' : 'text-navy-900';
+  return (
+    <p className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="text-navy-700">{label}</span>
+      <span className={`font-medium ${color} ${tone === 'strong' ? 'font-semibold' : ''}`}>{value}</span>
+    </p>
+  );
+}
+
+function Headline({ h, bn, monthName }: { h: HeadlineData; bn: boolean; monthName: string }) {
+  const L = (b: string, e: string) => (bn ? b : e);
+  const frame = (to: string, tone: boolean, icon: string, title: string, children: ReactNode) => (
+    <Link to={to} className={`group relative block overflow-hidden rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${tone ? 'border-brand-200' : 'border-status-due/40'}`}>
+      <span className={`absolute inset-x-0 top-0 h-1.5 ${tone ? 'bg-gradient-to-r from-brand-500 to-status-paid' : 'bg-gradient-to-r from-status-due to-status-partial'}`} />
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-navy-900">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-100 text-base">{icon}</span>
+          {title}
+        </h2>
+        <span className="text-xs text-navy-700 opacity-0 transition group-hover:opacity-100">{L('বিস্তারিত', 'Details')} →</span>
+      </div>
+      {children}
+    </Link>
+  );
+
+  const sv = h.service;
+  const pj = h.project;
+  const gs = h.gas;
+  return (
+    <section>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-navy-700">{L('আর্থিক অবস্থা এক নজরে', 'Financial position at a glance')}</h2>
+      <div className="grid gap-4 md:grid-cols-3">
+        {sv &&
+          frame('/billing', Number(sv.balance) >= 0, '🏢', L('সার্ভিস চার্জ', 'Service charge'),
+            <>
+              <Position value={Number(sv.balance)} bn={bn} />
+              <p className="mt-0.5 text-[11px] text-navy-700">{L('হাতে আছে (ক্যাশ + ব্যাংক)', 'In hand (cash + bank)')} · {L('ক্যাশ', 'cash')} {money(sv.cash)} · {L('ব্যাংক', 'bank')} {money(sv.bank)}</p>
+              <div className="mt-3 space-y-1.5 border-t border-brand-100 pt-3">
+                {sv.receivable !== null && <Line label={L('ফ্ল্যাটদের কাছে বকেয়া', 'Owed by flats')} value={money(sv.receivable)} tone="due" />}
+                {sv.month_billed !== null && <Line label={`${monthName} — ${L('আদায় / বিল', 'collected / billed')}`} value={`${money(sv.month_collected ?? 0)} / ${money(sv.month_billed)}`} tone="paid" />}
+                <Line label={`${monthName} — ${L('আয় / ব্যয়', 'in / out')}`} value={`${money(sv.month_receipts)} / ${money(sv.month_payments)}`} />
+                {sv.receivable !== null && <Line label={L('বকেয়া আদায় হলে দাঁড়াবে', 'If all dues are paid')} value={money(Number(sv.balance) + Number(sv.receivable))} tone="strong" />}
+              </div>
+            </>)}
+
+        {pj &&
+          frame('/work-budgets', Number(pj.balance) >= 0, '🏗️', L('মূলধন তহবিল (প্রজেক্ট ফান্ড)', 'Capital fund (project)'),
+            <>
+              <Position value={Number(pj.balance)} bn={bn} />
+              <p className="mt-0.5 text-[11px] text-navy-700">{L('ক্যাশ', 'cash')} {money(pj.cash)} · {L('ব্যাংক', 'bank')} {money(pj.bank)}</p>
+              <div className="mt-3 space-y-1.5 border-t border-brand-100 pt-3">
+                <Line label={`${monthName} — ${L('আয় / ব্যয়', 'in / out')}`} value={`${money(pj.month_receipts)} / ${money(pj.month_payments)}`} />
+                <Line label={`${L('চলমান কাজ', 'Open works')} (${pj.works_open})`} value={`${L('আদায় বাকি', 'to collect')} ${money(pj.works_to_collect)}`} tone={Number(pj.works_to_collect) > 0 ? 'due' : undefined} />
+              </div>
+            </>)}
+
+        {gs &&
+          frame('/gas', Number(gs.net) >= 0, '🔥', L('গ্যাস', 'Gas'),
+            <>
+              <Position value={Number(gs.balance)} bn={bn} />
+              <p className="mt-0.5 text-[11px] text-navy-700">{L('গ্যাস তহবিলে হাতে আছে', 'In the gas fund')}</p>
+              <div className="mt-3 space-y-1.5 border-t border-brand-100 pt-3">
+                <Line label={L('গ্যাস বিল বকেয়া (ফ্ল্যাট থেকে পাবো)', 'Gas bills owed by flats')} value={money(gs.receivable)} tone={Number(gs.receivable) > 0 ? 'due' : undefined} />
+                <Line label={L('গ্যাস ক্রয় বকেয়া (সরবরাহকারীকে দেব)', 'Gas purchase owed to supplier')} value={money(gs.payable)} tone={Number(gs.payable) > 0 ? 'due' : undefined} />
+                <Line label={L('সব মিটলে দাঁড়াবে', 'Once all settled')} value={`${Number(gs.net) < 0 ? '−' : ''}${money(Math.abs(Number(gs.net)))}`} tone="strong" />
+              </div>
+            </>)}
+      </div>
+    </section>
   );
 }

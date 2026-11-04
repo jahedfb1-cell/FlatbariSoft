@@ -137,4 +137,49 @@ class WorkBudgetTest extends TestCase
         $api->putJson("/api/work-budgets/{$work['id']}", ['status' => 'DONE'])->assertOk();
         $api->postJson('/api/expenses', $body(100))->assertStatus(422)->assertJsonValidationErrors('work_budget_id');
     }
+
+    public function test_a_collection_schedule_splits_each_share_by_date_and_flags_late_flats(): void
+    {
+        $past1 = now('Asia/Dhaka')->subDays(40)->toDateString();
+        $past2 = now('Asia/Dhaka')->subDays(10)->toDateString();
+        $future = now('Asia/Dhaka')->addDays(20)->toDateString();
+        $work = $this->create(['installments' => [
+            ['due_date' => $past1, 'percent' => 40], ['due_date' => $past2, 'percent' => 30], ['due_date' => $future, 'percent' => 30],
+        ]])->assertCreated()->json();
+        $api = $this->actingAs($this->admin, 'sanctum');
+
+        // flat A1 (share 30000): 12000 / 9000 / 9000; flat A2 (share 70000): 28000 / 21000 / 21000
+        $a1 = collect($work['rows'])->firstWhere('flat_no', 'A1');
+        $this->assertSame(['12000.00', '9000.00', '9000.00'], array_column($a1['installments'], 'amount'));
+        $this->assertSame('OVERDUE', $a1['installments'][0]['status']);
+        $this->assertSame('UPCOMING', $a1['installments'][2]['status']);
+
+        // A1 pays 15000: it settles the first date (12000) and 3000 of the second (9000)
+        $headId = \DB::table('contribution_heads')->where('contribution_book_id', \DB::table('contribution_books')->where('code', $work['book_code'])->value('id'))->value('id');
+        $api->postJson("/api/contributions/flats/{$this->flats[0]->id}/collections", ['contribution_head_id' => $headId, 'amount' => 15000, 'received_on' => now()->toDateString(), 'method' => 'CASH'])->assertSuccessful();
+
+        $s = $api->getJson("/api/work-budgets/{$work['id']}")->json();
+        $a1 = collect($s['rows'])->firstWhere('flat_no', 'A1');
+        $this->assertSame(['PAID', 'OVERDUE', 'UPCOMING'], array_column($a1['installments'], 'status'));
+        $this->assertSame('6000.00', $a1['installments'][1]['due']);
+        $this->assertSame('6000.00', $a1['overdue']);
+        // A2 paid nothing: both past dates are late for it too (28000 + 21000)
+        $this->assertSame('49000.00', collect($s['rows'])->firstWhere('flat_no', 'A2')['overdue']);
+        $this->assertSame('55000.00', $s['overdue_total']);
+        $this->assertSame(1, $s['schedule'][0]['overdue_flats']); // the first date is late only for A2 - A1 settled it
+        $this->assertSame(2, $s['schedule'][1]['overdue_flats']); // the second is late for both
+        $this->assertSame(0, $s['schedule'][2]['overdue_flats']); // the third is not yet due
+    }
+
+    public function test_the_schedule_must_add_up_to_100_in_date_order(): void
+    {
+        $id = $this->create()->json('id');
+        $api = $this->actingAs($this->admin, 'sanctum');
+        $d = fn ($n) => now()->addDays($n)->toDateString();
+
+        $api->putJson("/api/work-budgets/{$id}/schedule", ['installments' => [['due_date' => $d(5), 'percent' => 50], ['due_date' => $d(9), 'percent' => 40]]])->assertStatus(422)->assertJsonValidationErrors('installments');
+        $api->putJson("/api/work-budgets/{$id}/schedule", ['installments' => [['due_date' => $d(9), 'percent' => 50], ['due_date' => $d(5), 'percent' => 50]]])->assertStatus(422);
+        $api->putJson("/api/work-budgets/{$id}/schedule", ['installments' => [['due_date' => $d(5), 'percent' => 33.3333], ['due_date' => $d(9), 'percent' => 66.6667]]])->assertOk()->assertJsonCount(2, 'schedule');
+        $api->putJson("/api/work-budgets/{$id}/schedule", ['installments' => []])->assertOk()->assertJsonCount(0, 'schedule'); // removed again
+    }
 }

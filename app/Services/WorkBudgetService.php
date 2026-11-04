@@ -7,7 +7,9 @@ use App\Models\Expense;
 use App\Models\Flat;
 use App\Models\FlatContributionTarget;
 use App\Models\WorkBudget;
+use App\Models\WorkBudgetInstallment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -95,6 +97,9 @@ class WorkBudgetService
                 'created_by' => $by,
             ]);
             $this->setShares($work, $shares);
+            if (! empty($data['installments'])) {
+                $this->setSchedule($work, $data['installments']);
+            }
 
             return $work->fresh();
         });
@@ -132,6 +137,94 @@ class WorkBudgetService
         });
     }
 
+    /**
+     * Replaces the collection schedule: dates in order, each with the percentage of every flat's share that falls due
+     * then; the percentages must add up to exactly 100. An empty list removes the schedule.
+     *
+     * @param  list<array{due_date:string, percent:string|int|float}>  $installments
+     */
+    public function setSchedule(WorkBudget $work, array $installments): void
+    {
+        if (! Schema::hasTable('work_budget_installments')) {
+            throw ValidationException::withMessages(['installments' => 'ডাটাবেস আপগ্রেড বাকি আছে — কিস্তির আপগ্রেড ফাইল ইমপোর্ট করার পর কিস্তি ঠিক করা যাবে।']);
+        }
+        if ($installments !== []) {
+            $sum = '0';
+            $last = null;
+            foreach ($installments as $i) {
+                $sum = bcadd($sum, (string) $i['percent'], 4);
+                if ($last !== null && $i['due_date'] <= $last) {
+                    throw ValidationException::withMessages(['installments' => 'কিস্তির তারিখ ক্রমানুসারে ও আলাদা হতে হবে।']);
+                }
+                $last = $i['due_date'];
+            }
+            if (bccomp($sum, '100', 4) !== 0) {
+                throw ValidationException::withMessages(['installments' => 'কিস্তির শতাংশের যোগফল ঠিক ১০০ হতে হবে (এখন '.bcadd($sum, '0', 2).')।']);
+            }
+        }
+
+        DB::transaction(function () use ($work, $installments) {
+            WorkBudgetInstallment::where('work_budget_id', $work->id)->delete();
+            foreach (array_values($installments) as $n => $i) {
+                WorkBudgetInstallment::create(['work_budget_id' => $work->id, 'seq' => $n + 1, 'due_date' => $i['due_date'], 'percent' => $i['percent']]);
+            }
+        });
+    }
+
+    /**
+     * What each flat owes on each date and whether it is late. Fully derived: a flat's share is split by the schedule's
+     * percentages (the last date takes the rounding remainder) and what it has paid so far settles the earliest dates first.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return array{schedule: list<array<string, mixed>>, rows: list<array<string, mixed>>}
+     */
+    private function applySchedule(WorkBudget $work, array $rows): array
+    {
+        $plan = Schema::hasTable('work_budget_installments') ? $work->installments()->get() : collect();
+        if ($plan->isEmpty()) {
+            return ['schedule' => [], 'rows' => array_map(fn ($r) => $r + ['installments' => [], 'overdue' => '0.0000'], $rows)];
+        }
+
+        $today = now('Asia/Dhaka')->toDateString();
+        $schedule = $plan->map(fn ($p) => [
+            'no' => $p->seq, 'due_date' => $p->due_date->toDateString(), 'percent' => bcadd((string) $p->percent, '0', 4),
+            'expected' => '0', 'collected' => '0', 'due' => '0', 'overdue_amount' => '0', 'overdue_flats' => 0, 'is_overdue' => $p->due_date->toDateString() < $today,
+        ])->all();
+
+        foreach ($rows as &$r) {
+            $remainingPaid = bccomp((string) $r['paid'], '0', 4) > 0 ? (string) $r['paid'] : '0';
+            $given = '0';
+            $cells = [];
+            $overdue = '0';
+            foreach ($schedule as $k => &$sch) {
+                $amount = $k === count($schedule) - 1 ? bcsub((string) $r['share'], $given, 2) : bcdiv(bcmul((string) $r['share'], $sch['percent'], 6), '100', 2);
+                $given = bcadd($given, $amount, 2);
+                $applied = bccomp($remainingPaid, $amount, 4) >= 0 ? $amount : $remainingPaid;
+                $remainingPaid = bcsub($remainingPaid, $applied, 4);
+                $due = bcsub($amount, $applied, 2);
+                $late = $sch['is_overdue'] && bccomp($due, '0', 2) > 0;
+                $cells[] = [
+                    'no' => $sch['no'], 'due_date' => $sch['due_date'], 'amount' => $amount, 'paid' => bcadd($applied, '0', 2), 'due' => $due,
+                    'status' => bccomp($due, '0', 2) <= 0 ? 'PAID' : ($late ? 'OVERDUE' : (bccomp($applied, '0', 2) > 0 ? 'PARTIAL' : 'UPCOMING')),
+                ];
+                $sch['expected'] = bcadd($sch['expected'], $amount, 2);
+                $sch['collected'] = bcadd($sch['collected'], $applied, 2);
+                $sch['due'] = bcadd($sch['due'], $due, 2);
+                if ($late) {
+                    $sch['overdue_amount'] = bcadd($sch['overdue_amount'], $due, 2);
+                    $sch['overdue_flats']++;
+                    $overdue = bcadd($overdue, $due, 2);
+                }
+            }
+            unset($sch);
+            $r['installments'] = $cells;
+            $r['overdue'] = bcadd($overdue, '0', 2);
+        }
+        unset($r);
+
+        return ['schedule' => $schedule, 'rows' => $rows];
+    }
+
     /** @return array<string, mixed> */
     public function summary(WorkBudget $work): array
     {
@@ -143,6 +236,13 @@ class WorkBudgetService
         $spent = (string) (Expense::where('work_budget_id', $work->id)->where('status', 'APPROVED')->sum('amount') ?: 0);
         $pending = (string) (Expense::where('work_budget_id', $work->id)->where('status', 'PENDING')->sum('amount') ?: 0);
         $estimated = bcadd((string) $work->estimated_cost, '0', 4);
+
+        $rows = array_map(fn ($r) => [
+            'flat_id' => $r['flat_id'], 'flat_no' => $r['flat_no'], 'owner' => $r['owner'], 'tenant' => $r['tenant'],
+            'share' => $r['target'], 'paid' => $r['collected'], 'due' => $r['balance'], 'status' => $r['status'],
+        ], $rows);
+        $planned2 = $this->applySchedule($work, $rows);
+        $overdueTotal = array_reduce($planned2['schedule'], fn ($c, $x) => bcadd($c, $x['overdue_amount'], 2), '0');
 
         return [
             'id' => $work->id, 'title' => $work->title, 'description' => $work->description, 'status' => $work->status,
@@ -161,10 +261,9 @@ class WorkBudgetService
             'over_budget' => bccomp($spent, $estimated, 4) > 0,
             'spent_more_than_collected' => bccomp($spent, $collected, 4) > 0,
             'flats' => count($rows),
-            'rows' => array_map(fn ($r) => [
-                'flat_id' => $r['flat_id'], 'flat_no' => $r['flat_no'], 'owner' => $r['owner'], 'tenant' => $r['tenant'],
-                'share' => $r['target'], 'paid' => $r['collected'], 'due' => $r['balance'], 'status' => $r['status'],
-            ], $rows),
+            'overdue_total' => bcadd($overdueTotal, '0', 2),
+            'schedule' => $planned2['schedule'],
+            'rows' => $planned2['rows'],
         ];
     }
 

@@ -3,6 +3,29 @@ import client from './client';
 export type SplitMethod = 'EQUAL' | 'SERVICE_RATE' | 'SIZE' | 'MANUAL';
 export type WorkStatus = 'PLANNED' | 'ONGOING' | 'DONE' | 'CANCELLED';
 
+export interface InstallmentInput {
+  due_date: string;
+  percent: string | number;
+}
+export interface Installment {
+  no: number;
+  due_date: string;
+  amount: string;
+  paid: string;
+  due: string;
+  status: 'PAID' | 'PARTIAL' | 'OVERDUE' | 'UPCOMING';
+}
+export interface ScheduleRow {
+  no: number;
+  due_date: string;
+  percent: string;
+  expected: string;
+  collected: string;
+  due: string;
+  overdue_amount: string;
+  overdue_flats: number;
+  is_overdue: boolean;
+}
 export interface ShareRow {
   flat_id: number;
   flat_no: string;
@@ -12,6 +35,8 @@ export interface ShareRow {
   paid: string;
   due: string | null;
   status: 'DUE' | 'EXCESS' | 'CLEARED' | 'NO_TARGET';
+  installments: Installment[];
+  overdue: string;
 }
 export interface WorkSummary {
   id: number;
@@ -36,6 +61,8 @@ export interface WorkSummary {
   over_budget: boolean;
   spent_more_than_collected: boolean;
   flats: number;
+  overdue_total: string;
+  schedule: ScheduleRow[];
   rows: ShareRow[];
 }
 export interface WorkDetail extends WorkSummary {
@@ -64,6 +91,7 @@ export interface WorkInput {
   split_method: SplitMethod;
   resolution_id?: number | null;
   shares: ShareInput[];
+  installments?: InstallmentInput[];
 }
 
 export const listWorks = () => client.get<Omit<WorkSummary, 'rows'>[]>('/work-budgets').then((r) => r.data);
@@ -74,3 +102,4 @@ export const createWork = (d: WorkInput) => client.post<WorkDetail>('/work-budge
 export const updateWork = (id: number, d: Partial<{ title: string; description: string | null; estimated_cost: string | number; start_date: string | null; end_date: string | null; status: WorkStatus; resolution_id: number | null }>) =>
   client.put<WorkDetail>(`/work-budgets/${id}`, d).then((r) => r.data);
 export const saveShares = (id: number, shares: ShareInput[]) => client.put<WorkDetail>(`/work-budgets/${id}/shares`, { shares }).then((r) => r.data);
+export const saveSchedule = (id: number, installments: InstallmentInput[]) => client.put<WorkDetail>(`/work-budgets/${id}/schedule`, { installments }).then((r) => r.data);

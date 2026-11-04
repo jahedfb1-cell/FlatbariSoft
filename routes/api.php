@@ -409,4 +409,5 @@ Route::prefix('work-budgets')->middleware('auth:sanctum')->group(function () {
     Route::get('/{workBudget}', [$c, 'show'])->middleware('permission:budget.view');
     Route::put('/{workBudget}', [$c, 'update'])->middleware('permission:budget.manage');
     Route::put('/{workBudget}/shares', [$c, 'shares'])->middleware('permission:budget.manage');
+    Route::put('/{workBudget}/schedule', [$c, 'schedule'])->middleware('permission:budget.manage');
 });

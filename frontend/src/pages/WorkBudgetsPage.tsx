@@ -8,7 +8,7 @@ import { listFlats } from '../api/flats';
 import type { Flat } from '../api/flats';
 import { listMeetings } from '../api/governance';
 import * as api from '../api/workBudgets';
-import type { PreviewRow, ShareRow, SplitMethod, WorkDetail, WorkStatus, WorkSummary } from '../api/workBudgets';
+import type { InstallmentInput, PreviewRow, ShareRow, SplitMethod, WorkDetail, WorkStatus, WorkSummary } from '../api/workBudgets';
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 })}`;
 const input = 'w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -168,6 +168,79 @@ function Overlay({ title, sub, onClose, children }: { title: string; sub?: strin
   );
 }
 
+const addMonths = (iso: string, n: number) => {
+  const d = new Date(iso + 'T00:00:00');
+  d.setMonth(d.getMonth() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** Dates with the percentage of every flat's share due on each (adds up to 100). Presets fill it in; every row stays editable. */
+function ScheduleEditor({ value, onChange }: { value: InstallmentInput[]; onChange: (v: InstallmentInput[]) => void }) {
+  const { lang } = useLanguage();
+  const bn = lang === 'bn';
+  const L = (b: string, e: string) => (bn ? b : e);
+  const [count, setCount] = useState(3);
+  const [start, setStart] = useState(new Date().toISOString().slice(0, 10));
+  const [every, setEvery] = useState(1);
+  const sum = value.reduce((c, r) => c + (Number(r.percent) || 0), 0);
+
+  const generate = () => {
+    const base = Math.floor((10000 / count)) / 100; // equal parts rounded down; the last takes the rest so it is exactly 100
+    const rows: InstallmentInput[] = Array.from({ length: count }, (_, i) => ({ due_date: addMonths(start, i * every), percent: i === count - 1 ? Number((100 - base * (count - 1)).toFixed(2)) : base }));
+    onChange(rows);
+  };
+
+  return (
+    <div className="space-y-2 rounded-xl border border-brand-200 bg-white p-4">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="text-xs text-navy-700">
+          {L('কিস্তি', 'Installments')}
+          <select className={`${input} mt-1 w-24`} value={count} onChange={(e) => setCount(Number(e.target.value))}>
+            {[1, 2, 3, 4, 6, 8, 12].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-navy-700">
+          {L('প্রথম তারিখ', 'First date')}
+          <input type="date" className={`${input} mt-1`} value={start} onChange={(e) => setStart(e.target.value)} />
+        </label>
+        <label className="text-xs text-navy-700">
+          {L('প্রতি', 'Every')}
+          <select className={`${input} mt-1 w-32`} value={every} onChange={(e) => setEvery(Number(e.target.value))}>
+            {[1, 2, 3, 6].map((n) => (
+              <option key={n} value={n}>{n} {L('মাস', 'month(s)')}</option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className={btnGhost} onClick={generate}>{L('সমান কিস্তি বানান', 'Make equal installments')}</button>
+        {value.length > 0 && (
+          <button type="button" className="text-xs text-status-due hover:underline" onClick={() => onChange([])}>{L('কিস্তি বাদ দিন', 'No installments')}</button>
+        )}
+      </div>
+      {value.length > 0 && (
+        <>
+          <div className="space-y-1.5">
+            {value.map((r, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="w-6 text-center text-xs text-navy-700">{i + 1}</span>
+                <input type="date" className={`${input} w-44`} value={r.due_date} onChange={(e) => onChange(value.map((x, j) => (j === i ? { ...x, due_date: e.target.value } : x)))} />
+                <input type="number" min={0.01} max={100} step="0.01" className={`${input} w-24 text-right`} value={r.percent} onChange={(e) => onChange(value.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))} />
+                <span className="text-sm text-navy-700">%</span>
+                <button type="button" className="text-status-due hover:underline" aria-label="remove" onClick={() => onChange(value.filter((_, j) => j !== i))}>✕</button>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <button type="button" className="text-xs text-brand-700 hover:underline" onClick={() => onChange([...value, { due_date: addMonths(value[value.length - 1].due_date, 1), percent: 0 }])}>+ {L('আরেকটি কিস্তি', 'Add installment')}</button>
+            <p className={`text-xs font-medium ${Math.abs(sum - 100) < 0.005 ? 'text-status-paid' : 'text-status-due'}`}>{L('যোগফল', 'Total')} {Number(sum.toFixed(2))}% {Math.abs(sum - 100) < 0.005 ? '✓' : L('(১০০ হতে হবে)', '(must be 100)')}</p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Step 1: the work. Step 2: who takes part and how the cost is first split. Step 3: adjust every share, then save. */
 function NewWorkWizard({ onClose, onCreated }: { onClose: () => void; onCreated: (w: WorkDetail) => void }) {
   const { lang } = useLanguage();
@@ -186,6 +259,7 @@ function NewWorkWizard({ onClose, onCreated }: { onClose: () => void; onCreated:
   const [chosen, setChosen] = useState<Set<number>>(new Set());
   const [method, setMethod] = useState<SplitMethod>('EQUAL');
   const [rows, setRows] = useState<(PreviewRow & { note: string })[]>([]);
+  const [installments, setInstallments] = useState<InstallmentInput[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -235,6 +309,7 @@ function NewWorkWizard({ onClose, onCreated }: { onClose: () => void; onCreated:
         split_method: method,
         resolution_id: resolutionId ? Number(resolutionId) : null,
         shares: rows.map((r) => ({ flat_id: r.flat_id, amount: r.amount || 0, note: r.note || null })),
+        installments: installments.length ? installments : undefined,
       });
       onCreated(w);
     } catch (err) {
@@ -399,6 +474,11 @@ function NewWorkWizard({ onClose, onCreated }: { onClose: () => void; onCreated:
               </tbody>
             </table>
           </div>
+          <div>
+            <p className="mb-1 text-sm font-medium text-navy-900">{L('কিস্তির তালিকা (ঐচ্ছিক)', 'Collection schedule (optional)')}</p>
+            <p className="mb-2 text-xs text-navy-700">{L('প্রতিটি ফ্ল্যাটের ভাগ কোন তারিখে কত শতাংশ দিতে হবে — না দিলে একবারেই ধরা হবে।', 'On which dates what percentage of each flat\u2019s share falls due - leave empty to collect at any time.')}</p>
+            <ScheduleEditor value={installments} onChange={setInstallments} />
+          </div>
           {error && <p className="rounded-lg bg-status-due/10 p-2 text-sm text-status-due">{error}</p>}
           <div className="flex justify-between">
             <button type="button" className={btnGhost} onClick={() => setStep(2)}>← {L('পিছনে', 'Back')}</button>
@@ -421,6 +501,7 @@ function WorkDetailView({ id, canManage, onClose }: { id: number; canManage: boo
   const [draft, setDraft] = useState<Record<number, { amount: string; note: string }>>({});
   const [estimate, setEstimate] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [plan, setPlan] = useState<InstallmentInput[] | null>(null);
 
   const load = useCallback(() => {
     api.getWork(id).then(setW).catch((e) => setError(apiError(e, L('লোড করা যায়নি।', 'Could not load.'))));
@@ -440,6 +521,19 @@ function WorkDetailView({ id, canManage, onClose }: { id: number; canManage: boo
     try {
       setW(await api.saveShares(w.id, w.rows.map((r) => ({ flat_id: r.flat_id, amount: draft[r.flat_id]?.amount || 0, note: draft[r.flat_id]?.note || null }))));
       setEditing(false);
+    } catch (err) {
+      setError(apiError(err, L('সংরক্ষণ করা যায়নি।', 'Could not save.')));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function savePlan() {
+    if (!w || !plan) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setW(await api.saveSchedule(w.id, plan));
+      setPlan(null);
     } catch (err) {
       setError(apiError(err, L('সংরক্ষণ করা যায়নি।', 'Could not save.')));
     } finally {
@@ -498,6 +592,7 @@ function WorkDetailView({ id, canManage, onClose }: { id: number; canManage: boo
         <Link to={`/contributions?book=${w.book_code}`} className={btn}>💰 {L('আদায় নিন / খাতা', 'Collect / ledger')}</Link>
         <Link to={`/expenses?work=${w.id}`} className={btnGhost}>💸 {L('খরচ যোগ করুন', 'Add an expense')}</Link>
         {canManage && !editing && <button className={btnGhost} onClick={startEdit}>✏️ {L('ফ্ল্যাটের ভাগ বদলান', 'Change shares')}</button>}
+        {canManage && plan === null && <button className={btnGhost} onClick={() => setPlan(w.schedule.map((x) => ({ due_date: x.due_date, percent: Number(x.percent) })))}>📅 {L('কিস্তি ঠিক করুন', 'Set installments')}</button>}
         {canManage && estimate === null && <button className={btnGhost} onClick={() => setEstimate(String(Number(w.estimated)))}>{L('প্রাক্কলিত খরচ বদলান', 'Change estimate')}</button>}
         {canManage && (
           <select className={`${input} w-auto`} value={w.status} onChange={(e) => patch({ status: e.target.value as WorkStatus })} aria-label="status">
@@ -515,6 +610,59 @@ function WorkDetailView({ id, canManage, onClose }: { id: number; canManage: boo
           </label>
           <button className={btn} onClick={() => patch({ estimated_cost: estimate })}>{L('সংরক্ষণ', 'Save')}</button>
           <button className={btnGhost} onClick={() => setEstimate(null)}>{L('বাতিল', 'Cancel')}</button>
+        </div>
+      )}
+
+      {plan !== null && (
+        <div className="mb-4 space-y-2">
+          <ScheduleEditor value={plan} onChange={setPlan} />
+          <div className="flex justify-end gap-2">
+            <button className={btnGhost} onClick={() => setPlan(null)}>{L('বাতিল', 'Cancel')}</button>
+            <button className={btn} disabled={busy} onClick={savePlan}>{busy ? '…' : L('কিস্তি সংরক্ষণ', 'Save installments')}</button>
+          </div>
+        </div>
+      )}
+
+      {w.schedule.length > 0 && (
+        <div className="mb-4">
+          <h3 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-navy-900">
+            {L('কিস্তির তালিকা', 'Collection schedule')}
+            {Number(w.overdue_total) > 0 && <span className="rounded-full bg-status-due/15 px-2 py-0.5 text-xs font-medium text-status-due">{L('মেয়াদোত্তীর্ণ বকেয়া', 'Overdue')} {money(w.overdue_total)}</span>}
+          </h3>
+          <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {w.schedule.map((x) => (
+              <div key={x.no} className={`rounded-xl border p-3 text-xs ${x.is_overdue && Number(x.overdue_amount) > 0 ? 'border-status-due/40 bg-red-50' : 'border-brand-200 bg-white'}`}>
+                <p className="flex justify-between font-medium text-navy-900"><span>{L('কিস্তি', 'No.')} {x.no} · {Number(x.percent)}%</span><span>{x.due_date}</span></p>
+                <Bar value={pct(x.collected, x.expected)} tone="bg-status-paid" />
+                <p className="mt-1 text-navy-700">{money(x.collected)} / {money(x.expected)}</p>
+                {x.is_overdue && x.overdue_flats > 0 && <p className="font-medium text-status-due">⚠ {x.overdue_flats} {L('টি ফ্ল্যাটের বকেয়া', 'flats late')} · {money(x.overdue_amount)}</p>}
+              </div>
+            ))}
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-brand-100 text-navy-900">
+                <tr>
+                  <th className="px-3 py-2">{L('ফ্ল্যাট', 'Flat')}</th>
+                  {w.schedule.map((x) => (
+                    <th key={x.no} className="px-3 py-2 text-right">{x.due_date}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {w.rows.map((r) => (
+                  <tr key={r.flat_id} className="border-t border-brand-100">
+                    <td className="px-3 py-1.5 font-medium">{r.flat_no}</td>
+                    {r.installments.map((c) => (
+                      <td key={c.no} className={`px-3 py-1.5 text-right ${c.status === 'OVERDUE' ? 'bg-red-50 font-medium text-status-due' : c.status === 'PAID' ? 'text-status-paid' : c.status === 'PARTIAL' ? 'text-status-partial' : 'text-navy-700'}`}>
+                        {c.status === 'PAID' ? '✓ ' + money(c.amount) : c.status === 'UPCOMING' ? money(c.amount) : `${money(c.due)} ${L('বাকি', 'due')}`}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

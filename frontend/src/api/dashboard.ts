@@ -35,6 +35,11 @@ export interface DashboardOverview {
   contributions?: { code: string; name_bn: string; name_en: string; collected: string; target: string; has_target: boolean; percent: number | null }[];
   supplier_owed?: { materials: string; gas: string };
   flats?: { total: number };
+  headline?: {
+    service?: { balance: string; cash: string; bank: string; receivable: string | null; month_billed: string | null; month_collected: string | null; month_receipts: string; month_payments: string };
+    project?: { balance: string; cash: string; bank: string; works_open: number; works_to_collect: string; month_receipts: string; month_payments: string };
+    gas?: { balance: string; receivable: string; payable: string; net: string };
+  };
 }
 
 export const getOverview = (year: number, month: number) =>

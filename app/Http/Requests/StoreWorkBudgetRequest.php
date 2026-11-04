@@ -35,6 +35,10 @@ class StoreWorkBudgetRequest extends FormRequest
             'shares.*.flat_id' => ['required', 'integer', 'distinct', 'exists:flats,id'],
             'shares.*.amount' => ['required', 'numeric', 'min:0', 'max:999999999'],
             'shares.*.note' => ['nullable', 'string', 'max:255'],
+            // optional collection schedule: dates with the percentage of each share due then (adds up to 100)
+            'installments' => ['nullable', 'array', 'max:24'],
+            'installments.*.due_date' => ['required', 'date'],
+            'installments.*.percent' => ['required', 'numeric', 'gt:0', 'max:100'],
         ];
     }
 
