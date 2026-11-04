@@ -17,14 +17,14 @@ class RoleController extends Controller
 
     public function store(SaveRoleRequest $request)
     {
-        $this->service->create($request->validated('name'), $request->validated('permissions'));
+        $this->service->create($request->validated('name'), $request->validated('permissions'), $request->user());
 
         return response()->json(['roles' => $this->service->list()], 201);
     }
 
     public function updatePermissions(SaveRoleRequest $request, string $role)
     {
-        $this->service->syncPermissions($role, $request->validated('permissions'));
+        $this->service->syncPermissions($role, $request->validated('permissions'), $request->user());
 
         return response()->json(['roles' => $this->service->list()]);
     }

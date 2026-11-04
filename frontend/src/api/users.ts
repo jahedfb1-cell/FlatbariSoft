@@ -37,10 +37,14 @@ export interface NewUserInput {
   roles: string[];
 }
 
-export const listUsers = (params: { q?: string; role?: string; status?: string } = {}) =>
-  client.get<{ data: ManagedUser[] }>('/users', { params: { ...params, per_page: 100 } }).then((r) => r.data.data);
+export interface UserPage {
+  data: ManagedUser[];
+  meta: { current_page: number; last_page: number; total: number };
+}
+export const listUsers = (params: { q?: string; role?: string; status?: string; page?: number } = {}) =>
+  client.get<UserPage>('/users', { params: { ...params, per_page: 25 } }).then((r) => r.data);
 export const createUser = (data: NewUserInput) => client.post<ManagedUser>('/users', data).then((r) => r.data);
-export const updateUser = (id: number, data: { email?: string | null; status?: 'ACTIVE' | 'INACTIVE'; roles?: string[] }) =>
+export const updateUser = (id: number, data: { name_bn?: string; mobile?: string; email?: string | null; status?: 'ACTIVE' | 'INACTIVE'; roles?: string[] }) =>
   client.put<ManagedUser>(`/users/${id}`, data).then((r) => r.data);
 export const resetPassword = (id: number, password: string) => client.post(`/users/${id}/reset-password`, { password }).then((r) => r.data);
 

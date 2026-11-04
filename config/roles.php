@@ -86,6 +86,18 @@ return [
         'treasury' => ['bn' => 'ট্রেজারি (ব্যাংক, ধার, শুরুর ব্যালেন্স)', 'en' => 'Treasury (bank, loans, opening balance)'],
         'user' => ['bn' => 'ইউজার', 'en' => 'Users'],
         'role' => ['bn' => 'রোল', 'en' => 'Roles'],
+        'budget' => ['bn' => 'বাজেট ও কাজের বাজেট', 'en' => 'Budgets & work budgets'],
+        'visitor' => ['bn' => 'ভিজিটর ও গেট বই', 'en' => 'Visitors & gate book'],
+        'audit' => ['bn' => 'অডিট লগ', 'en' => 'Audit log'],
+        'setting' => ['bn' => 'সেটিংস', 'en' => 'Settings'],
+        'backup' => ['bn' => 'ডাটাবেস ব্যাকআপ', 'en' => 'Database backup'],
+    ],
+
+    // labels for single permissions whose action word means something else in their module
+    'permission_labels' => [
+        'tenant.request' => ['bn' => 'ভাড়াটিয়ার আবেদন জমা দেওয়া', 'en' => 'Submit tenant requests'],
+        'contribution.collect' => ['bn' => 'আদায় নেওয়া', 'en' => 'Take collections'],
+        'hall.request' => ['bn' => 'বুকিং অনুরোধ / নেওয়া', 'en' => 'Request / take booking'],
     ],
     'actions' => [
         'view' => ['bn' => 'দেখা', 'en' => 'View'],

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -101,7 +101,10 @@ function RolePicker({ roles, value, onChange }: { roles: RoleInfo[]; value: stri
 
 function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; label: (n: string) => string; canManage: boolean; onChanged: () => void }) {
   const { t } = useLanguage();
+  const { user: me } = useAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [q, setQ] = useState('');
   const [role, setRole] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -109,13 +112,24 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
   const [showNew, setShowNew] = useState(false);
   const [editing, setEditing] = useState<ManagedUser | null>(null);
 
+  // typing quickly must not let a slow reply for an old search overwrite the newest one
+  const seq = useRef(0);
   const load = useCallback(() => {
+    const mine = ++seq.current;
     usersApi
-      .listUsers({ q: q || undefined, role: role || undefined })
-      .then(setUsers)
-      .catch((e) => setError(apiError(e, t('somethingWrong'))));
-  }, [q, role, t]);
-  useEffect(load, [load]);
+      .listUsers({ q: q || undefined, role: role || undefined, page })
+      .then((r) => {
+        if (mine !== seq.current) return;
+        setUsers(r.data);
+        setMeta(r.meta);
+        setError(null);
+      })
+      .catch((e) => mine === seq.current && setError(apiError(e, t('somethingWrong'))));
+  }, [q, role, page, t]);
+  useEffect(() => {
+    const id = setTimeout(load, q ? 250 : 0);
+    return () => clearTimeout(id);
+  }, [load, q]);
 
   async function toggleStatus(u: ManagedUser) {
     if (u.status === 'ACTIVE' && !window.confirm(t('users.confirmDeactivate'))) return;
@@ -131,8 +145,8 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
   return (
     <div className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm" placeholder={t('users.search')} value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm" value={role} onChange={(e) => setRole(e.target.value)}>
+        <input className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm" placeholder={t('users.search')} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+        <select className="rounded-lg border border-brand-200 px-3 py-1.5 text-sm" value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }}>
           <option value="">{t('users.allRoles')}</option>
           {roles.map((r) => (
             <option key={r.name} value={r.name}>
@@ -165,9 +179,14 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
             </tr>
           </thead>
           <tbody>
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={8} className="py-6 text-center text-navy-700">—</td>
+              </tr>
+            )}
             {users.map((u, i) => (
               <tr key={u.id} className="border-t border-brand-100">
-                <td className="py-2 pr-3 text-navy-700">{i + 1}</td>
+                <td className="py-2 pr-3 text-navy-700">{(meta.current_page - 1) * 25 + i + 1}</td>
                 <td className="pr-3 font-semibold text-brand-700">
                   {u.flats.length ? u.flats.map((f) => f.flat_no).join(', ') : '—'}
                 </td>
@@ -189,9 +208,12 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
                       <button className="mr-2 text-brand-700 hover:underline" onClick={() => setEditing(u)}>
                         {t('users.edit')}
                       </button>
-                      <button className="text-status-due hover:underline" onClick={() => toggleStatus(u)}>
-                        {u.status === 'ACTIVE' ? t('users.deactivate') : t('users.activate')}
-                      </button>
+                      {/* nobody switches off their own login */}
+                      {u.id !== me?.id && (
+                        <button className="text-status-due hover:underline" onClick={() => toggleStatus(u)}>
+                          {u.status === 'ACTIVE' ? t('users.deactivate') : t('users.activate')}
+                        </button>
+                      )}
                     </>
                   )}
                 </td>
@@ -200,6 +222,14 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
           </tbody>
         </table>
       </div>
+
+      {meta.last_page > 1 && (
+        <div className="mt-3 flex items-center justify-center gap-3 text-sm text-navy-700">
+          <button className="rounded-lg border border-brand-200 px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(page - 1)}>‹</button>
+          <span>{meta.current_page} / {meta.last_page} · {meta.total}</span>
+          <button className="rounded-lg border border-brand-200 px-3 py-1 disabled:opacity-40" disabled={page >= meta.last_page} onClick={() => setPage(page + 1)}>›</button>
+        </div>
+      )}
 
       {showNew && (
         <NewUserModal
@@ -276,6 +306,8 @@ function NewUserModal({ roles, onClose, onDone }: { roles: RoleInfo[]; onClose: 
 
 function EditUserModal({ user, roles, onClose, onDone }: { user: ManagedUser; roles: RoleInfo[]; onClose: () => void; onDone: (msg: string) => void }) {
   const { t } = useLanguage();
+  const [name, setName] = useState(user.name ?? '');
+  const [mobile, setMobile] = useState(user.mobile);
   const [email, setEmail] = useState(user.email ?? '');
   const [picked, setPicked] = useState<string[]>(user.roles);
   const [newPassword, setNewPassword] = useState('');
@@ -285,7 +317,7 @@ function EditUserModal({ user, roles, onClose, onDone }: { user: ManagedUser; ro
     e.preventDefault();
     setError(null);
     try {
-      await usersApi.updateUser(user.id, { email: email || null, roles: picked });
+      await usersApi.updateUser(user.id, { name_bn: name.trim(), mobile: mobile.trim(), email: email || null, roles: picked });
       onDone(t('users.saved'));
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
@@ -306,9 +338,11 @@ function EditUserModal({ user, roles, onClose, onDone }: { user: ManagedUser; ro
     <Modal title={`${t('users.edit')} — ${user.name ?? user.mobile}`} onClose={onClose}>
       <div className="max-h-[70vh] space-y-4 overflow-y-auto">
         <form onSubmit={save} className="space-y-3">
+          <input required className={input} placeholder={t('users.name')} value={name} onChange={(e) => setName(e.target.value)} />
+          <input required className={input} placeholder={`${t('users.mobile')} (01XXXXXXXXX)`} value={mobile} onChange={(e) => setMobile(e.target.value)} />
           <input type="email" className={input} placeholder={t('users.email')} value={email} onChange={(e) => setEmail(e.target.value)} />
           <RolePicker roles={roles} value={picked} onChange={setPicked} />
-          <button type="submit" disabled={picked.length === 0} className={`${btn} w-full`}>
+          <button type="submit" disabled={picked.length === 0 || !name.trim() || !mobile.trim()} className={`${btn} w-full`}>
             {t('hall.save')}
           </button>
         </form>
