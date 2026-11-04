@@ -16,7 +16,9 @@ use Spatie\Permission\Models\Role;
  * Guards that keep the system from locking itself out or being taken over:
  *  - super_admin can never be granted or removed here;
  *  - you cannot deactivate yourself or take your own admin access away;
- *  - deactivating or resetting a login revokes its API tokens at once.
+ *  - deactivating or resetting a login revokes its API tokens at once;
+ *  - nobody can hand out a role carrying permissions they do not hold themselves, nor change or lock out someone
+ *    who holds more than they do (so a limited manager can never make themselves, or a friend, an admin).
  */
 class UserManagementService
 {
@@ -34,7 +36,7 @@ class UserManagementService
      */
     public function create(array $data, User $actor): User
     {
-        $roles = $this->assignableRoles($data['roles'] ?? []);
+        $roles = $this->assignableRoles($data['roles'] ?? [], $actor);
 
         return DB::transaction(function () use ($data, $roles) {
             $person = ! empty($data['person_id'])
@@ -70,12 +72,13 @@ class UserManagementService
     public function update(User $user, array $data, User $actor): User
     {
         $this->assertNotSuperAdmin($user);
+        $this->assertMayManage($user, $actor);
 
         return DB::transaction(function () use ($user, $data, $actor) {
             $isSelf = $user->is($actor);
 
             if (array_key_exists('roles', $data)) {
-                $roles = $this->assignableRoles($data['roles']);
+                $roles = $this->assignableRoles($data['roles'], $actor);
                 if ($isSelf && ! in_array('admin', $roles, true) && $user->hasRole('admin')) {
                     throw ValidationException::withMessages(['roles' => 'নিজের অ্যাডমিন রোল সরানো যাবে না।']);
                 }
@@ -85,6 +88,24 @@ class UserManagementService
 
             if (array_key_exists('email', $data)) {
                 $user->email = $data['email'];
+            }
+
+            // the name and the login mobile live on the person; a mobile typo can be corrected here
+            if (array_key_exists('name_bn', $data) || array_key_exists('mobile', $data)) {
+                $person = $user->person ?? throw ValidationException::withMessages(['user' => 'এই লগইনের সঙ্গে কোনো ব্যক্তির তথ্য যুক্ত নেই।']);
+                if (isset($data['mobile']) && $data['mobile'] !== $user->mobile) {
+                    if (User::withTrashed()->where('mobile', $data['mobile'])->where('id', '!=', $user->id)->exists()
+                        || Person::where('mobile', $data['mobile'])->where('id', '!=', $person->id)->exists()) {
+                        throw ValidationException::withMessages(['mobile' => 'এই মোবাইল নম্বর অন্য একজনের আছে।']);
+                    }
+                    $user->mobile = $data['mobile'];
+                    $person->mobile = $data['mobile'];
+                    $user->tokens()->delete(); // the login identifier changed: sign them out so the new number is used
+                }
+                if (isset($data['name_bn'])) {
+                    $person->name_bn = $data['name_bn'];
+                }
+                $person->save();
             }
 
             if (array_key_exists('status', $data) && $data['status'] !== $user->status) {
@@ -103,9 +124,12 @@ class UserManagementService
         });
     }
 
-    public function resetPassword(User $user, string $password): void
+    public function resetPassword(User $user, string $password, ?User $actor = null): void
     {
         $this->assertNotSuperAdmin($user);
+        if ($actor) {
+            $this->assertMayManage($user, $actor);
+        }
 
         DB::transaction(function () use ($user, $password) {
             $user->update(['password' => $password]); // 'hashed' cast
@@ -114,7 +138,7 @@ class UserManagementService
     }
 
     /** Role names an admin may hand out: any existing role except super_admin. */
-    private function assignableRoles(array $names): array
+    private function assignableRoles(array $names, User $actor): array
     {
         $names = array_values(array_unique($names));
         if ($names === []) {
@@ -128,7 +152,36 @@ class UserManagementService
             throw ValidationException::withMessages(['roles' => 'অজানা রোল।']);
         }
 
+        // a role the actor could not exercise themselves is not theirs to hand out
+        $mine = $this->permissionsOf($actor);
+        if ($mine !== null) {
+            foreach ($names as $name) {
+                $extra = array_diff(Role::where("name", $name)->first()->permissions->pluck('name')->all(), $mine);
+                if ($extra !== []) {
+                    throw ValidationException::withMessages(['roles' => "“{$name}” রোলে আপনার নেই এমন অনুমতি আছে — এই রোল আপনি দিতে পারবেন না।"]);
+                }
+            }
+        }
+
         return $names;
+    }
+
+    /** null = every permission (super admin); otherwise the names this user holds, through all their roles. */
+    private function permissionsOf(User $user): ?array
+    {
+        return $user->hasRole('super_admin') ? null : $user->getAllPermissions()->pluck('name')->all();
+    }
+
+    /** Someone who holds permissions the actor lacks is out of the actor's reach: no editing, deactivating or password resets. */
+    private function assertMayManage(User $target, User $actor): void
+    {
+        $mine = $this->permissionsOf($actor);
+        if ($mine === null || $target->is($actor)) {
+            return;
+        }
+        if (array_diff($target->getAllPermissions()->pluck('name')->all(), $mine) !== []) {
+            throw ValidationException::withMessages(['user' => 'এই ইউজারের অনুমতি আপনার চেয়ে বেশি — আপনি তাকে বদলাতে পারবেন না।']);
+        }
     }
 
     private function assertNotSuperAdmin(User $user): void

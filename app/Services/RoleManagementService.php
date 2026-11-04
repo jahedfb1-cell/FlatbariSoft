@@ -63,17 +63,18 @@ class RoleManagementService
             $out[$module]['module'] = $module;
             $out[$module]['label_bn'] = $groups[$module]['bn'] ?? $module;
             $out[$module]['label_en'] = $groups[$module]['en'] ?? $module;
+            $override = config('roles.permission_labels')[$name] ?? null;
             $out[$module]['permissions'][] = [
                 'name' => $name,
-                'label_bn' => $actions[$action]['bn'] ?? $action,
-                'label_en' => $actions[$action]['en'] ?? $action,
+                'label_bn' => $override['bn'] ?? $actions[$action]['bn'] ?? $action,
+                'label_en' => $override['en'] ?? $actions[$action]['en'] ?? $action,
             ];
         }
 
         return array_values($out);
     }
 
-    public function syncPermissions(string $roleName, array $permissions): Role
+    public function syncPermissions(string $roleName, array $permissions, ?User $actor = null): Role
     {
         $role = Role::where('name', $roleName)->firstOrFail();
 
@@ -85,6 +86,15 @@ class RoleManagementService
         $known = Permission::whereIn('name', $permissions)->pluck('name')->all();
         if (count($known) !== count($permissions)) {
             throw ValidationException::withMessages(['permissions' => 'অজানা অনুমতি।']);
+        }
+
+        // nobody can give a role a permission they do not hold themselves
+        if ($actor && ! $actor->hasRole('super_admin')) {
+            $added = array_diff($permissions, $role->permissions->pluck('name')->all());
+            $extra = array_diff($added, $actor->getAllPermissions()->pluck('name')->all());
+            if ($extra !== []) {
+                throw ValidationException::withMessages(['permissions' => 'আপনার নেই এমন অনুমতি ('.implode(', ', $extra).') কোনো রোলে দেওয়া যাবে না।']);
+            }
         }
 
         if ($role->name === 'admin') {
@@ -102,16 +112,16 @@ class RoleManagementService
         });
     }
 
-    public function create(string $name, array $permissions): Role
+    public function create(string $name, array $permissions, ?User $actor = null): Role
     {
         if (Role::where('name', $name)->exists()) {
             throw ValidationException::withMessages(['name' => 'এই নামে রোল আগে থেকেই আছে।']);
         }
 
-        return DB::transaction(function () use ($name, $permissions) {
+        return DB::transaction(function () use ($name, $permissions, $actor) {
             $role = Role::create(['name' => $name, 'guard_name' => 'web']);
 
-            return $this->syncPermissions($role->name, $permissions);
+            return $this->syncPermissions($role->name, $permissions, $actor);
         });
     }
 

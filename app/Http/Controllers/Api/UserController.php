@@ -18,14 +18,14 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $users = User::with('person.flatParties.flat')
-            ->when($request->filled('role'), fn ($q) => $q->role($request->role))
+            ->when($request->filled('role'), fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $request->role))) // an unknown role is just an empty list, never an error
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->filled('q'), fn ($q) => $q->where(fn ($w) => $w
                 ->where('mobile', 'like', '%'.$request->q.'%')
                 ->orWhere('email', 'like', '%'.$request->q.'%')
                 ->orWhereHas('person', fn ($p) => $p->where('name_bn', 'like', '%'.$request->q.'%')->orWhere('name_en', 'like', '%'.$request->q.'%'))))
             ->orderBy('id')
-            ->paginate($request->integer('per_page', 25));
+            ->paginate(min(100, max(1, $request->integer('per_page', 25))));
 
         return ManagedUserResource::collection($users);
     }
@@ -44,7 +44,7 @@ class UserController extends Controller
 
     public function resetPassword(ResetUserPasswordRequest $request, User $user)
     {
-        $this->service->resetPassword($user, $request->validated('password'));
+        $this->service->resetPassword($user, $request->validated('password'), $request->user());
 
         return response()->json(['message' => 'পাসওয়ার্ড বদলানো হয়েছে।']);
     }
