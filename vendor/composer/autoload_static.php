@@ -843,6 +843,7 @@ class ComposerStaticInit38374efba84c4668edf19017bd619d1a
         'App\\Models\\User' => __DIR__ . '/../..' . '/app/Models/User.php',
         'App\\Models\\Visitor' => __DIR__ . '/../..' . '/app/Models/Visitor.php',
         'App\\Models\\WorkBudget' => __DIR__ . '/../..' . '/app/Models/WorkBudget.php',
+        'App\\Models\\WorkBudgetInstallment' => __DIR__ . '/../..' . '/app/Models/WorkBudgetInstallment.php',
         'App\\Observers\\AuditObserver' => __DIR__ . '/../..' . '/app/Observers/AuditObserver.php',
         'App\\Providers\\AppServiceProvider' => __DIR__ . '/../..' . '/app/Providers/AppServiceProvider.php',
         'App\\Services\\AccountingService' => __DIR__ . '/../..' . '/app/Services/AccountingService.php',

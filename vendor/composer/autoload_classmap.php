@@ -218,6 +218,7 @@ return array(
     'App\\Models\\User' => $baseDir . '/app/Models/User.php',
     'App\\Models\\Visitor' => $baseDir . '/app/Models/Visitor.php',
     'App\\Models\\WorkBudget' => $baseDir . '/app/Models/WorkBudget.php',
+    'App\\Models\\WorkBudgetInstallment' => $baseDir . '/app/Models/WorkBudgetInstallment.php',
     'App\\Observers\\AuditObserver' => $baseDir . '/app/Observers/AuditObserver.php',
     'App\\Providers\\AppServiceProvider' => $baseDir . '/app/Providers/AppServiceProvider.php',
     'App\\Services\\AccountingService' => $baseDir . '/app/Services/AccountingService.php',

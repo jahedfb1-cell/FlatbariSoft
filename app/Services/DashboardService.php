@@ -26,6 +26,7 @@ class DashboardService
         private readonly FundStatementService $funds,
         private readonly SupplierLedgerService $suppliers,
         private readonly ContributionService $contributions,
+        private readonly WorkBudgetService $works,
     ) {}
 
     /** @return array<string, mixed> */
@@ -92,7 +93,73 @@ class DashboardService
             $out['flats'] = ['total' => Flat::count()];
         }
 
+        $head = $this->headline($out, $can);
+        if ($head !== []) {
+            $out['headline'] = $head;
+        }
+
         return $out;
+    }
+
+    /**
+     * The three numbers the committee looks at first: how the service-charge money stands (what is in hand and what the
+     * flats still owe), how the project (capital) fund stands, and gas - the fund, what flats owe for gas and what is
+     * owed to the gas supplier. Each shows a surplus or a deficit.
+     *
+     * @param  array<string, mixed>  $out
+     * @return array<string, mixed>
+     */
+    private function headline(array $out, callable $can): array
+    {
+        $fund = fn (string $code) => collect($out['funds']['funds'] ?? [])->firstWhere('code', $code);
+        $head = [];
+
+        if (($op = $fund('OPERATING')) !== null) {
+            $gasDue = $this->gasReceivable();
+            $outstanding = (string) ($out['billing']['outstanding_all'] ?? 0);
+            $head['service'] = [
+                'balance' => $op['closing'], 'cash' => $op['cash'], 'bank' => $op['bank'],
+                'receivable' => isset($out['billing']) ? bcsub($outstanding, min($gasDue, $outstanding), 4) : null,
+                'month_billed' => $out['billing']['billed'] ?? null, 'month_collected' => $out['billing']['collected'] ?? null,
+                'month_receipts' => $op['receipts'], 'month_payments' => $op['payments'],
+            ];
+        }
+
+        if (($cap = $fund('CAPITAL')) !== null) {
+            $toCollect = '0';
+            $open = 0;
+            if ($can('budget.view') && \Illuminate\Support\Facades\Schema::hasTable('work_budgets')) {
+                foreach (\App\Models\WorkBudget::with('book')->whereIn('status', ['PLANNED', 'ONGOING'])->get() as $w) {
+                    $toCollect = bcadd($toCollect, $this->works->summary($w)['still_to_collect'], 4);
+                    $open++;
+                }
+            }
+            $head['project'] = [
+                'balance' => $cap['closing'], 'cash' => $cap['cash'], 'bank' => $cap['bank'],
+                'works_open' => $open, 'works_to_collect' => $toCollect,
+                'month_receipts' => $cap['receipts'], 'month_payments' => $cap['payments'],
+            ];
+        }
+
+        if (($gas = $fund('GAS')) !== null) {
+            $receivable = $this->gasReceivable();
+            $payable = $can('gas.view') || $can('expense.view') ? (string) $this->suppliers->suppliers('gas')['totals']['owed'] : '0';
+            $head['gas'] = [
+                'balance' => $gas['closing'], 'receivable' => $receivable, 'payable' => bcadd($payable, '0', 4),
+                // what the gas side would stand at if every flat paid its gas bill and the supplier were paid off
+                'net' => bcsub(bcadd((string) $gas['closing'], $receivable, 4), $payable, 4),
+            ];
+        }
+
+        return $head;
+    }
+
+    /** The gas part of what flats still owe: each unpaid bill's balance, in the proportion gas makes up of that bill. */
+    private function gasReceivable(): string
+    {
+        $v = Bill::selectRaw('COALESCE(SUM(CASE WHEN total_payable > paid_amount AND total_payable > 0 THEN (total_payable - paid_amount) * gas_amount / total_payable ELSE 0 END), 0) AS t')->value('t');
+
+        return bcadd((string) ($v ?? 0), '0', 4);
     }
 
     /** This month's bills, plus the last six months for the trend bars. */

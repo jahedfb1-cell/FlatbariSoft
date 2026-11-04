@@ -85,6 +85,18 @@ class WorkBudgetController extends Controller
         return response()->json($this->detail($workBudget->fresh()));
     }
 
+    public function schedule(Request $request, WorkBudget $workBudget)
+    {
+        $v = $request->validate([
+            'installments' => ['present', 'array', 'max:24'],
+            'installments.*.due_date' => ['required', 'date'],
+            'installments.*.percent' => ['required', 'numeric', 'gt:0', 'max:100'],
+        ]);
+        $this->service->setSchedule($workBudget, $v['installments']);
+
+        return response()->json($this->detail($workBudget->fresh()));
+    }
+
     /** @return array<string, mixed> */
     private function detail(WorkBudget $work): array
     {

@@ -32,6 +32,11 @@ class WorkBudget extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function installments(): HasMany
+    {
+        return $this->hasMany(WorkBudgetInstallment::class)->orderBy('seq');
+    }
+
     public function isOpen(): bool
     {
         return in_array($this->status, ['PLANNED', 'ONGOING'], true);
