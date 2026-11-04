@@ -22,7 +22,7 @@ class OtpService
      * @return string the plain-text code (only for local/testing responses —
      *                 never log or return this outside a dev environment)
      */
-    public function generateAndSend(string $mobile): string
+    public function generateAndSend(string $mobile, string $purpose = 'login'): string
     {
         // An earlier unconsumed OTP for this number is no longer usable once
         // a new one is requested — otherwise two valid codes could exist.
@@ -41,7 +41,7 @@ class OtpService
             'expires_at' => now()->addMinutes(config('otp.expiry_minutes')),
         ]);
 
-        $this->deliver($mobile, $code);
+        $this->deliver($mobile, $code, $purpose);
 
         return $code;
     }
@@ -81,8 +81,25 @@ class OtpService
         return ['success' => true, 'message' => 'OTP যাচাই সফল হয়েছে।'];
     }
 
-    private function deliver(string $mobile, string $code): void
+    /**
+     * Sent straight through the SMS gateway (not the SMS log, which the office can read): a code is a secret. With no
+     * gateway configured nothing is sent, and outside production the code is written to the log for development.
+     */
+    private function deliver(string $mobile, string $code, string $purpose = 'login'): void
     {
-        Log::info("OTP for {$mobile}: {$code}");
+        $minutes = config('otp.expiry_minutes');
+        $text = $purpose === 'reset'
+            ? "Green Valley BMS: পাসওয়ার্ড রিসেটের কোড {$code} ({$minutes} মিনিট বৈধ)। কাউকে বলবেন না।"
+            : "Green Valley BMS: লগইন কোড {$code} ({$minutes} মিনিট বৈধ)। কাউকে বলবেন না।";
+
+        try {
+            app(\App\Contracts\SmsGatewayInterface::class)->send($mobile, $text);
+        } catch (\Throwable $e) {
+            Log::error('[OtpService] could not send the code: '.$e->getMessage());
+        }
+
+        if (app()->environment(['local', 'testing'])) {
+            Log::info("OTP for {$mobile}: {$code}");
+        }
     }
 }

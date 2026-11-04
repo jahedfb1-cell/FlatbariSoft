@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangePasswordRequest;
+use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\LoginRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Requests\RequestOtpRequest;
 use App\Http\Requests\VerifyOtpRequest;
 use App\Http\Resources\UserResource;
@@ -13,6 +15,7 @@ use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -78,13 +81,13 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->email)->where('status', 'ACTIVE')->first();
+        $user = User::findActiveByIdentifier($request->input('identifier'));
 
-        // Same generic message whether the email doesn't exist or the
+        // Same generic message whether the account doesn't exist or the
         // password is wrong — never reveal which one it was.
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'ইমেইল অথবা পাসওয়ার্ড সঠিক নয়।',
+                'message' => 'ইমেইল/মোবাইল অথবা পাসওয়ার্ড সঠিক নয়।',
             ], 422);
         }
 
@@ -94,6 +97,66 @@ class AuthController extends Controller
             'token' => $user->createToken('auth')->plainTextToken,
             'user' => new UserResource($user),
         ]);
+    }
+
+    /**
+     * "Forgot password": an e-mail address gets a reset link, a mobile number gets a code by SMS. The answer is the same
+     * whether or not such an account exists, so the form cannot be used to find out who has a login.
+     */
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $identifier = trim($request->input('identifier'));
+        $user = User::findActiveByIdentifier($identifier);
+        $byEmail = str_contains($identifier, '@');
+
+        if ($user) {
+            if ($byEmail && $user->email) {
+                // the token table arrives with the database upgrade; until then the answer is the same but nothing can be sent
+                if (\Illuminate\Support\Facades\Schema::hasTable('password_reset_tokens')) {
+                    Password::broker()->sendResetLink(['email' => $user->email]);
+                }
+            } elseif (! $byEmail) {
+                $this->otpService->generateAndSend($user->mobile, 'reset');
+            }
+        }
+
+        return response()->json([
+            'channel' => $byEmail ? 'email' : 'sms',
+            'message' => $byEmail
+                ? 'এই ইমেইলে অ্যাকাউন্ট থাকলে পাসওয়ার্ড বদলানোর লিংক পাঠানো হয়েছে। ইনবক্স ও স্প্যাম ফোল্ডার দেখুন।'
+                : 'এই মোবাইলে অ্যাকাউন্ট থাকলে একটি কোড SMS-এ পাঠানো হয়েছে।',
+        ]);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        if ($request->filled('email')) {
+            $status = Password::broker()->reset(
+                $request->only('email', 'password', 'password_confirmation') + ['token' => $request->input('token')],
+                function (User $user, string $password) {
+                    if ($user->status !== 'ACTIVE') {
+                        return;
+                    }
+                    $user->forceFill(['password' => $password])->save(); // 'hashed' cast
+                    $user->tokens()->delete(); // everyone signed in with the old password is logged out
+                },
+            );
+            if ($status !== Password::PASSWORD_RESET) {
+                return response()->json(['message' => 'রিসেট লিংকটি সঠিক নয় বা মেয়াদ শেষ — নতুন করে অনুরোধ করুন।'], 422);
+            }
+
+            return response()->json(['message' => 'পাসওয়ার্ড বদলানো হয়েছে — এখন লগইন করুন।']);
+        }
+
+        $user = User::findActiveByIdentifier((string) $request->input('mobile'));
+        $result = $this->otpService->verify($user?->mobile ?? (string) $request->input('mobile'), (string) $request->input('code'));
+        if (! $user || ! $result['success']) {
+            return response()->json(['message' => $result['success'] ?? false ? 'কোডটি সঠিক নয়।' : $result['message']], 422);
+        }
+        $user->forceFill(['password' => $request->input('password')])->save();
+        $user->tokens()->delete();
+
+        return response()->json(['message' => 'পাসওয়ার্ড বদলানো হয়েছে — এখন লগইন করুন।']);
     }
 
     /**

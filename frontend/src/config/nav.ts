@@ -54,6 +54,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/gas', key: 'nav.gas', perm: 'gas.view', icon: '🔥' },
       { to: '/construction-materials', key: 'nav.materials', perm: 'expense.view', icon: '🧱' },
+      { to: '/water', key: 'nav.water' as TranslationKey, perm: 'expense.view', icon: '💧' },
       { to: '/suppliers', key: 'nav.suppliers' as TranslationKey, perm: 'expense.view', icon: '🚚' },
     ],
   },

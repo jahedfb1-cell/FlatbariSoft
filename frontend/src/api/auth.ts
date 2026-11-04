@@ -29,8 +29,22 @@ export function verifyOtp(mobile: string, code: string) {
   return client.post<VerifyOtpResponse>('/auth/otp/verify', { mobile, code }).then((r) => r.data);
 }
 
-export function loginWithPassword(email: string, password: string) {
-  return client.post<VerifyOtpResponse>('/auth/login', { email, password }).then((r) => r.data);
+/** Password login by e-mail address or mobile number. */
+export function loginWithPassword(identifier: string, password: string) {
+  return client.post<VerifyOtpResponse>('/auth/login', { identifier, password }).then((r) => r.data);
+}
+
+/** "Forgot password": an e-mail gets a link, a mobile number gets an SMS code. The answer never says whether the account exists. */
+export function forgotPassword(identifier: string) {
+  return client.post<{ channel: 'email' | 'sms'; message: string }>('/auth/forgot-password', { identifier }).then((r) => r.data);
+}
+
+export function resetPasswordByLink(d: { email: string; token: string; password: string; password_confirmation: string }) {
+  return client.post<{ message: string }>('/auth/reset-password', d).then((r) => r.data);
+}
+
+export function resetPasswordByCode(d: { mobile: string; code: string; password: string; password_confirmation: string }) {
+  return client.post<{ message: string }>('/auth/reset-password', d).then((r) => r.data);
 }
 
 export function me() {

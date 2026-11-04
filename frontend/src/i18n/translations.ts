@@ -1046,6 +1046,7 @@ export const translations = {
     'navgroup.building': 'বিল্ডিং',
     'navgroup.system': 'সিস্টেম',
     'nav.workBudgets': 'কাজের বাজেট',
+    'nav.water': 'ওয়াসা পানি বিল',
   },
   en: {
     appName: 'Green Valley BMS',
@@ -2073,6 +2074,7 @@ export const translations = {
     'navgroup.building': 'Building',
     'navgroup.system': 'System',
     'nav.workBudgets': 'Work budgets',
+    'nav.water': 'WASA water bill',
   },
 } as const;
 

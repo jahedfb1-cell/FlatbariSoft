@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import * as authApi from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,8 +11,9 @@ type Step = 'mobile' | 'otp' | 'email';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const { t } = useLanguage();
-  const [step, setStep] = useState<Step>('mobile');
+  const { t, lang } = useLanguage();
+  const bn = lang === 'bn';
+  const [step, setStep] = useState<Step>('email');
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
@@ -73,7 +75,7 @@ export default function LoginPage() {
         <p className="mt-1 text-sm text-navy-700">
           {step === 'mobile' && t('login.mobileStepTitle')}
           {step === 'otp' && t('login.otpStepTitle')}
-          {step === 'email' && t('login.emailStepTitle')}
+          {step === 'email' && (bn ? 'ইমেইল বা মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে লগইন করুন' : 'Sign in with your e-mail or mobile number and password')}
         </p>
 
         {step === 'mobile' && (
@@ -113,11 +115,13 @@ export default function LoginPage() {
         {step === 'email' && (
           <form onSubmit={handleEmailLogin} className="mt-6 space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-navy-900">{t('login.emailLabel')}</label>
+              <label className="mb-1 block text-sm font-medium text-navy-900">{bn ? 'ইমেইল বা মোবাইল নম্বর' : 'E-mail or mobile number'}</label>
               <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="username"
                 required
-                placeholder="admin@greenvalley.com"
+                placeholder="you@gmail.com / 01712345678"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500"
@@ -132,6 +136,11 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500"
               />
+            </div>
+            <div className="-mt-2 text-right">
+              <Link to="/forgot-password" className="text-sm text-brand-700 hover:underline">
+                {bn ? 'পাসওয়ার্ড ভুলে গেছেন?' : 'Forgot password?'}
+              </Link>
             </div>
             {error && <p className="text-sm text-status-due">{error}</p>}
             <button

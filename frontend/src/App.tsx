@@ -6,6 +6,7 @@ import AuditLogsPage from './pages/AuditLogsPage';
 import VisitorsPage from './pages/VisitorsPage';
 import BudgetPage from './pages/BudgetPage';
 import WorkBudgetsPage from './pages/WorkBudgetsPage';
+import WaterBillsPage from './pages/WaterBillsPage';
 import OwnerPaymentsPage from './pages/owner/OwnerPaymentsPage';
 import OwnerVisitorsPage from './pages/owner/OwnerVisitorsPage';
 import TenantKycPage from './pages/TenantKycPage';
@@ -15,6 +16,8 @@ import OwnerTenantRequestPage from './pages/owner/OwnerTenantRequestPage';
 import AppShell from './components/AppShell';
 import ResponsiveTables from './components/ResponsiveTables';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import FlatsPage from './pages/FlatsPage';
 import FlatDetailPage from './pages/FlatDetailPage';
@@ -75,6 +78,8 @@ function AppRoutes() {
   if (!user) {
     return (
       <Routes>
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<LoginPage />} />
       </Routes>
     );
@@ -102,6 +107,7 @@ function AppRoutes() {
         <Route path="/visitors" element={<VisitorsPage />} />
         <Route path="/budget" element={<BudgetPage />} />
         <Route path="/work-budgets" element={<WorkBudgetsPage />} />
+        <Route path="/water" element={<WaterBillsPage />} />
         <Route path="/payments" element={<PaymentsPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/dues" element={<DuesPage />} />

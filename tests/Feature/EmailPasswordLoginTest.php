@@ -74,7 +74,7 @@ class EmailPasswordLoginTest extends TestCase
     {
         $response = $this->postJson('/api/auth/login', []);
 
-        $response->assertStatus(422)->assertJsonValidationErrors(['email', 'password']);
+        $response->assertStatus(422)->assertJsonValidationErrors(['identifier', 'password']);
     }
 
     public function test_login_is_rate_limited(): void

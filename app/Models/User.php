@@ -16,6 +16,28 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasApiTokens, HasRoles, SoftDeletes;
 
     /**
+     * An active login by what the person typed: an e-mail address, or a Bangladeshi mobile number in any common
+     * writing (01712345678, 8801712345678, +8801712345678, with spaces or dashes).
+     */
+    public static function findActiveByIdentifier(string $identifier): ?self
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            return null;
+        }
+        $query = self::where('status', 'ACTIVE');
+        if (str_contains($identifier, '@')) {
+            return $query->whereRaw('LOWER(email) = ?', [mb_strtolower($identifier)])->first();
+        }
+        $digits = preg_replace('/\D+/', '', $identifier);
+        if (str_starts_with($digits, '880')) {
+            $digits = '0'.substr($digits, 3);
+        }
+
+        return $query->where('mobile', $digits)->first();
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
