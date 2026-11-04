@@ -30,7 +30,7 @@ class WorkBudgetService
      */
     public function preview(string $method, string $estimated, ?array $flatIds): array
     {
-        $flats = Flat::where('status', 'ACTIVE')->when($flatIds !== null, fn ($q) => $q->whereIn('id', $flatIds))->get()
+        $flats = Flat::with('currentOwners.person', 'currentTenant.person')->where('status', 'ACTIVE')->when($flatIds !== null, fn ($q) => $q->whereIn('id', $flatIds))->get()
             ->sortBy('flat_no', SORT_NATURAL)->values();
 
         $weight = fn (Flat $f): string => match ($method) {
