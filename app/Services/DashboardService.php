@@ -92,6 +92,11 @@ class DashboardService
         if ($can('flat.view')) {
             $out['flats'] = ['total' => Flat::count()];
         }
+        if ($can('staff.view')) {
+            // salaries are due on a set day; after it, anyone still unpaid is worth a reminder
+            $salary = app(SalaryService::class);
+            $out['salary_unpaid'] = $today->day > $salary->dueDay() ? $salary->unpaidCount($today->year, $today->month) : 0;
+        }
         if ($can('expense.view') && \Illuminate\Support\Facades\Schema::hasTable('water_bills')) {
             // WASA bills arrive during the month: after the 10th, a month with no bill posted yet is worth a reminder
             $out['water_bill_missing'] = $today->day >= 10

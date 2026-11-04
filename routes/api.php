@@ -421,3 +421,18 @@ Route::prefix('water-bills')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [$c, 'store'])->middleware('permission:expense.create');
     Route::put('/{waterBill}', [$c, 'update'])->middleware('permission:expense.create');
 });
+
+// Staff salary: the monthly sheet, paying it (as an expense, so it needs approval), and advances given to staff.
+Route::prefix('salary')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\SalaryController::class;
+    $pay = ['permission:staff.manage', 'permission:expense.create'];
+    Route::get('/sheet', [$c, 'sheet'])->middleware('permission:staff.view');
+    Route::get('/sheet/pdf', [$c, 'sheetPdf'])->middleware('permission:staff.view');
+    Route::get('/advances', [$c, 'advances'])->middleware('permission:staff.view');
+    Route::post('/generate', [$c, 'generate'])->middleware('permission:staff.manage');
+    Route::put('/payments/{salaryPayment}', [$c, 'update'])->middleware('permission:staff.manage');
+    Route::get('/payments/{salaryPayment}/payslip', [$c, 'payslip'])->middleware('permission:staff.view');
+    Route::post('/payments/{salaryPayment}/pay', [$c, 'pay'])->middleware($pay);
+    Route::post('/pay-all', [$c, 'payAll'])->middleware($pay);
+    Route::post('/advances', [$c, 'giveAdvance'])->middleware($pay);
+});

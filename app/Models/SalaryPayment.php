@@ -9,7 +9,7 @@ class SalaryPayment extends Model
 {
     protected $fillable = [
         'staff_id', 'year', 'month', 'basic', 'overtime', 'bonus', 'advance_deduction',
-        'net_amount', 'paid_date', 'treasury_medium', 'status', 'created_by', 'approved_by',
+        'net_amount', 'paid_date', 'treasury_medium', 'status', 'created_by', 'approved_by', 'expense_id',
     ];
 
     protected function casts(): array
@@ -27,5 +27,10 @@ class SalaryPayment extends Model
     public function staff(): BelongsTo
     {
         return $this->belongsTo(Staff::class);
+    }
+
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
     }
 }

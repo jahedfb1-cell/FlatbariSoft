@@ -53,6 +53,7 @@ export default function DashboardPage() {
   if (data?.approvals?.expenses) attention.push({ icon: '💸', label: t('dash.pendingExpenses'), count: data.approvals.expenses, to: '/expenses', tone: 'warn' });
   if (data?.tenant_requests_pending) attention.push({ icon: '🏠', label: t('dash.tenantRequests'), count: data.tenant_requests_pending, to: '/tenant-requests', tone: 'warn' });
   if (data?.hall?.pending_requests) attention.push({ icon: '🎉', label: t('dash.hallRequests'), count: data.hall.pending_requests, to: '/hall', tone: 'warn' });
+  if (data?.salary_unpaid) attention.push({ icon: '👷', label: bn ? 'জনের এই মাসের বেতন বাকি' : 'staff salaries unpaid this month', count: data.salary_unpaid, to: '/staff', tone: 'warn' });
   if (data?.water_bill_missing) attention.push({ icon: '💧', label: bn ? 'ওয়াসার এই মাসের বিল পোস্ট হয়নি' : "This month's WASA bill is not posted", count: 1, to: '/water', tone: 'warn' });
   if (data?.complaints?.open) attention.push({ icon: '📣', label: t('dash.openComplaints'), count: data.complaints.open, to: '/complaints', tone: data.complaints.urgent ? 'due' : 'warn' });
 

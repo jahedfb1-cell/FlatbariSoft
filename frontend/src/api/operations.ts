@@ -4,6 +4,7 @@ import { downloadFile, openPdf } from '../utils/download';
 // ---- settings
 export interface Settings {
   bill_due_day: string;
+  salary_due_day: string;
   late_fee_mode: 'NONE' | 'PERCENT' | 'FIXED';
   late_fee_value: string;
   late_fee_grace_days: string;

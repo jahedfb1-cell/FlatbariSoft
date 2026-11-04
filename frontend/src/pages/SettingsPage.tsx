@@ -14,7 +14,7 @@ const card = 'rounded-2xl border border-brand-100 bg-white p-5 shadow-sm';
 
 /** The office's own switches: due day, late fee, reminders, SMS - plus the SMS log and a data backup. */
 export default function SettingsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const [s, setS] = useState<Settings | null>(null);
   const [gateway, setGateway] = useState<'CONFIGURED' | 'NOT_CONFIGURED'>('NOT_CONFIGURED');
@@ -109,6 +109,10 @@ export default function SettingsPage() {
           <label className="block text-sm text-navy-700">
             {t('settings.dueDay')}
             <input type="number" min={1} max={28} className={`${input} mt-1 max-w-32`} value={s.bill_due_day} onChange={(e) => set('bill_due_day', e.target.value)} />
+          </label>
+          <label className="mt-3 block text-sm text-navy-700">
+            {lang === 'bn' ? 'স্টাফ বেতনের তারিখ (প্রতি মাসের)' : 'Staff salary day (of each month)'}
+            <input type="number" min={1} max={28} className={`${input} mt-1 max-w-32`} value={s.salary_due_day} onChange={(e) => set('salary_due_day', e.target.value)} />
           </label>
           <Switch k="auto_generate_bills" label={t('settings.autoBills')} hint={t('settings.autoBillsHint')} />
         </div>

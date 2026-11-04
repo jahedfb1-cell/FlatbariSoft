@@ -4,12 +4,14 @@ import * as staffApi from '../api/staff';
 import type { Staff } from '../api/staff';
 import StaffFormModal from '../components/StaffFormModal';
 import StaffKycModal from '../components/StaffKycModal';
+import SalaryPanel from '../components/SalaryPanel';
 import LanguageToggle from '../components/LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function StaffPage() {
   const { t, lang } = useLanguage();
   const [kycFor, setKycFor] = useState<Staff | null>(null);
+  const [tab, setTab] = useState<'list' | 'salary'>('list');
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Staff | null | undefined>(undefined);
@@ -51,7 +53,18 @@ export default function StaffPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm">
+        <div className="mb-4 flex gap-2">
+          <button className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === 'list' ? 'bg-brand-600 text-white' : 'border border-brand-200 text-navy-700 hover:bg-brand-100'}`} onClick={() => setTab('list')}>
+            {lang === 'bn' ? 'স্টাফ তালিকা' : 'Staff list'}
+          </button>
+          <button className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === 'salary' ? 'bg-brand-600 text-white' : 'border border-brand-200 text-navy-700 hover:bg-brand-100'}`} onClick={() => setTab('salary')}>
+            💰 {lang === 'bn' ? 'বেতন ও অগ্রিম' : 'Salary & advances'}
+          </button>
+        </div>
+
+        {tab === 'salary' && <SalaryPanel staff={staff} />}
+
+        <div className={`overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm ${tab === 'salary' ? 'hidden' : ''}`}>
           <table className="w-full text-left text-sm">
             <thead className="bg-brand-100 text-navy-900">
               <tr>

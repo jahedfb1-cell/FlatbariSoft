@@ -36,6 +36,7 @@ export interface DashboardOverview {
   supplier_owed?: { materials: string; gas: string };
   flats?: { total: number };
   water_bill_missing?: boolean;
+  salary_unpaid?: number;
   headline?: {
     service?: { balance: string; cash: string; bank: string; receivable: string | null; month_billed: string | null; month_collected: string | null; month_receipts: string; month_payments: string };
     project?: { balance: string; cash: string; bank: string; works_open: number; works_to_collect: string; month_receipts: string; month_payments: string };
