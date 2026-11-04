@@ -516,4 +516,92 @@ class ReportExportService
 
         return $spreadsheet;
     }
+
+    /** The three year-end statements, one sheet each. */
+    public function annual(array $r): Spreadsheet
+    {
+        $book = new Spreadsheet();
+        $fmt = '#,##0.00';
+        $put = function ($sheet, array $lines, int $row) use ($fmt) {
+            foreach ($lines as $line) {
+                [$label, $amount, $bold] = $line + [2 => false];
+                $sheet->setCellValue("A{$row}", $label);
+                if ($amount !== null) {
+                    $sheet->setCellValue("B{$row}", (float) $amount);
+                    $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode($fmt);
+                }
+                if ($bold) {
+                    $sheet->getStyle("A{$row}:B{$row}")->getFont()->setBold(true);
+                }
+                $row++;
+            }
+
+            return $row;
+        };
+        $sheetFor = function (string $title, string $heading, string $sub) use ($book) {
+            static $first = true;
+            $sheet = $first ? $book->getActiveSheet() : $book->createSheet();
+            $first = false;
+            $sheet->setTitle($title);
+            $sheet->setCellValue('A1', $heading);
+            $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+            $sheet->setCellValue('A2', $sub);
+            $sheet->getColumnDimension('A')->setWidth(60);
+            $sheet->getColumnDimension('B')->setWidth(18);
+
+            return $sheet;
+        };
+        $period = $r['from'].' — '.$r['to'];
+
+        $cf = $r['cash_flow'];
+        $sh = $sheetFor('Cash Flow', 'নগদ প্রবাহ বিবরণী (প্রাপ্তি ও প্রদান হিসাব)', 'অর্থবছর '.$r['label'].' · '.$period);
+        $rows = [['শুরুর স্থিতি (ক্যাশ + ব্যাংক)', $cf['opening'], true], ['প্রাপ্তি', null, true]];
+        foreach ($cf['receipts'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+        $rows[] = ['মোট প্রাপ্তি', $cf['total_receipts'], true];
+        $rows[] = ['প্রদান', null, true];
+        foreach ($cf['payments'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+        $rows[] = ['মোট প্রদান', $cf['total_payments'], true];
+        $rows[] = ['নিট নগদ প্রবাহ', $cf['net'], true];
+        $rows[] = ['শেষ স্থিতি', $cf['closing'], true];
+        $rows[] = ['   তার মধ্যে নগদ', $cf['closing_cash']];
+        $rows[] = ['   তার মধ্যে ব্যাংক', $cf['closing_bank']];
+        $put($sh, $rows, 4);
+
+        $ie = $r['income_expenditure'];
+        $sh = $sheetFor('Income & Expenditure', 'আয়-ব্যয় বিবরণী (লাভ-ক্ষতি)', 'অর্থবছর '.$r['label'].' · '.$period.' · বিল করা আয়, বকেয়াসহ');
+        $rows = [['আয়', null, true]];
+        foreach ($ie['income'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+        $rows[] = ['মোট আয়', $ie['total_income'], true];
+        $rows[] = ['ব্যয়', null, true];
+        foreach ($ie['expenditure'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+        $rows[] = ['মোট ব্যয়', $ie['total_expenditure'], true];
+        $rows[] = ['উদ্বৃত্ত / (ঘাটতি)', $ie['surplus'], true];
+        if ($ie['capital_spending'] !== []) {
+            $rows[] = ['মূলধনী খরচ (প্রকল্প / কাজ — আয়-ব্যয়ের বাইরে)', null, true];
+            foreach ($ie['capital_spending'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+            $rows[] = ['মোট মূলধনী খরচ', $ie['total_capital_spending'], true];
+        }
+        $rows[] = ['স্মারক: বিল করা', $ie['memo']['billed']];
+        $rows[] = ['স্মারক: আদায় হয়েছে', $ie['memo']['collected']];
+        $put($sh, $rows, 4);
+
+        $bs = $r['balance_sheet'];
+        $sh = $sheetFor('Balance Sheet', 'আর্থিক অবস্থার বিবরণী (স্থিতিপত্র)', $bs['as_of'].' তারিখে');
+        $rows = [['সম্পদ', null, true]];
+        foreach ($bs['assets'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+        $rows[] = ['মোট সম্পদ', $bs['total_assets'], true];
+        $rows[] = ['দায়', null, true];
+        foreach ($bs['liabilities'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+        $rows[] = ['মোট দায়', $bs['total_liabilities'], true];
+        $rows[] = ['তহবিল', null, true];
+        foreach ($bs['funds'] as $x) { $rows[] = ['   '.$x['label'], $x['amount']]; }
+        $rows[] = ['   '.$bs['accrued']['label'], $bs['accrued']['amount']];
+        $rows[] = ['মোট তহবিল', $bs['total_funds'], true];
+        $rows[] = ['মোট দায় ও তহবিল', $bs['total_liabilities_and_funds'], true];
+        $put($sh, $rows, 4);
+
+        $book->setActiveSheetIndex(0);
+
+        return $book;
+    }
 }
