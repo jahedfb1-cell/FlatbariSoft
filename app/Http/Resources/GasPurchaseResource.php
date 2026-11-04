@@ -24,6 +24,9 @@ class GasPurchaseResource extends JsonResource
             'has_invoice' => (bool) $this->invoice_file,
             'invoice_kb' => $this->invoice_file ? app(\App\Services\InvoiceImageService::class)->sizeKb($this->invoice_file) : null,
             'expense_status' => $this->whenLoaded('expense', fn () => $this->expense->status),
+            'treasury_medium' => $this->whenLoaded('expense', fn () => $this->expense->treasury_medium),
+            // a purchase can be corrected or taken back until its expense is approved
+            'editable' => $this->whenLoaded('expense', fn () => $this->expense->status === 'PENDING'),
         ];
     }
 }

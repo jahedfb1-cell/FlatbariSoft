@@ -20,6 +20,18 @@ class GasPurchaseController extends Controller
         );
     }
 
+    public function update(StoreGasPurchaseRequest $request, GasPurchase $purchase)
+    {
+        return new GasPurchaseResource($this->service->update($purchase, $request->validated()));
+    }
+
+    public function destroy(GasPurchase $purchase)
+    {
+        $this->service->cancel($purchase);
+
+        return response()->json(['message' => 'গ্যাস ক্রয় বাতিল করা হয়েছে।']);
+    }
+
     public function store(StoreGasPurchaseRequest $request)
     {
         $purchase = $this->service->record($request->validated(), Auth::id());
