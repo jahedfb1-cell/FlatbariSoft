@@ -17,7 +17,7 @@ export default function StaffFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const isEdit = !!staff;
   const [name, setName] = useState(staff?.name ?? '');
   const [designation, setDesignation] = useState(staff?.designation ?? '');
@@ -51,22 +51,22 @@ export default function StaffFormModal({
     <Modal title={isEdit ? t('staff.editTitle') : t('staff.addTitle')} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className={labelClass}>{t('staff.name')}</label>
+          <label className={labelClass}>{t('staff.name')} <span className="text-status-due">*</span></label>
           <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>{t('staff.designation')}</label>
+            <label className={labelClass}>{t('staff.designation')} <span className="text-status-due">*</span></label>
             <input required value={designation} onChange={(e) => setDesignation(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>{t('staff.mobile')}</label>
-            <input required value={mobile} onChange={(e) => setMobile(e.target.value)} className={inputClass} />
+            <label className={labelClass}>{t('staff.mobile')} <span className="text-status-due">*</span></label>
+            <input required inputMode="tel" pattern="01[3-9][0-9]{8}" title="01XXXXXXXXX" placeholder="01XXXXXXXXX" value={mobile} onChange={(e) => setMobile(e.target.value)} className={inputClass} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>{t('staff.joinDate')}</label>
+            <label className={labelClass}>{t('staff.joinDate')} <span className="text-status-due">*</span></label>
             <input
               type="date"
               required
@@ -76,9 +76,10 @@ export default function StaffFormModal({
             />
           </div>
           <div>
-            <label className={labelClass}>{t('staff.salary')}</label>
+            <label className={labelClass}>{t('staff.salary')} <span className="text-status-due">*</span></label>
             <input
               type="number"
+              min={0}
               required
               value={monthlySalary}
               onChange={(e) => setMonthlySalary(e.target.value)}
@@ -86,6 +87,9 @@ export default function StaffFormModal({
             />
           </div>
         </div>
+        <p className="text-xs text-navy-700">
+          <span className="text-status-due">*</span> {lang === 'bn' ? 'চিহ্নিত ঘরগুলো আবশ্যক। NID, ঠিকানা, CV ইত্যাদি সংরক্ষণের পর "KYC ও ফাইল" থেকে দিন।' : 'Fields marked * are required. Add NID, address, CV etc. afterwards under "KYC & files".'}
+        </p>
         {error && <p className="text-sm text-status-due">{error}</p>}
         <button
           type="submit"
