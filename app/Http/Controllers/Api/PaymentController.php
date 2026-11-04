@@ -57,6 +57,45 @@ class PaymentController extends Controller
         ])->setPaper('a5', 'landscape')->stream("receipt-{$payment->receipt_no}.pdf");
     }
 
+    /** Everything an approver should see before saying yes: who paid what, how, against which bill, and which books it will be posted to. */
+    public function review(Payment $payment)
+    {
+        $payment->load('flat.currentOwners.person', 'flat.currentTenant.person', 'bill.billingPeriod');
+        $bill = $payment->bill;
+        $approved = $payment->status === 'APPROVED';
+        $billData = null;
+        if ($bill) {
+            $dueBefore = bcsub((string) $bill->total_payable, (string) $bill->paid_amount, 4);
+            if ($approved) { // the bill already counts this payment
+                $dueBefore = bcadd($dueBefore, (string) $payment->amount, 4);
+            }
+            $billData = [
+                'year' => $bill->billingPeriod->year, 'month' => $bill->billingPeriod->month, 'due_date' => $bill->due_date?->toDateString(),
+                'previous_due' => (string) $bill->previous_due, 'service_charge' => (string) $bill->service_charge, 'gas_amount' => (string) $bill->gas_amount,
+                'other_charges' => (string) $bill->other_charges, 'late_fee' => (string) $bill->late_fee, 'total_payable' => (string) $bill->total_payable,
+                'due_before' => $dueBefore, 'due_after' => bcsub($dueBefore, (string) $payment->amount, 4),
+            ];
+        }
+        $isCash = $payment->method === 'CASH';
+        $bank = $isCash ? null : \App\Models\BankAccount::first();
+        $by = $payment->received_by ? \App\Models\User::find($payment->received_by) : null;
+
+        return response()->json([
+            'id' => $payment->id, 'status' => $payment->status, 'receipt_no' => $payment->receipt_no,
+            'flat_no' => $payment->flat?->flat_no, 'owner' => $payment->flat?->occupantNames()['owner'], 'tenant' => $payment->flat?->occupantNames()['tenant'],
+            'amount' => (string) $payment->amount, 'payment_date' => $payment->payment_date?->toDateString(), 'method' => $payment->method,
+            'reference_no' => $payment->reference_no, 'bank_name' => $payment->bank_name, 'remarks' => $payment->remarks,
+            'entered_by' => $by?->displayName(), 'entered_at' => $payment->created_at?->timezone('Asia/Dhaka')->format('Y-m-d H:i'),
+            'bill' => $billData,
+            'split' => $bill ? $this->service->allocation($payment) : null,
+            'posting' => [
+                'medium' => $isCash ? 'CASH' : 'BANK',
+                'account' => $bank ? $bank->bank_name.' — '.$bank->account_no : null,
+                'bank_missing' => ! $isCash && ! $bank,
+            ],
+        ]);
+    }
+
     public function approve(Payment $payment)
     {
         $payment = $this->service->approve($payment, Auth::id());

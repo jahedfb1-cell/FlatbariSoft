@@ -109,6 +109,7 @@ Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PaymentController::class, 'index'])->middleware('permission:payment.view');
     Route::post('/', [PaymentController::class, 'store'])->middleware('permission:payment.create');
     Route::post('/{payment}/approve', [PaymentController::class, 'approve'])->middleware('permission:payment.approve');
+    Route::get('/{payment}/review', [PaymentController::class, 'review'])->middleware('permission:payment.view');
     Route::get('/{payment}/receipt', [PaymentController::class, 'receipt'])->middleware('permission:payment.view');
 });
 

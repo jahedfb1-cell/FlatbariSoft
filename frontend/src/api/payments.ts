@@ -55,3 +55,36 @@ export function searchPayments(params: { status?: string; method?: string; q?: s
   const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v !== undefined));
   return client.get<PaymentPage>('/payments', { params: clean }).then((r) => r.data);
 }
+
+export interface PaymentReview {
+  id: number;
+  status: 'PENDING' | 'APPROVED';
+  receipt_no: string | null;
+  flat_no: string | null;
+  owner: string | null;
+  tenant: string | null;
+  amount: string;
+  payment_date: string;
+  method: string;
+  reference_no: string | null;
+  bank_name: string | null;
+  remarks: string | null;
+  entered_by: string | null;
+  entered_at: string | null;
+  bill: null | {
+    year: number;
+    month: number;
+    due_date: string | null;
+    previous_due: string;
+    service_charge: string;
+    gas_amount: string;
+    other_charges: string;
+    late_fee: string;
+    total_payable: string;
+    due_before: string;
+    due_after: string;
+  };
+  split: null | { service: string; gas: string };
+  posting: { medium: 'CASH' | 'BANK'; account: string | null; bank_missing: boolean };
+}
+export const reviewPayment = (id: number) => client.get<PaymentReview>(`/payments/${id}/review`).then((r) => r.data);

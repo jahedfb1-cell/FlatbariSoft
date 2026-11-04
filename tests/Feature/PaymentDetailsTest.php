@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BankAccount;
 use App\Models\Flat;
 use App\Models\User;
 use Database\Seeders\ChartOfAccountsSeeder;
@@ -82,5 +83,32 @@ class PaymentDetailsTest extends TestCase
         $this->assertSame(1, $api->getJson('/api/payments?q=ALPHA')->json('meta.total'));
         $this->assertSame(0, $api->getJson('/api/payments?status=APPROVED')->json('meta.total'));
         $this->assertSame(2, $api->getJson('/api/payments?status=PENDING&per_page=1')->json('meta.last_page'));
+    }
+
+    public function test_the_review_shows_what_approval_will_do(): void
+    {
+        $api = $this->actingAs($this->admin, 'sanctum');
+        $cash = $this->pay(['remarks' => 'in person'])->json('id');
+        $bkash = $this->pay(['method' => 'BKASH', 'reference_no' => 'TXN-1'])->json('id');
+
+        $r = $api->getJson("/api/payments/{$cash}/review")->assertOk();
+        $r->assertJsonPath('posting.medium', 'CASH')->assertJsonPath('remarks', 'in person')->assertJsonPath('status', 'PENDING');
+
+        // mobile banking lands in the bank ledger; with no bank account set up the review says approval cannot go through
+        $api->getJson("/api/payments/{$bkash}/review")->assertJsonPath('posting.medium', 'BANK')->assertJsonPath('posting.bank_missing', true);
+        BankAccount::create(['bank_name' => 'DBBL', 'account_no' => '123', 'account_title' => 'GV']);
+        $api->getJson("/api/payments/{$bkash}/review")->assertJsonPath('posting.bank_missing', false)->assertJsonPath('posting.account', 'DBBL — 123');
+    }
+
+    public function test_an_approved_bank_payment_goes_into_the_bank_ledger(): void
+    {
+        BankAccount::create(['bank_name' => 'DBBL', 'account_no' => '123', 'account_title' => 'GV']);
+        $api = $this->actingAs($this->admin, 'sanctum');
+        $id = $this->pay(['method' => 'BANK', 'bank_name' => 'City', 'reference_no' => 'CHQ-9', 'amount' => '2500'])->json('id');
+
+        $api->postJson("/api/payments/{$id}/approve")->assertOk();
+
+        $this->assertSame('2500.0000', (string) BankAccount::first()->fresh()->current_balance);
+        $this->assertDatabaseHas('bank_transactions', ['ref_id' => $id, 'debit' => '2500.0000']);
     }
 }

@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import FlatLabel from '../components/FlatLabel';
+import Sheet from '../components/Sheet';
 import { apiError } from '../api/hall';
 import * as paymentsApi from '../api/payments';
-import type { PaymentRow, PaymentPage } from '../api/payments';
+import type { PaymentRow, PaymentPage, PaymentReview } from '../api/payments';
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 })}`;
 const input = 'rounded-lg border border-brand-200 px-3 py-2 text-sm';
@@ -34,7 +35,7 @@ export default function PaymentsPage() {
   const [data, setData] = useState<PaymentPage | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [reviewing, setReviewing] = useState<PaymentRow | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -53,19 +54,6 @@ export default function PaymentsPage() {
     fn();
     setPage(1);
   };
-
-  async function approve(p: PaymentRow) {
-    setBusyId(p.id);
-    setError(null);
-    try {
-      await paymentsApi.approvePayment(p.id);
-      await load();
-    } catch (err) {
-      setError(apiError(err, t('somethingWrong')));
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   const rows = data?.data ?? [];
   const total = rows.reduce((c, p) => c + Number(p.amount), 0);
@@ -156,8 +144,8 @@ export default function PaymentsPage() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-right">
                     {p.status === 'PENDING' && can('payment.approve') && (
-                      <button disabled={busyId === p.id} onClick={() => approve(p)} className="font-medium text-brand-700 hover:underline disabled:opacity-50">
-                        {t('common.approve')}
+                      <button onClick={() => setReviewing(p)} className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700">
+                        {L('দেখুন ও অনুমোদন', 'Review & approve')}
                       </button>
                     )}
                     {p.status === 'APPROVED' && (
@@ -191,6 +179,129 @@ export default function PaymentsPage() {
           </div>
         )}
       </div>
+
+      {reviewing && (
+        <ReviewSheet
+          payment={reviewing}
+          onClose={() => setReviewing(null)}
+          onApproved={() => {
+            setReviewing(null);
+            load();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+const MONTHS_BN = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** What an approver sees before approving: who paid, how much, how, against which bill - and which books it will land in. */
+function ReviewSheet({ payment, onClose, onApproved }: { payment: PaymentRow; onClose: () => void; onApproved: () => void }) {
+  const { lang, t } = useLanguage();
+  const bn = lang === 'bn';
+  const L = (b: string, e: string) => (bn ? b : e);
+  const [r, setR] = useState<PaymentReview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    paymentsApi.reviewPayment(payment.id).then(setR).catch((e) => setError(apiError(e, t('somethingWrong'))));
+  }, [payment.id, t]);
+
+  async function approve() {
+    setBusy(true);
+    setError(null);
+    try {
+      await paymentsApi.approvePayment(payment.id);
+      onApproved();
+    } catch (e) {
+      setError(apiError(e, t('somethingWrong')));
+      setBusy(false);
+    }
+  }
+
+  const row = (label: string, value: string, strong = false) => (
+    <p className={`flex justify-between gap-3 ${strong ? 'font-semibold text-navy-900' : 'text-navy-700'}`}>
+      <span>{label}</span>
+      <span className="text-right">{value}</span>
+    </p>
+  );
+  const methodText = r ? (METHOD_LABEL[r.method] ?? r.method) : '';
+  const blocked = !!r?.posting.bank_missing;
+
+  return (
+    <Sheet
+      title={L('পেমেন্ট অনুমোদন', 'Approve payment')}
+      sub={r ? `${L('ফ্ল্যাট', 'Flat')} ${r.flat_no ?? ''} · ${[r.owner, r.tenant].filter(Boolean).join(' · ')}` : undefined}
+      onClose={onClose}
+      footer={
+        <div className="space-y-2">
+          {error && <p className="rounded-lg bg-status-due/10 px-3 py-2 text-xs text-status-due">{error}</p>}
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-brand-200 py-3 text-sm text-navy-700 hover:bg-brand-50">
+              {L('বাতিল', 'Cancel')}
+            </button>
+            <button type="button" onClick={approve} disabled={busy || !r || blocked} className="flex-[2] rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white shadow hover:bg-brand-700 disabled:opacity-40">
+              {busy ? '…' : `✓ ${L('অনুমোদন করুন', 'Approve')}${r ? ' · ' + money(r.amount) : ''}`}
+            </button>
+          </div>
+        </div>
+      }
+    >
+      {!r ? (
+        <p className="py-8 text-center text-sm text-navy-700">{error ?? t('loading')}</p>
+      ) : (
+        <div className="space-y-4 text-sm">
+          <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-600 p-4 text-white">
+            <p className="text-xs text-white/80">{L('পেমেন্টের পরিমাণ', 'Payment amount')}</p>
+            <p className="text-3xl font-bold">{money(r.amount)}</p>
+            <p className="mt-1 text-xs text-white/85">{methodText} · {r.payment_date}</p>
+          </div>
+
+          <div className="space-y-1 rounded-xl border border-brand-200 p-3">
+            {row(L('মাধ্যম', 'Method'), methodText)}
+            {r.bank_name && row(L('ব্যাংক', 'Bank'), r.bank_name)}
+            {r.reference_no && row(r.method === 'BANK' ? L('চেক / রেফারেন্স', 'Cheque / ref') : 'TxnID', r.reference_no)}
+            {row(L('এন্ট্রি করেছেন', 'Entered by'), `${r.entered_by ?? '—'}${r.entered_at ? ' · ' + r.entered_at : ''}`)}
+            {r.remarks && row(L('মন্তব্য', 'Remarks'), r.remarks)}
+          </div>
+
+          {r.bill ? (
+            <div className="space-y-1 rounded-xl border border-brand-200 p-3">
+              <p className="mb-1 font-medium text-navy-900">
+                {L('যে বিলের বিপরীতে', 'Against the bill of')} {(bn ? MONTHS_BN : MONTHS_EN)[r.bill.month - 1]} {r.bill.year}
+              </p>
+              {Number(r.bill.previous_due) > 0 && row(L('আগের বকেয়া', 'Previous due'), money(r.bill.previous_due))}
+              {row(L('সার্ভিস চার্জ', 'Service charge'), money(r.bill.service_charge))}
+              {row(L('গ্যাস', 'Gas'), Number(r.bill.gas_amount) > 0 ? money(r.bill.gas_amount) : '—')}
+              {Number(r.bill.other_charges) > 0 && row(L('অন্যান্য', 'Other'), money(r.bill.other_charges))}
+              {Number(r.bill.late_fee) > 0 && row(L('বিলম্ব ফি', 'Late fee'), money(r.bill.late_fee))}
+              {row(L('মোট', 'Total'), money(r.bill.total_payable), true)}
+              <p className="mt-1 border-t border-brand-100 pt-1" />
+              {row(L('এই পেমেন্টের আগে বাকি', 'Due before'), money(r.bill.due_before))}
+              {row(L('এই পেমেন্টের পরে বাকি', 'Due after'), money(r.bill.due_after), true)}
+              {r.split && Number(r.split.gas) > 0 && <p className="pt-1 text-xs text-navy-700">{L('ভাগ:', 'Split:')} {L('সার্ভিস', 'service')} {money(r.split.service)} · {L('গ্যাস', 'gas')} {money(r.split.gas)}</p>}
+            </div>
+          ) : (
+            <p className="rounded-xl bg-amber-50 p-3 text-xs text-navy-900">{L('এই পেমেন্ট কোনো বিলের সঙ্গে যুক্ত নয়।', 'This payment is not linked to a bill.')}</p>
+          )}
+
+          <div className={`rounded-xl p-3 text-xs ${blocked ? 'bg-status-due/10 text-status-due' : 'bg-brand-50 text-navy-900'}`}>
+            <p className="mb-0.5 font-medium">{L('অনুমোদনে যা হবে', 'On approval')}</p>
+            {blocked ? (
+              <p>{L('কোনো ব্যাংক হিসাব সেটআপ করা নেই — আগে "ব্যাংক হিসাব" পেজে একটি অ্যাকাউন্ট যোগ করুন।', 'No bank account is set up - add one on the Bank Accounts page first.')}</p>
+            ) : (
+              <>
+                <p>• {r.posting.medium === 'CASH' ? L('ক্যাশ খাতায় জমা (নগদ)', 'Posted to the cash ledger') : `${L('ব্যাংক খাতায় জমা', 'Posted to the bank ledger')}: ${r.posting.account}`}</p>
+                <p>• {L('বিলের বকেয়া কমবে ও রসিদ নম্বর তৈরি হবে', 'The bill balance drops and a receipt number is issued')}</p>
+                <p>• {L('আয়ের হিসাবে স্বয়ংক্রিয় জার্নাল এন্ট্রি হবে (আর বদলানো যাবে না)', 'An automatic journal entry is made (it cannot be edited later)')}</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </Sheet>
   );
 }
