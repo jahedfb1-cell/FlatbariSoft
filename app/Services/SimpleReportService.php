@@ -108,7 +108,10 @@ class SimpleReportService
      */
     public function purposes(): array
     {
-        $works = \App\Models\WorkBudget::where('status', '!=', 'CANCELLED')->orderBy('id')->get();
+        // the special collections arrive with the database upgrade; until then there is only the monthly subscription
+        $works = \Illuminate\Support\Facades\Schema::hasTable('work_budgets')
+            ? \App\Models\WorkBudget::where('status', '!=', 'CANCELLED')->orderBy('id')->get()
+            : collect();
         $latest = $this->balances->latestPerFlat()->keyBy('flat_id');
         $columns = [
             ['key' => 'flat', 'label' => 'ফ্ল্যাট', 'type' => 'text'], ['key' => 'owner', 'label' => 'মালিক', 'type' => 'text'], ['key' => 'mobile', 'label' => 'মোবাইল', 'type' => 'text'],
