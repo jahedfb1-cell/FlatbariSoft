@@ -40,6 +40,12 @@ export interface GasPurchase {
   has_invoice: boolean;
   invoice_kb: number | null;
   expense_status: 'PENDING' | 'APPROVED';
+  editable?: boolean;
+  supplier_id?: number | null;
+  cylinders?: number | null;
+  cylinder_kg?: string | null;
+  price_per_cylinder?: string | null;
+  treasury_medium?: 'CASH' | 'BANK';
 }
 
 export function listGasPurchases() {
@@ -61,6 +67,17 @@ export function recordGasPurchase(data: {
 }) {
   // multipart, because the optional invoice photo is a file
   return client.post<GasPurchase>('/gas/purchases', toFormData(data)).then((r) => r.data);
+}
+
+/** Correct a purchase whose expense is still pending. Multipart, so it goes as POST with the method spoofed. */
+export function updateGasPurchase(id: number, data: Parameters<typeof recordGasPurchase>[0]) {
+  const form = toFormData(data);
+  form.append('_method', 'PUT');
+  return client.post<GasPurchase>(`/gas/purchases/${id}`, form).then((r) => r.data);
+}
+
+export function cancelGasPurchase(id: number) {
+  return client.delete(`/gas/purchases/${id}`).then((r) => r.data);
 }
 
 export function createGasConsumer(data: { flat_id?: number | null; name: string; meter_no?: string; is_internal?: boolean }) {

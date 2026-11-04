@@ -28,3 +28,4 @@ Thumbs.db
 /DATABASE-STATUS.txt
 /public/downloads/*.apk
 /public/downloads/app-version.json
+id pass.txt

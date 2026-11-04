@@ -43,6 +43,54 @@ export default function GasPage() {
   const [pMedium, setPMedium] = useState<'CASH' | 'BANK'>('CASH');
   const [pInvoice, setPInvoice] = useState<File | null>(null);
   const [pError, setPError] = useState<string | null>(null);
+  const [editingPurchase, setEditingPurchase] = useState<number | null>(null);
+
+  function resetPurchaseForm() {
+    setEditingPurchase(null);
+    setPInvoice(null);
+    setPSupplier('');
+    setPCylinders('1');
+    setPCylKg('45');
+    setPCylPrice('');
+    setPTransport('0');
+    setPMedium('CASH');
+    setPDate(new Date().toISOString().slice(0, 10));
+  }
+
+  /** Load a pending purchase into the form to correct it. */
+  function startEdit(p: GasPurchase) {
+    setPError(null);
+    setEditingPurchase(p.id);
+    setPDate(p.date);
+    setPSupplier(p.supplier_id ? String(p.supplier_id) : '');
+    if (p.cylinders) {
+      setPCylinders(String(p.cylinders));
+      setPCylKg(String(Number(p.cylinder_kg)));
+      setPCylPrice(String(Number(p.price_per_cylinder)));
+    } else {
+      // an older kg-and-rate purchase: show it as one lot, same money
+      setPCylinders('1');
+      setPCylKg(String(Number(p.quantity_kg)));
+      setPCylPrice(String(Number(p.total_cost) - Number(p.transport_cost)));
+    }
+    setPTransport(String(Number(p.transport_cost)));
+    setPMedium(p.treasury_medium ?? 'CASH');
+    setPInvoice(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function handleCancelPurchase(p: GasPurchase) {
+    if (!confirm(lang === 'bn' ? `${p.date} — ${p.supplier_name} এর ক্রয়টি বাতিল করবেন? খরচের এন্ট্রিও মুছে যাবে।` : 'Cancel this purchase? Its pending expense is removed too.')) return;
+    setPError(null);
+    try {
+      await gasApi.cancelGasPurchase(p.id);
+      if (editingPurchase === p.id) resetPurchaseForm();
+      load();
+    } catch (err: any) {
+      const errors = err.response?.data?.errors;
+      setPError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+    }
+  }
 
   function load() {
     gasApi.listGasConsumers().then(setConsumers);
@@ -57,7 +105,7 @@ export default function GasPage() {
     e.preventDefault();
     setPError(null);
     try {
-      await gasApi.recordGasPurchase({
+      const payload = {
         date: pDate,
         supplier_id: pSupplier,
         cylinders: pCylinders,
@@ -66,12 +114,10 @@ export default function GasPage() {
         transport_cost: pTransport,
         treasury_medium: pMedium,
         invoice_image: pInvoice,
-      });
-      setPInvoice(null);
-      setPSupplier('');
-      setPCylinders('1');
-      setPCylPrice('');
-      setPTransport('0');
+      };
+      if (editingPurchase) await gasApi.updateGasPurchase(editingPurchase, payload);
+      else await gasApi.recordGasPurchase(payload);
+      resetPurchaseForm();
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
@@ -197,7 +243,15 @@ export default function GasPage() {
         </div>
 
         <form onSubmit={handleRecordPurchase} className="mb-4 space-y-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-semibold text-navy-900">{t('gas.recordPurchase')}</p>
+          <p className="text-sm font-semibold text-navy-900">{editingPurchase ? (lang === 'bn' ? 'ক্রয় সংশোধন' : 'Correct purchase') : t('gas.recordPurchase')}</p>
+          {editingPurchase && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+              <span>{lang === 'bn' ? 'আপনি একটি অনুমোদনের অপেক্ষায় থাকা ক্রয় সংশোধন করছেন। সংরক্ষণ করলে খরচের পরিমাণও বদলে যাবে। ফটো না দিলে আগেরটাই থাকবে।' : 'You are correcting a purchase that is waiting for approval. Its expense changes with it. Leave the photo empty to keep the old one.'}</span>
+              <button type="button" onClick={resetPurchaseForm} className="ml-auto rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs hover:bg-amber-100">
+                {lang === 'bn' ? 'সংশোধন বাদ দিন' : 'Stop editing'}
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-xs text-navy-700">
               {t('gas.supplierName')} *
@@ -242,7 +296,7 @@ export default function GasPage() {
               </select>
             </label>
             <button type="submit" disabled={!pSupplier} className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
-              {t('gas.recordPurchase')}
+              {editingPurchase ? (lang === 'bn' ? 'সংশোধন সংরক্ষণ করুন' : 'Save correction') : t('gas.recordPurchase')}
             </button>
           </div>
           <InvoicePicker file={pInvoice} onChange={setPInvoice} />
@@ -259,6 +313,7 @@ export default function GasPage() {
                 <th className="px-4 py-3">{t('gas.totalCost')}</th>
                 <th className="px-4 py-3">{t('common.status')}</th>
                 <th className="px-4 py-3">{t('invoice.col')}</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -271,6 +326,20 @@ export default function GasPage() {
                   <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
                   <td className="px-4 py-3">
                     <InvoiceCell type="gas" id={p.id} hasInvoice={p.has_invoice} invoiceKb={p.invoice_kb} onChanged={load} />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    {p.editable ? (
+                      <>
+                        <button onClick={() => startEdit(p)} className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs text-brand-700 hover:bg-brand-100">
+                          {lang === 'bn' ? 'সংশোধন' : 'Edit'}
+                        </button>
+                        <button onClick={() => handleCancelPurchase(p)} className="ml-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs text-status-due hover:bg-red-50">
+                          {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-navy-500">{lang === 'bn' ? 'অনুমোদিত' : 'Locked'}</span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -226,6 +226,8 @@ Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
     Route::get('/purchases/ledger/pdf', [\App\Http\Controllers\Api\GasLedgerController::class, 'pdf'])->middleware('permission:gas.view');
     Route::get('/purchases/ledger/excel', [\App\Http\Controllers\Api\GasLedgerController::class, 'excel'])->middleware('permission:gas.view');
     Route::post('/purchases', [\App\Http\Controllers\Api\GasPurchaseController::class, 'store'])->middleware('permission:gas.manage');
+    Route::put('/purchases/{purchase}', [\App\Http\Controllers\Api\GasPurchaseController::class, 'update'])->middleware('permission:gas.manage');
+    Route::delete('/purchases/{purchase}', [\App\Http\Controllers\Api\GasPurchaseController::class, 'destroy'])->middleware('permission:gas.manage');
 });
 
 Route::prefix('construction-materials')->middleware('auth:sanctum')->group(function () {
