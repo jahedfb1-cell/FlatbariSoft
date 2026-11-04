@@ -448,4 +448,72 @@ class ReportExportService
 
         return $spreadsheet;
     }
+
+    /** Any plain-language report (columns + rows + summary + totals) as one sheet. */
+    public function simple(array $r): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle(mb_substr($r['title'], 0, 28));
+        $cols = $r['columns'];
+        $last = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(max(1, count($cols)));
+
+        $sheet->setCellValue('A1', $r['title']);
+        $sheet->mergeCells("A1:{$last}1");
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->setCellValue('A2', $r['subtitle'].'  |  '.$r['period']);
+        $sheet->mergeCells("A2:{$last}2");
+
+        $row = 4;
+        foreach ($r['summary'] as $s) {
+            $sheet->setCellValue("A{$row}", $s['label']);
+            $sheet->setCellValue("B{$row}", $s['value']);
+            if (($s['type'] ?? '') === 'money') {
+                $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            }
+            $sheet->getStyle("A{$row}")->getFont()->setBold(true);
+            $row++;
+        }
+        $row++;
+
+        $headRow = $row;
+        foreach ($cols as $i => $c) {
+            $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1).$row, $c['label']);
+        }
+        $this->headerStyle($spreadsheet, "A{$row}:{$last}{$row}");
+        $row++;
+
+        foreach ($r['rows'] as $data) {
+            foreach ($cols as $i => $c) {
+                $addr = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1).$row;
+                $v = $data[$c['key']] ?? '';
+                if ($c['type'] === 'money' && $v !== '' && is_numeric($v)) {
+                    $sheet->setCellValue($addr, (float) $v);
+                    $sheet->getStyle($addr)->getNumberFormat()->setFormatCode('#,##0.00');
+                } else {
+                    $sheet->setCellValueExplicit($addr, (string) $v, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                }
+            }
+            $row++;
+        }
+
+        if ($r['totals'] !== []) {
+            $sheet->setCellValue("A{$row}", 'মোট');
+            foreach ($cols as $i => $c) {
+                if (isset($r['totals'][$c['key']])) {
+                    $addr = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1).$row;
+                    $sheet->setCellValue($addr, (float) $r['totals'][$c['key']]);
+                    $sheet->getStyle($addr)->getNumberFormat()->setFormatCode('#,##0.00');
+                }
+            }
+            $sheet->getStyle("A{$row}:{$last}{$row}")->getFont()->setBold(true);
+        }
+
+        foreach (range(1, count($cols)) as $i) {
+            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
+        }
+        $sheet->freezePane('A'.($headRow + 1));
+
+        return $spreadsheet;
+    }
 }

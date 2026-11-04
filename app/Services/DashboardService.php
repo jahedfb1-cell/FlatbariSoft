@@ -167,9 +167,7 @@ class DashboardService
     /** The gas part of what flats still owe: each unpaid bill's balance, in the proportion gas makes up of that bill. */
     private function gasReceivable(): string
     {
-        $v = Bill::selectRaw('COALESCE(SUM(CASE WHEN total_payable > paid_amount AND total_payable > 0 THEN (total_payable - paid_amount) * gas_amount / total_payable ELSE 0 END), 0) AS t')->value('t');
-
-        return bcadd((string) ($v ?? 0), '0', 4);
+        return app(BillBalanceService::class)->totalGasDue();
     }
 
     /** This month's bills, plus the last six months for the trend bars. */
@@ -210,7 +208,7 @@ class DashboardService
             'partial_flats' => (int) ($counts['PARTIAL'] ?? 0),
             'unpaid_flats' => (int) ($counts['UNPAID'] ?? 0),
             // everything still owed across all months, not only this one
-            'outstanding_all' => bcadd((string) (Bill::where('status', '!=', 'PAID')->selectRaw('COALESCE(SUM(total_payable - paid_amount),0) t')->value('t') ?? 0), '0', 4),
+            'outstanding_all' => app(BillBalanceService::class)->totalDue(),
             'trend' => $trend,
         ];
     }

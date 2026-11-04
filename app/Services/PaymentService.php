@@ -57,6 +57,13 @@ class PaymentService
             if ((int) $bill->flat_id !== (int) $data['flat_id']) {
                 throw ValidationException::withMessages(['bill_id' => 'এই বিল ঐ ফ্ল্যাটের নয়।']);
             }
+            // a later month's bill already carries this one's unpaid balance: money taken here would be asked for again there
+            $key = $bill->billingPeriod->year * 100 + $bill->billingPeriod->month;
+            $newer = Bill::query()->join('billing_periods as bp', 'bills.billing_period_id', '=', 'bp.id')
+                ->where('bills.flat_id', $bill->flat_id)->whereRaw('(bp.year * 100 + bp.month) > ?', [$key])->exists();
+            if ($newer) {
+                throw ValidationException::withMessages(['bill_id' => 'এই ফ্ল্যাটের পরের মাসের বিল হয়ে গেছে — এই মাসের বাকি সেখানেই যোগ হয়েছে। টাকা সর্বশেষ মাসের বিলে নিন।']);
+            }
             $due = $this->collectable($bill);
             if (bccomp((string) $data['amount'], $due, 4) > 0) {
                 throw ValidationException::withMessages(['amount' => 'পরিমাণ বকেয়ার ('.$due.') বেশি হতে পারে না।']);

@@ -166,6 +166,11 @@ Route::prefix('reports')->middleware(['auth:sanctum', 'permission:accounting.vie
     Route::get('/balance-sheet', [ReportController::class, 'balanceSheet']);
     Route::get('/dashboard', [ReportController::class, 'dashboard']);
 
+    // plain-language reports: dues, collections, expenses, one flat, cash / bank book
+    Route::get('/simple/{type}', [\App\Http\Controllers\Api\SimpleReportController::class, 'show']);
+    Route::get('/simple/{type}/pdf', [\App\Http\Controllers\Api\SimpleReportController::class, 'pdf']);
+    Route::get('/simple/{type}/excel', [\App\Http\Controllers\Api\SimpleReportController::class, 'excel']);
+
     Route::get('/trial-balance/pdf', [ReportController::class, 'trialBalancePdf']);
     Route::get('/trial-balance/excel', [ReportController::class, 'trialBalanceExcel']);
     Route::get('/balance-sheet/pdf', [ReportController::class, 'balanceSheetPdf']);
