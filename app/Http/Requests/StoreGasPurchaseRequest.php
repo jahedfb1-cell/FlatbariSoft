@@ -16,9 +16,14 @@ class StoreGasPurchaseRequest extends FormRequest
     {
         return [
             'date' => ['required', 'date'],
-            'supplier_name' => ['required', 'string', 'max:255'],
-            'quantity_kg' => ['required', 'numeric', 'min:0.01'],
-            'unit_price' => ['required', 'numeric', 'min:0.01'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+            'supplier_name' => ['required_without:supplier_id', 'nullable', 'string', 'max:255'],
+            // gas is bought by the cylinder: how many, how many kg in each, and the price of one - or, the old way, kg and a price per kg
+            'cylinders' => ['nullable', 'integer', 'min:1', 'max:1000', 'required_with:cylinder_kg,price_per_cylinder'],
+            'cylinder_kg' => ['nullable', 'numeric', 'min:0.1', 'max:1000', 'required_with:cylinders'],
+            'price_per_cylinder' => ['nullable', 'numeric', 'min:1', 'max:99999999', 'required_with:cylinders'],
+            'quantity_kg' => ['required_without:cylinders', 'nullable', 'numeric', 'min:0.01'],
+            'unit_price' => ['required_without:cylinders', 'nullable', 'numeric', 'min:0.01'],
             'transport_cost' => ['nullable', 'numeric', 'min:0'],
             'treasury_medium' => ['required', Rule::in(['CASH', 'BANK'])],
             'invoice_image' => InvoiceImageRules::rules(),

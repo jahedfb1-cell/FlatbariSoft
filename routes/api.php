@@ -449,3 +449,11 @@ Route::prefix('salary')->middleware('auth:sanctum')->group(function () {
     Route::post('/pay-all', [$c, 'payAll'])->middleware($pay);
     Route::post('/advances', [$c, 'giveAdvance'])->middleware($pay);
 });
+
+// The suppliers themselves (name, phone, address): created once, picked on every gas / material purchase.
+Route::prefix('supplier-master')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\SupplierMasterController::class;
+    Route::get('/', [$c, 'index'])->middleware('permission:expense.view|gas.view');
+    Route::post('/', [$c, 'store'])->middleware('permission:expense.create');
+    Route::put('/{supplier}', [$c, 'update'])->middleware('permission:expense.create');
+});

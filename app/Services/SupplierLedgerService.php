@@ -96,6 +96,16 @@ class SupplierLedgerService
             $totals['owed'] = bcadd($totals['owed'], bcsub($billed, $paid, 4), 4);
         }
 
+        // suppliers created on the suppliers list but not bought from (yet) still show, with nothing owed
+        if (\Illuminate\Support\Facades\Schema::hasTable('suppliers')) {
+            $seen = array_column($rows, 'key');
+            foreach (\App\Models\Supplier::where('is_active', true)->whereIn('kind', [$kind === 'materials' ? 'MATERIALS' : 'GAS', 'OTHER'])->orderBy('name')->get() as $m) {
+                if (! in_array(self::key($m->name), $seen, true)) {
+                    $rows[] = ['key' => self::key($m->name), 'name' => $m->name, 'count' => 0, 'quantity_kg' => '0.0000', 'billed' => '0.0000', 'paid' => '0.0000', 'owed' => '0.0000', 'avg_cost_per_kg' => '0.0000', 'last_purchase' => null];
+                }
+            }
+        }
+
         usort($rows, fn ($a, $b) => bccomp($b['owed'], $a['owed'], 4) ?: strcmp($a['name'], $b['name']));
 
         return ['kind' => $kind, 'suppliers' => $rows, 'totals' => array_map(fn ($v) => bcadd($v, '0', 4), $totals)];
