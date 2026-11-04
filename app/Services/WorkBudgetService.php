@@ -267,6 +267,56 @@ class WorkBudgetService
         ];
     }
 
+    /**
+     * The special collections (gas line, generator, east wall ...) this flat is asked to pay: its share, what it has paid and what is left.
+     * A work with nothing left to pay is omitted unless asked for.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function forFlat(Flat $flat, bool $all = false): array
+    {
+        if (! Schema::hasTable('work_budgets')) {
+            return [];
+        }
+        $out = [];
+        foreach (WorkBudget::with('book')->where('status', '!=', 'CANCELLED')->orderBy('id')->get() as $w) {
+            $share = FlatContributionTarget::where('flat_id', $flat->id)->where('contribution_book_id', $w->contribution_book_id)->value('target_amount');
+            if ($share === null) {
+                continue;
+            }
+            $headIds = DB::table('contribution_heads')->where('contribution_book_id', $w->contribution_book_id)->pluck('id');
+            $paid = (string) (\App\Models\Contribution::where('flat_id', $flat->id)->whereIn('contribution_head_id', $headIds)->sum('amount') ?: 0);
+            $due = bcsub((string) $share, $paid, 4);
+            if (! $all && bccomp($due, '0', 4) <= 0) {
+                continue;
+            }
+            $out[] = [
+                'work_id' => $w->id, 'title' => $w->title, 'status' => $w->status, 'share' => bcadd((string) $share, '0', 4), 'paid' => bcadd($paid, '0', 4),
+                'due' => bccomp($due, '0', 4) > 0 ? bcadd($due, '0', 4) : '0.0000', 'head_id' => $headIds->first(),
+            ];
+        }
+
+        return $out;
+    }
+
+    /** Takes one payment from a flat for one work: it goes to that work's own ledger, and its dues - nobody else's. */
+    public function collect(WorkBudget $work, Flat $flat, array $data, int $by): \App\Models\Contribution
+    {
+        if ($work->status === 'CANCELLED') {
+            throw ValidationException::withMessages(['work' => 'এই কাজ বাতিল — এতে আদায় নেওয়া যাবে না।']);
+        }
+        $row = collect($this->forFlat($flat, all: true))->firstWhere('work_id', $work->id)
+            ?? throw ValidationException::withMessages(['flat_id' => 'এই ফ্ল্যাটের নামে এই কাজে কোনো ভাগ নেই।']);
+        if (bccomp((string) $data['amount'], $row['due'], 4) > 0) {
+            throw ValidationException::withMessages(['amount' => 'আদায় বাকির ('.bcadd($row['due'], '0', 2).') বেশি হতে পারে না।']);
+        }
+
+        return $this->contributions->record($flat, [
+            'contribution_head_id' => $row['head_id'], 'amount' => $data['amount'], 'received_on' => $data['received_on'], 'method' => $data['method'],
+            'reference_no' => $data['reference_no'] ?? null, 'notes' => $data['notes'] ?? null,
+        ], $by);
+    }
+
     /** What an expense linked to a work may not do: be added to a closed work, or push the approved spending past the estimate. */
     public function checkExpense(WorkBudget $work, string $amount, ?int $exceptExpenseId = null, bool $forApproval = false): void
     {

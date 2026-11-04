@@ -12,13 +12,21 @@ class StoreContributionRequest extends FormRequest
         return true;
     }
 
+    /** Rocket and Upay arrive with the database upgrade (the column was a fixed list before). */
+    public static function methods(): array
+    {
+        $type = collect(\Illuminate\Support\Facades\Schema::getColumns('contributions'))->firstWhere('name', 'method')['type_name'] ?? 'enum';
+
+        return $type === 'enum' ? ['CASH', 'BANK', 'BKASH', 'NAGAD'] : ['CASH', 'BANK', 'BKASH', 'NAGAD', 'ROCKET', 'UPAY'];
+    }
+
     public function rules(): array
     {
         return [
             'contribution_head_id' => ['required', 'integer', 'exists:contribution_heads,id'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'received_on' => ['required', 'date'],
-            'method' => ['required', Rule::in(['CASH', 'BANK', 'BKASH', 'NAGAD'])],
+            'method' => ['required', Rule::in(self::methods())],
             'reference_no' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];

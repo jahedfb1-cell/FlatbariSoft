@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  */
 class SimpleReportService
 {
-    public const TYPES = ['dues', 'collections', 'expenses', 'flat', 'cashbook'];
+    public const TYPES = ['dues', 'purposes', 'collections', 'expenses', 'flat', 'cashbook'];
 
     private const METHOD = ['CASH' => 'নগদ', 'BANK' => 'ব্যাংক/চেক', 'BKASH' => 'bKash', 'NAGAD' => 'Nagad', 'ROCKET' => 'Rocket', 'UPAY' => 'Upay'];
 
@@ -28,13 +28,14 @@ class SimpleReportService
 
     private const MONTHS = ['', 'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
 
-    public function __construct(private readonly BillBalanceService $balances) {}
+    public function __construct(private readonly BillBalanceService $balances, private readonly WorkBudgetService $works) {}
 
     /** @param  array<string, mixed>  $p  from, to, flat_id, medium */
     public function run(string $type, array $p): array
     {
         return match ($type) {
             'dues' => $this->dues(),
+            'purposes' => $this->purposes(),
             'collections' => $this->collections($this->from($p), $this->to($p)),
             'expenses' => $this->expenses($this->from($p), $this->to($p)),
             'flat' => $this->flat((int) ($p['flat_id'] ?? 0), $this->from($p), $this->to($p)),
@@ -96,6 +97,62 @@ class SimpleReportService
             'rows' => $rows,
             'summary' => [['label' => 'বকেয়া আছে এমন ফ্ল্যাট', 'value' => (string) count($rows)], ['label' => 'মোট বকেয়া', 'value' => $this->sum($rows, 'due'), 'type' => 'money'], ['label' => 'তার মধ্যে গ্যাস বিল', 'value' => $this->sum($rows, 'gas'), 'type' => 'money']],
             'totals' => ['billed' => $this->sum($rows, 'billed'), 'paid' => $this->sum($rows, 'paid'), 'gas' => $this->sum($rows, 'gas'), 'due' => $this->sum($rows, 'due')],
+        ];
+    }
+
+    // ---- each flat's dues, purpose by purpose
+
+    /**
+     * Every kind of payment is its own account: the monthly subscription (service charge and gas bill) and each special collection
+     * (gas line, generator, east wall, old water dues ...). One column per purpose, so "who has not paid for what" reads off one sheet.
+     */
+    public function purposes(): array
+    {
+        $works = \App\Models\WorkBudget::where('status', '!=', 'CANCELLED')->orderBy('id')->get();
+        $latest = $this->balances->latestPerFlat()->keyBy('flat_id');
+        $columns = [
+            ['key' => 'flat', 'label' => 'ফ্ল্যাট', 'type' => 'text'], ['key' => 'owner', 'label' => 'মালিক', 'type' => 'text'], ['key' => 'mobile', 'label' => 'মোবাইল', 'type' => 'text'],
+            ['key' => 'bill', 'label' => 'মাসিক চাঁদা (সার্ভিস চার্জ ও গ্যাস বিল)', 'type' => 'money'],
+        ];
+        foreach ($works as $w) {
+            $columns[] = ['key' => 'w'.$w->id, 'label' => $w->title, 'type' => 'money'];
+        }
+        $columns[] = ['key' => 'total', 'label' => 'মোট বাকি', 'type' => 'money'];
+
+        $rows = [];
+        $totals = array_fill_keys(array_column($columns, 'key'), '0');
+        foreach (Flat::with('currentOwners.person', 'currentTenant.person')->get()->sortBy('flat_no', SORT_NATURAL) as $flat) {
+            $bill = isset($latest[$flat->id]) ? $this->balances->due($latest[$flat->id]) : '0';
+            $row = ['flat' => $flat->flat_no, 'owner' => $flat->occupantNames()['owner'] ?? '—', 'mobile' => $flat->currentOwners->first()?->person?->mobile ?? '—', 'bill' => bcadd($bill, '0', 2)];
+            $total = $bill;
+            $byWork = collect($this->works->forFlat($flat, all: true))->keyBy('work_id');
+            foreach ($works as $w) {
+                $due = isset($byWork[$w->id]) ? $byWork[$w->id]['due'] : '0';
+                $row['w'.$w->id] = bcadd($due, '0', 2);
+                $total = bcadd($total, $due, 4);
+            }
+            $row['total'] = bcadd($total, '0', 2);
+            if (bccomp($row['total'], '0', 2) <= 0) {
+                continue;
+            }
+            foreach (array_keys($totals) as $k) {
+                if ($k !== 'flat' && $k !== 'owner' && $k !== 'mobile') {
+                    $totals[$k] = bcadd($totals[$k], $row[$k], 2);
+                }
+            }
+            $rows[] = $row;
+        }
+        usort($rows, fn ($a, $b) => bccomp($b['total'], $a['total'], 2));
+        unset($totals['flat'], $totals['owner'], $totals['mobile']);
+
+        $summary = [['label' => 'বকেয়া আছে এমন ফ্ল্যাট', 'value' => (string) count($rows)], ['label' => 'মোট বকেয়া', 'value' => $totals['total'], 'type' => 'money']];
+        foreach ($works as $w) {
+            $summary[] = ['label' => $w->title, 'value' => $totals['w'.$w->id], 'type' => 'money'];
+        }
+
+        return [
+            'type' => 'purposes', 'title' => 'খাত অনুযায়ী বকেয়া', 'subtitle' => 'প্রতিটি খাতের (মাসিক চাঁদা, গ্যাস লাইন, জেনারেটর, পুরনো পানির বকেয়া, পূর্ব দেয়াল ...) আলাদা বকেয়া',
+            'period' => now('Asia/Dhaka')->format('d/m/Y'), 'columns' => $columns, 'rows' => $rows, 'summary' => $summary, 'totals' => $totals,
         ];
     }
 
