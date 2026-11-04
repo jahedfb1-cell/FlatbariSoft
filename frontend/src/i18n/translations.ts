@@ -1045,6 +1045,7 @@ export const translations = {
     'navgroup.purchases': 'ক্রয় ও সরবরাহ',
     'navgroup.building': 'বিল্ডিং',
     'navgroup.system': 'সিস্টেম',
+    'nav.workBudgets': 'কাজের বাজেট',
   },
   en: {
     appName: 'Green Valley BMS',
@@ -2071,6 +2072,7 @@ export const translations = {
     'navgroup.purchases': 'Purchases',
     'navgroup.building': 'Building',
     'navgroup.system': 'System',
+    'nav.workBudgets': 'Work budgets',
   },
 } as const;
 

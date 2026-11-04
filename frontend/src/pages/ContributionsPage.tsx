@@ -25,7 +25,7 @@ export default function ContributionsPage() {
   const canManage = can('contribution.manage');
 
   const [books, setBooks] = useState<Book[]>([]);
-  const [bookCode, setBookCode] = useState('CONSTRUCTION');
+  const [bookCode, setBookCode] = useState(() => new URLSearchParams(window.location.search).get('book') || 'CONSTRUCTION');
   const [data, setData] = useState<Statement | null>(null);
   const [onlyDue, setOnlyDue] = useState(false);
   // The open ledger lives in the address (?flat=ID), so the flat and owner names in every list can link straight to it.

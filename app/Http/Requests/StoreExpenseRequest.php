@@ -23,6 +23,7 @@ class StoreExpenseRequest extends FormRequest
             'treasury_medium' => ['required', Rule::in(['BANK', 'CASH'])],
             'fund_type' => ['nullable', Rule::in(['OPERATING', 'GAS', 'CAPITAL', 'SINKING'])],
             'resolution_id' => ['nullable', 'integer'],
+            'work_budget_id' => ['nullable', 'integer', 'exists:work_budgets,id'],
         ];
     }
 

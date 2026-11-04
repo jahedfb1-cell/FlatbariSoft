@@ -5,6 +5,7 @@ import SettingsPage from './pages/SettingsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import VisitorsPage from './pages/VisitorsPage';
 import BudgetPage from './pages/BudgetPage';
+import WorkBudgetsPage from './pages/WorkBudgetsPage';
 import OwnerPaymentsPage from './pages/owner/OwnerPaymentsPage';
 import OwnerVisitorsPage from './pages/owner/OwnerVisitorsPage';
 import TenantKycPage from './pages/TenantKycPage';
@@ -100,6 +101,7 @@ function AppRoutes() {
         <Route path="/audit-logs" element={<AuditLogsPage />} />
         <Route path="/visitors" element={<VisitorsPage />} />
         <Route path="/budget" element={<BudgetPage />} />
+        <Route path="/work-budgets" element={<WorkBudgetsPage />} />
         <Route path="/payments" element={<PaymentsPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/dues" element={<DuesPage />} />

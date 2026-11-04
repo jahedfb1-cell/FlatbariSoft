@@ -399,3 +399,14 @@ Route::prefix('tenant-vacate-requests')->middleware('auth:sanctum')->group(funct
     Route::post('/{vacateRequest}/reject', [$c, 'reject'])->middleware('permission:tenant.manage');
     Route::post('/{vacateRequest}/cancel', [$c, 'cancel']);
 });
+
+// One-off works (roof repair, painting ...) with their own estimate, per-flat shares and linked expenses.
+Route::prefix('work-budgets')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\WorkBudgetController::class;
+    Route::get('/', [$c, 'index'])->middleware('permission:budget.view');
+    Route::post('/preview', [$c, 'preview'])->middleware('permission:budget.manage');
+    Route::post('/', [$c, 'store'])->middleware('permission:budget.manage');
+    Route::get('/{workBudget}', [$c, 'show'])->middleware('permission:budget.view');
+    Route::put('/{workBudget}', [$c, 'update'])->middleware('permission:budget.manage');
+    Route::put('/{workBudget}/shares', [$c, 'shares'])->middleware('permission:budget.manage');
+});

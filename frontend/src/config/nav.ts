@@ -35,6 +35,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/payments', key: 'nav.payments', perm: 'payment.view', icon: '💳' },
       { to: '/expenses', key: 'nav.expenses', perm: 'expense.view', icon: '💸' },
       { to: '/budget', key: 'nav.budget' as TranslationKey, perm: 'budget.view', icon: '🎯' },
+      { to: '/work-budgets', key: 'nav.workBudgets' as TranslationKey, perm: 'budget.view', icon: '🏗️' },
       { to: '/contributions', key: 'nav.contrib', perm: 'contribution.view', icon: '📒' },
       { to: '/dues', key: 'nav.dues', perm: 'due.view', icon: '🏗️' },
     ],

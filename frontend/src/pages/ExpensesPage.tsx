@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import ExpenseReviewModal from '../components/ExpenseReviewModal';
 import * as expensesApi from '../api/expenses';
+import * as workApi from '../api/workBudgets';
 import type { ExpenseRow, ExpenseHead } from '../api/expenses';
 
 const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp';
@@ -24,6 +25,8 @@ export default function ExpensesPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [medium, setMedium] = useState('CASH');
   const [fundType, setFundType] = useState('OPERATING');
+  const [workId, setWorkId] = useState(() => new URLSearchParams(window.location.search).get('work') || '');
+  const [works, setWorks] = useState<{ id: number; title: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [closingMsg, setClosingMsg] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<number | null>(null);
@@ -38,6 +41,9 @@ export default function ExpensesPage() {
   }
 
   useEffect(load, []);
+  useEffect(() => {
+    workApi.listWorks().then((w) => setWorks(w.filter((x) => x.status === 'PLANNED' || x.status === 'ONGOING'))).catch(() => undefined);
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -50,7 +56,8 @@ export default function ExpensesPage() {
         amount,
         description: description || undefined,
         treasury_medium: medium,
-        fund_type: fundType,
+        fund_type: workId ? 'CAPITAL' : fundType,
+        work_budget_id: workId ? Number(workId) : undefined,
         attachments: files,
       });
       setPayee('');
@@ -111,7 +118,13 @@ export default function ExpensesPage() {
               <option value="CASH">CASH</option>
               <option value="BANK">BANK</option>
             </select>
-            <select value={fundType} onChange={(e) => setFundType(e.target.value)} className={input}>
+            <select value={workId} onChange={(e) => setWorkId(e.target.value)} className={input} aria-label="work">
+              <option value="">— কাজ নয় (সাধারণ খরচ) —</option>
+              {works.map((w) => (
+                <option key={w.id} value={w.id}>🏗️ {w.title}</option>
+              ))}
+            </select>
+            <select value={workId ? 'CAPITAL' : fundType} disabled={!!workId} onChange={(e) => setFundType(e.target.value)} className={input}>
               <option value="OPERATING">OPERATING</option>
               <option value="SINKING">RESERVE</option>
               <option value="CAPITAL">CAPITAL</option>

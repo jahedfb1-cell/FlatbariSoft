@@ -67,6 +67,7 @@ export function createExpense(data: {
   treasury_medium: string;
   fund_type?: string;
   resolution_id?: number;
+  work_budget_id?: number;
   attachments?: File[];
 }) {
   const form = new FormData();
