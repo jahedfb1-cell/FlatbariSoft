@@ -446,7 +446,7 @@ function Headline({ h, bn, monthName }: { h: HeadlineData; bn: boolean; monthNam
   const gs = h.gas;
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-navy-700">{L('আর্থিক অবস্থা এক নজরে', 'Financial position at a glance')}</h2>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/90">{L('আর্থিক অবস্থা এক নজরে', 'Financial position at a glance')}</h2>
       <div className="grid gap-4 md:grid-cols-3">
         {sv &&
           frame('/billing', Number(sv.balance) >= 0, '🏢', L('সার্ভিস চার্জ', 'Service charge'),
