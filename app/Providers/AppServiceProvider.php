@@ -60,7 +60,29 @@ class AppServiceProvider extends ServiceProvider
         // it isn't brute-forceable, since (unlike OTP) the same password
         // stays valid across attempts.
         RateLimiter::for('login', function ($request) {
-            return Limit::perMinute(5)->by($request->input('email', $request->ip()));
+            return Limit::perMinute(5)->by(mb_strtolower((string) $request->input('identifier', $request->input('email', $request->ip()))).'|'.$request->ip());
+        });
+
+        // asking for a reset link / code costs an e-mail or an SMS: cap it per person and per address
+        RateLimiter::for('password-reset', function ($request) {
+            $who = mb_strtolower((string) $request->input('identifier', $request->input('email', $request->input('mobile', ''))));
+
+            return [Limit::perMinute(3)->by($who.'|'.$request->ip()), Limit::perHour(20)->by($request->ip())];
+        });
+
+        // the reset e-mail points at the web app's own reset page, in Bengali
+        \Illuminate\Auth\Notifications\ResetPassword::createUrlUsing(fn ($user, string $token) => rtrim((string) config('app.url'), '/').'/reset-password?token='.$token.'&email='.urlencode($user->getEmailForPasswordReset()));
+        \Illuminate\Auth\Notifications\ResetPassword::toMailUsing(function ($user, string $token) {
+            $url = rtrim((string) config('app.url'), '/').'/reset-password?token='.$token.'&email='.urlencode($user->getEmailForPasswordReset());
+
+            return (new \Illuminate\Notifications\Messages\MailMessage)
+                ->subject('পাসওয়ার্ড রিসেট — Green Valley BMS')
+                ->greeting('আসসালামু আলাইকুম,')
+                ->line('আপনার অ্যাকাউন্টের পাসওয়ার্ড বদলানোর অনুরোধ পাওয়া গেছে।')
+                ->action('নতুন পাসওয়ার্ড দিন', $url)
+                ->line('এই লিংক ৬০ মিনিট পর্যন্ত কাজ করবে।')
+                ->line('আপনি অনুরোধ না করে থাকলে এই মেইল উপেক্ষা করুন — আপনার পাসওয়ার্ড বদলাবে না।')
+                ->salutation('Green Valley BMS');
         });
 
         // PRD section 2: Super Admin can do "সব কিছু" (everything). Rather

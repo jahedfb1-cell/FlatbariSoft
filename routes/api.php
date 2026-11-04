@@ -42,6 +42,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/otp/request', [AuthController::class, 'requestOtp'])->middleware('throttle:otp-request');
     Route::post('/otp/verify', [AuthController::class, 'verifyOtp']);
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:password-reset');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-reset');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
@@ -410,4 +412,12 @@ Route::prefix('work-budgets')->middleware('auth:sanctum')->group(function () {
     Route::put('/{workBudget}', [$c, 'update'])->middleware('permission:budget.manage');
     Route::put('/{workBudget}/shares', [$c, 'shares'])->middleware('permission:budget.manage');
     Route::put('/{workBudget}/schedule', [$c, 'schedule'])->middleware('permission:budget.manage');
+});
+
+// The monthly Dhaka WASA water bill: entered as printed, posted as an expense (so it needs the usual approval).
+Route::prefix('water-bills')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\WaterBillController::class;
+    Route::get('/', [$c, 'index'])->middleware('permission:expense.view');
+    Route::post('/', [$c, 'store'])->middleware('permission:expense.create');
+    Route::put('/{waterBill}', [$c, 'update'])->middleware('permission:expense.create');
 });

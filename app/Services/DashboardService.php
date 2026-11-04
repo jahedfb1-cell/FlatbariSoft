@@ -92,6 +92,11 @@ class DashboardService
         if ($can('flat.view')) {
             $out['flats'] = ['total' => Flat::count()];
         }
+        if ($can('expense.view') && \Illuminate\Support\Facades\Schema::hasTable('water_bills')) {
+            // WASA bills arrive during the month: after the 10th, a month with no bill posted yet is worth a reminder
+            $out['water_bill_missing'] = $today->day >= 10
+                && ! \App\Models\WaterBill::where('bill_year', $today->year)->where('bill_month', $today->month)->exists();
+        }
 
         $head = $this->headline($out, $can);
         if ($head !== []) {
