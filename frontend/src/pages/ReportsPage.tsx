@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import InvoiceAuditPack from '../components/InvoiceAuditPack';
+import SimpleReports from '../components/SimpleReports';
 import * as reportsApi from '../api/reports';
 import type { TrialBalance, BalanceSheet, IncomeStatement, ReportKind } from '../api/reports';
 
 export default function ReportsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [trialBalance, setTrialBalance] = useState<TrialBalance | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheet | null>(null);
   const [incomeStatement, setIncomeStatement] = useState<IncomeStatement | null>(null);
@@ -64,7 +65,7 @@ export default function ReportsPage() {
           .print-section { break-inside: avoid; margin-bottom: 24px; }
         }
       `}</style>
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-center justify-between print:hidden">
           <div>
             <Link to="/" className="text-sm text-navy-700 hover:underline">
@@ -76,6 +77,10 @@ export default function ReportsPage() {
         </div>
 
         <h1 className="mb-4 hidden text-xl font-semibold text-navy-900 print:block">{t('reports.title')} — Green Valley</h1>
+
+        <SimpleReports />
+
+        <h2 className="mb-2 text-sm font-semibold text-navy-900 print:hidden">{lang === 'bn' ? 'হিসাবরক্ষকের রিপোর্ট (স্থিতিপত্র, আয়-ব্যয় বিবরণী, রেওয়ামিল)' : 'Accountant\u2019s reports (balance sheet, income statement, trial balance)'}</h2>
 
         {balanceSheet && (
           <div className="print-section mb-6 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
