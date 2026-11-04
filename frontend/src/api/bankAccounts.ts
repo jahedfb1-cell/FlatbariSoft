@@ -3,6 +3,15 @@ import client from './client';
 export interface BankHolder {
   name: string | null;
   phone: string | null;
+  person_id?: number | null; // the flat owner this holder is, when picked from the owners
+}
+
+export interface OwnerOption {
+  person_id: number;
+  name: string;
+  mobile: string;
+  flats: string;
+  has_login: boolean;
 }
 
 export interface BankAccount {
@@ -33,6 +42,9 @@ export interface BankAccountInput {
   holder_2_phone?: string | null;
   holder_3_name?: string | null;
   holder_3_phone?: string | null;
+  holder_1_person_id?: number | null;
+  holder_2_person_id?: number | null;
+  holder_3_person_id?: number | null;
 }
 
 export function listBankAccounts() {
@@ -45,4 +57,9 @@ export function createBankAccount(data: BankAccountInput) {
 
 export function updateBankAccount(id: number, data: BankAccountInput) {
   return client.put<BankAccount>(`/bank-accounts/${id}`, data).then((r) => r.data);
+}
+
+/** The flat owners an account holder can be chosen from. */
+export function listOwnerOptions() {
+  return client.get<OwnerOption[]>('/bank-accounts/owners').then((r) => r.data);
 }

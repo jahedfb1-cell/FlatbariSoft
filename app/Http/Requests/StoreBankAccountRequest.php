@@ -32,6 +32,7 @@ class StoreBankAccountRequest extends FormRequest
         foreach ([1, 2, 3] as $n) {
             $rules["holder_{$n}_name"] = ['nullable', 'string', 'max:255'];
             $rules["holder_{$n}_phone"] = $phone;
+            $rules["holder_{$n}_person_id"] = ['nullable', 'integer', 'exists:persons,id'];
         }
         if ($create) {
             $rules['opening_balance'] = ['nullable', 'numeric'];

@@ -16,7 +16,11 @@ class BankAccountResource extends JsonResource
             'account_no' => $this->account_no,
             'account_title' => $this->account_title,
             'mandate_rule' => $this->mandate_rule,
-            'holders' => collect([1, 2, 3])->map(fn ($n) => ['name' => $this->{"holder_{$n}_name"}, 'phone' => $this->{"holder_{$n}_phone"}])->all(),
+            'holders' => collect([1, 2, 3])->map(fn ($n) => [
+                'name' => $this->{"holder_{$n}_name"}, 'phone' => $this->{"holder_{$n}_phone"},
+                // the flat owner this holder is (the column arrives with the database upgrade)
+                'person_id' => \Illuminate\Support\Facades\Schema::hasColumn('bank_accounts', "holder_{$n}_person_id") ? $this->{"holder_{$n}_person_id"} : null,
+            ])->all(),
             'sms_phone' => $this->sms_phone,
             'opening_balance' => $this->opening_balance,
             'current_balance' => $this->current_balance,

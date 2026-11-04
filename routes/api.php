@@ -132,6 +132,7 @@ Route::post('/closing', [MonthlyClosingController::class, 'close'])
     ->middleware(['auth:sanctum', 'permission:accounting.manage']);
 
 Route::prefix('bank-accounts')->middleware('auth:sanctum')->group(function () {
+    Route::get('/owners', [\App\Http\Controllers\Api\BankAccountController::class, 'owners'])->middleware('permission:accounting.view');
     Route::get('/', [BankAccountController::class, 'index'])->middleware('permission:accounting.view');
     Route::post('/', [BankAccountController::class, 'store'])->middleware('permission:accounting.manage');
     Route::put('/{bankAccount}', [BankAccountController::class, 'update'])->middleware('permission:accounting.manage');

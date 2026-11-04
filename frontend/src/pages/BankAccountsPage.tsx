@@ -16,7 +16,7 @@ interface FormState {
   account_title: string;
   opening_balance: string;
   sms_phone: string;
-  holders: { name: string; phone: string }[];
+  holders: { name: string; phone: string; person_id: string; manual: boolean }[];
 }
 
 const blank = (): FormState => ({
@@ -26,11 +26,7 @@ const blank = (): FormState => ({
   account_title: '',
   opening_balance: '0',
   sms_phone: '',
-  holders: [
-    { name: '', phone: '' },
-    { name: '', phone: '' },
-    { name: '', phone: '' },
-  ],
+  holders: [0, 1, 2].map(() => ({ name: '', phone: '', person_id: '', manual: false })),
 });
 
 const fromAccount = (a: BankAccount): FormState => ({
@@ -40,7 +36,7 @@ const fromAccount = (a: BankAccount): FormState => ({
   account_title: a.account_title,
   opening_balance: a.opening_balance,
   sms_phone: a.sms_phone ?? '',
-  holders: [0, 1, 2].map((i) => ({ name: a.holders[i]?.name ?? '', phone: a.holders[i]?.phone ?? '' })),
+  holders: [0, 1, 2].map((i) => ({ name: a.holders[i]?.name ?? '', phone: a.holders[i]?.phone ?? '', person_id: a.holders[i]?.person_id ? String(a.holders[i]!.person_id) : '', manual: !a.holders[i]?.person_id && !!(a.holders[i]?.name || a.holders[i]?.phone) })),
 });
 
 /** Empty text boxes are sent as null so an emptied holder really is cleared. */
@@ -58,6 +54,10 @@ const toInput = (f: FormState, creating: boolean): BankAccountInput => {
     holder_2_phone: n(f.holders[1].phone),
     holder_3_name: n(f.holders[2].name),
     holder_3_phone: n(f.holders[2].phone),
+    // a holder picked from the owners is linked to that person (the server then fills in the name and phone)
+    holder_1_person_id: f.holders[0].person_id ? Number(f.holders[0].person_id) : null,
+    holder_2_person_id: f.holders[1].person_id ? Number(f.holders[1].person_id) : null,
+    holder_3_person_id: f.holders[2].person_id ? Number(f.holders[2].person_id) : null,
   };
   if (creating) out.opening_balance = f.opening_balance || 0;
   return out;
@@ -65,13 +65,17 @@ const toInput = (f: FormState, creating: boolean): BankAccountInput => {
 
 /** The society's bank accounts: bank, branch, account number, up to three account holders with phones, and the SMS number. */
 export default function BankAccountsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const canEdit = !!user && (user.roles.includes('super_admin') || user.permissions.includes('accounting.manage'));
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [editing, setEditing] = useState<BankAccount | 'new' | null>(null);
   const [form, setForm] = useState<FormState>(blank());
   const [error, setError] = useState<string | null>(null);
+  const [owners, setOwners] = useState<bankApi.OwnerOption[]>([]);
+  useEffect(() => {
+    bankApi.listOwnerOptions().then(setOwners).catch(() => undefined);
+  }, []);
 
   function load() {
     bankApi.listBankAccounts().then(setAccounts);
@@ -98,8 +102,14 @@ export default function BankAccountsPage() {
     }
   }
 
-  const setHolder = (i: number, k: 'name' | 'phone', v: string) =>
-    setForm({ ...form, holders: form.holders.map((h, idx) => (idx === i ? { ...h, [k]: v } : h)) });
+  const setHolder = (i: number, patch: Partial<FormState['holders'][number]>) =>
+    setForm({ ...form, holders: form.holders.map((h, idx) => (idx === i ? { ...h, ...patch } : h)) });
+  const pickOwner = (i: number, personId: string) => {
+    const o = owners.find((x) => String(x.person_id) === personId);
+    setHolder(i, { person_id: personId, manual: false, name: o?.name ?? '', phone: o?.mobile ?? '' });
+  };
+  // an owner can sign for only one slot of the same account
+  const taken = (i: number) => form.holders.filter((_, idx) => idx !== i).map((h) => h.person_id).filter(Boolean);
 
   return (
     <div className="min-h-screen bg-brand-50 px-4 py-8">
@@ -190,10 +200,33 @@ export default function BankAccountsPage() {
             {editing === 'new' && <input type="number" className={input} placeholder={t('bank.opening')} value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: e.target.value })} />}
 
             <p className="pt-1 text-sm font-medium text-navy-900">{t('bank.holders')}</p>
+            <p className="-mt-1 text-xs text-navy-700">{lang === 'bn' ? 'অ্যাকাউন্ট হোল্ডার ফ্ল্যাট মালিকদের মধ্য থেকে বাছুন — নাম ও ফোন মালিকের তথ্য থেকে নিজে আসবে।' : 'Choose the holders from the flat owners - name and phone come from the owner\u2019s record.'}</p>
             {form.holders.map((h, i) => (
-              <div key={i} className="grid grid-cols-2 gap-2">
-                <input className={input} placeholder={`${t('bank.holderName')} ${i + 1}`} value={h.name} onChange={(e) => setHolder(i, 'name', e.target.value)} />
-                <input className={input} inputMode="tel" placeholder={`${t('bank.holderPhone')} ${i + 1}`} value={h.phone} onChange={(e) => setHolder(i, 'phone', e.target.value)} />
+              <div key={i} className="rounded-lg border border-brand-100 p-2">
+                {!h.manual ? (
+                  <>
+                    <select className={input} value={h.person_id} onChange={(e) => pickOwner(i, e.target.value)} aria-label={`holder ${i + 1}`}>
+                      <option value="">{`${t('bank.holderName')} ${i + 1} — ${lang === 'bn' ? 'ফ্ল্যাট মালিক বাছুন' : 'choose a flat owner'}`}</option>
+                      {owners.filter((o) => !taken(i).includes(String(o.person_id))).map((o) => (
+                        <option key={o.person_id} value={o.person_id}>{o.flats} — {o.name} · {o.mobile}{o.has_login ? ' ✓' : ''}</option>
+                      ))}
+                    </select>
+                    {h.person_id && <p className="mt-1 text-xs text-navy-700">📱 {h.phone}{owners.find((o) => String(o.person_id) === h.person_id)?.has_login ? (lang === 'bn' ? ' · লগইন আছে' : ' · has a login') : ''}</p>}
+                    <button type="button" className="mt-1 text-xs text-navy-700 hover:underline" onClick={() => setHolder(i, { manual: true, person_id: '' })}>
+                      {lang === 'bn' ? 'ফ্ল্যাট মালিক নন? হাতে লিখুন' : 'Not a flat owner? Type by hand'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input className={input} placeholder={`${t('bank.holderName')} ${i + 1}`} value={h.name} onChange={(e) => setHolder(i, { name: e.target.value })} />
+                      <input className={input} inputMode="tel" placeholder={`${t('bank.holderPhone')} ${i + 1}`} value={h.phone} onChange={(e) => setHolder(i, { phone: e.target.value })} />
+                    </div>
+                    <button type="button" className="mt-1 text-xs text-navy-700 hover:underline" onClick={() => setHolder(i, { manual: false, name: '', phone: '' })}>
+                      {lang === 'bn' ? '← ফ্ল্যাট মালিকদের তালিকা থেকে বাছুন' : '← Choose from the flat owners'}
+                    </button>
+                  </>
+                )}
               </div>
             ))}
 
