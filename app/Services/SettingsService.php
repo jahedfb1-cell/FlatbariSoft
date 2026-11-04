@@ -16,6 +16,7 @@ class SettingsService
     /** key => [default, validation rules, type] */
     public const DEFINITIONS = [
         'bill_due_day' => ['10', ['integer', 'between:1,28'], 'int'],
+        'salary_due_day' => ['10', ['integer', 'between:1,28'], 'int'],
         'late_fee_mode' => ['NONE', [], 'enum'],
         'late_fee_value' => ['0', ['numeric', 'min:0'], 'number'],
         'late_fee_grace_days' => ['0', ['integer', 'between:0,60'], 'int'],
