@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import InvoiceAuditPack from '../components/InvoiceAuditPack';
 import SimpleReports from '../components/SimpleReports';
+import AnnualStatements from '../components/AnnualStatements';
 import * as reportsApi from '../api/reports';
 import type { TrialBalance, BalanceSheet, IncomeStatement, ReportKind } from '../api/reports';
 
@@ -77,6 +78,8 @@ export default function ReportsPage() {
         </div>
 
         <h1 className="mb-4 hidden text-xl font-semibold text-navy-900 print:block">{t('reports.title')} — Green Valley</h1>
+
+        <AnnualStatements />
 
         <SimpleReports />
 

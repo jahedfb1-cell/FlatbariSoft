@@ -167,6 +167,11 @@ Route::prefix('reports')->middleware(['auth:sanctum', 'permission:accounting.vie
     Route::get('/balance-sheet', [ReportController::class, 'balanceSheet']);
     Route::get('/dashboard', [ReportController::class, 'dashboard']);
 
+    // the year-end statements (cash flow, income & expenditure, balance sheet)
+    Route::get('/annual', [\App\Http\Controllers\Api\AnnualStatementController::class, 'show']);
+    Route::get('/annual/pdf', [\App\Http\Controllers\Api\AnnualStatementController::class, 'pdf']);
+    Route::get('/annual/excel', [\App\Http\Controllers\Api\AnnualStatementController::class, 'excel']);
+
     // plain-language reports: dues, collections, expenses, one flat, cash / bank book
     Route::get('/simple/{type}', [\App\Http\Controllers\Api\SimpleReportController::class, 'show']);
     Route::get('/simple/{type}/pdf', [\App\Http\Controllers\Api\SimpleReportController::class, 'pdf']);
