@@ -13,7 +13,7 @@ const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp';
 const input = 'rounded-lg border border-brand-200 px-3 py-2 text-base';
 
 export default function ExpensesPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const can = (p: string) => !!user && (user.roles.includes('super_admin') || user.permissions.includes(p));
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
@@ -32,6 +32,39 @@ export default function ExpensesPage() {
   const [error, setError] = useState<string | null>(null);
   const [closingMsg, setClosingMsg] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const todayDhaka = () => new Date(Date.now() + 6 * 3600 * 1000).toISOString().slice(0, 10);
+
+  function resetForm() {
+    setEditingId(null);
+    setPayee('');
+    setSupplierId('');
+    setAmount('');
+    setDescription('');
+    setFiles([]);
+    setMedium('CASH');
+    setFundType('OPERATING');
+    setWorkId('');
+    setDate(todayDhaka());
+    if (fileInput.current) fileInput.current.value = '';
+  }
+
+  /** Load a pending, unsigned expense into the form to correct it. */
+  function startEdit(ex: ExpenseRow) {
+    setError(null);
+    setEditingId(ex.id);
+    setDate(ex.date);
+    setHeadId(String(ex.expense_head_id));
+    setPayee(ex.payee);
+    setSupplierId('');
+    setAmount(String(Number(ex.amount)));
+    setDescription(ex.description ?? '');
+    setMedium(ex.treasury_medium);
+    setFundType(ex.fund_type);
+    setWorkId(ex.work_budget_id ? String(ex.work_budget_id) : '');
+    setFiles([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
   const fileInput = useRef<HTMLInputElement>(null);
 
   function load() {
@@ -51,7 +84,7 @@ export default function ExpensesPage() {
     e.preventDefault();
     setError(null);
     try {
-      await expensesApi.createExpense({
+      const body = {
         date,
         expense_head_id: Number(headId),
         payee,
@@ -60,14 +93,14 @@ export default function ExpensesPage() {
         treasury_medium: medium,
         fund_type: workId ? 'CAPITAL' : fundType,
         work_budget_id: workId ? Number(workId) : undefined,
-        attachments: files,
-      });
-      setPayee('');
-      setSupplierId('');
-      setAmount('');
-      setDescription('');
-      setFiles([]);
-      if (fileInput.current) fileInput.current.value = '';
+      };
+      if (editingId) {
+        await expensesApi.updateExpense(editingId, { ...body, description: description || '', work_budget_id: workId ? Number(workId) : null });
+        if (files.length) await expensesApi.addExpenseFiles(editingId, files);
+      } else {
+        await expensesApi.createExpense({ ...body, attachments: files });
+      }
+      resetForm();
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
@@ -107,6 +140,14 @@ export default function ExpensesPage() {
 
         {can('expense.create') && (
           <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-4">
+            {editingId && (
+              <div className="col-span-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-4">
+                <span>{lang === 'bn' ? 'আপনি একটি অনুমোদনের অপেক্ষায় থাকা খরচ সংশোধন করছেন। সংরক্ষণ করলে খরচের তথ্য বদলে যাবে।' : 'You are correcting an expense that is waiting for approval.'}</span>
+                <button type="button" onClick={resetForm} className="ml-auto rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs hover:bg-amber-100">
+                  {lang === 'bn' ? 'সংশোধন বাদ দিন' : 'Stop editing'}
+                </button>
+              </div>
+            )}
             <input required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={input} />
             <select value={headId} onChange={(e) => setHeadId(e.target.value)} className={input}>
               {heads.map((h) => (
@@ -146,7 +187,7 @@ export default function ExpensesPage() {
               {files.length > 0 && <p className="mt-1 text-xs text-navy-700">{files.map((f) => f.name).join(', ')}</p>}
             </div>
             <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-4">
-              {t('common.submit')}
+              {editingId ? (lang === 'bn' ? 'সংশোধন সংরক্ষণ করুন' : 'Save correction') : t('common.submit')}
             </button>
           </form>
         )}
@@ -185,6 +226,11 @@ export default function ExpensesPage() {
                     ) : (
                       <button onClick={() => setReviewing(ex.id)} className="text-brand-700 hover:underline">
                         {t('review.view')}
+                      </button>
+                    )}
+                    {ex.editable && can('expense.create') && (
+                      <button onClick={() => startEdit(ex)} className="ml-2 rounded-lg border border-brand-200 px-2.5 py-1 text-xs text-brand-700 hover:bg-brand-100">
+                        {lang === 'bn' ? 'সংশোধন' : 'Edit'}
                       </button>
                     )}
                   </td>

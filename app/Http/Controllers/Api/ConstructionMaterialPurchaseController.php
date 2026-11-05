@@ -20,6 +20,18 @@ class ConstructionMaterialPurchaseController extends Controller
         );
     }
 
+    public function update(StoreConstructionMaterialPurchaseRequest $request, ConstructionMaterialPurchase $purchase)
+    {
+        return new ConstructionMaterialPurchaseResource($this->service->update($purchase, $request->validated()));
+    }
+
+    public function destroy(ConstructionMaterialPurchase $purchase)
+    {
+        $this->service->cancel($purchase);
+
+        return response()->json(['message' => 'নির্মাণ সামগ্রীর ক্রয় বাতিল করা হয়েছে।']);
+    }
+
     public function store(StoreConstructionMaterialPurchaseRequest $request)
     {
         $purchase = $this->service->record($request->validated(), Auth::id());

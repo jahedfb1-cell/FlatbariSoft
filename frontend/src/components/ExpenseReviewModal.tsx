@@ -57,6 +57,8 @@ export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose,
   const { t, lang } = useLanguage();
   const [d, setD] = useState<ExpenseDetail | null>(null);
   const [note, setNote] = useState('');
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,6 +123,23 @@ export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose,
       onChanged();
       load();
       setNote('');
+    } catch (err: any) {
+      const errs = err?.response?.data?.errors;
+      setError(errs ? (Object.values(errs) as string[][]).flat().join(' ') : (err?.response?.data?.message ?? t('somethingWrong')));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reject(e: FormEvent) {
+    e.preventDefault();
+    if (!confirm(lang === 'bn' ? 'প্রত্যাখ্যান করলে এই খরচ (এবং এর ক্রয়/বিল এন্ট্রি) বাতিল হয়ে যাবে। নিশ্চিত?' : 'Rejecting removes this expense (and the purchase / bill behind it). Sure?')) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.rejectExpense(id, reason.trim());
+      onChanged();
+      onClose();
     } catch (err: any) {
       const errs = err?.response?.data?.errors;
       setError(errs ? (Object.values(errs) as string[][]).flat().join(' ') : (err?.response?.data?.message ?? t('somethingWrong')));
@@ -228,6 +247,29 @@ export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose,
                   ✔ {t('review.approveBtn')}
                 </button>
               </form>
+            )}
+
+            {pending && canApprove && (
+              <div className="rounded-xl border border-red-200 p-4">
+                {!rejecting ? (
+                  <button type="button" onClick={() => setRejecting(true)} className="w-full rounded-xl border border-red-300 px-4 py-3 font-medium text-status-due hover:bg-red-50">
+                    ✕ {lang === 'bn' ? 'প্রত্যাখ্যান করুন' : 'Reject'}
+                  </button>
+                ) : (
+                  <form onSubmit={reject} className="space-y-2">
+                    <label className="block text-sm font-medium text-navy-900">{lang === 'bn' ? 'প্রত্যাখ্যানের কারণ' : 'Reason for rejecting'} *</label>
+                    <textarea required minLength={3} maxLength={1000} rows={3} className="w-full rounded-lg border border-brand-200 px-3 py-2 text-base" placeholder={lang === 'bn' ? 'যিনি এন্ট্রি দিয়েছেন তিনি এটি দেখতে পাবেন' : 'The person who entered it will see this'} value={reason} onChange={(e) => setReason(e.target.value)} />
+                    <div className="flex gap-2">
+                      <button disabled={busy || reason.trim().length < 3} className="flex-1 rounded-xl bg-status-due px-4 py-3 font-medium text-white hover:opacity-90 disabled:opacity-50">
+                        ✕ {lang === 'bn' ? 'প্রত্যাখ্যান নিশ্চিত করুন' : 'Confirm rejection'}
+                      </button>
+                      <button type="button" onClick={() => setRejecting(false)} className="rounded-xl border border-brand-200 px-4 py-3 text-navy-700 hover:bg-brand-100">
+                        {lang === 'bn' ? 'থাক' : 'Back'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             )}
           </div>
         )}

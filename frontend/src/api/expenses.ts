@@ -14,6 +14,9 @@ export interface ExpenseRow {
   status: 'PENDING' | 'APPROVED';
   attachments_count: number;
   approvals_count: number;
+  work_budget_id?: number | null;
+  /** nobody has approved it and it is not the other half of a purchase / salary / bill */
+  editable?: boolean;
 }
 
 export interface ExpenseHead {
@@ -78,6 +81,23 @@ export function createExpense(data: {
   (data.attachments ?? []).forEach((f) => form.append('attachments[]', f));
   return client.post<ExpenseRow>('/expenses', form).then((r) => r.data);
 }
+
+/** Correct an expense nobody has approved yet (papers are added or removed separately). */
+export function updateExpense(id: number, data: {
+  date: string;
+  expense_head_id: number;
+  payee: string;
+  amount: number | string;
+  description?: string;
+  treasury_medium: string;
+  fund_type?: string;
+  work_budget_id?: number | null;
+}) {
+  return client.put<ExpenseRow>(`/expenses/${id}`, data).then((r) => r.data);
+}
+
+/** An approver turns a pending expense down; the reason is always required and is shown to whoever entered it. */
+export const rejectExpense = (id: number, reason: string) => client.post(`/expenses/${id}/reject`, { reason }).then((r) => r.data);
 
 export const getExpense = (id: number) => client.get<ExpenseDetail>(`/expenses/${id}`).then((r) => r.data);
 

@@ -9,7 +9,7 @@ import * as materialsApi from '../api/constructionMaterials';
 import type { ConstructionMaterialPurchase } from '../api/constructionMaterials';
 
 export default function ConstructionMaterialsPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [purchases, setPurchases] = useState<ConstructionMaterialPurchase[]>([]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [itemName, setItemName] = useState('');
@@ -22,6 +22,51 @@ export default function ConstructionMaterialsPage() {
   const [medium, setMedium] = useState<'CASH' | 'BANK'>('CASH');
   const [invoice, setInvoice] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  function resetForm() {
+    setEditingId(null);
+    setInvoice(null);
+    setItemName('');
+    setQuantity('');
+    setUnit('');
+    setUnitRate('');
+    setSupplierName('');
+    setSupplierId('');
+    setTransportCost('0');
+    setMedium('CASH');
+    setDate(new Date().toISOString().slice(0, 10));
+  }
+
+  /** Load a pending purchase into the form to correct it. */
+  function startEdit(p: ConstructionMaterialPurchase) {
+    setError(null);
+    setEditingId(p.id);
+    setDate(p.date);
+    setItemName(p.item_name);
+    setQuantity(String(Number(p.quantity)));
+    setUnit(p.unit);
+    setUnitRate(String(Number(p.unit_rate)));
+    setSupplierId(p.supplier_id ? String(p.supplier_id) : '');
+    setSupplierName(p.supplier_name ?? '');
+    setTransportCost(String(Number(p.transport_cost)));
+    setMedium(p.treasury_medium ?? 'CASH');
+    setInvoice(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function handleCancel(p: ConstructionMaterialPurchase) {
+    if (!confirm(lang === 'bn' ? `${p.date} — ${p.item_name} এর ক্রয়টি বাতিল করবেন? খরচের এন্ট্রিও মুছে যাবে।` : 'Cancel this purchase? Its pending expense is removed too.')) return;
+    setError(null);
+    try {
+      await materialsApi.cancelMaterialPurchase(p.id);
+      if (editingId === p.id) resetForm();
+      load();
+    } catch (err: any) {
+      const errors = err.response?.data?.errors;
+      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+    }
+  }
 
   function load() {
     materialsApi.listMaterialPurchases().then(setPurchases);
@@ -33,7 +78,7 @@ export default function ConstructionMaterialsPage() {
     e.preventDefault();
     setError(null);
     try {
-      await materialsApi.recordMaterialPurchase({
+      const payload = {
         date,
         item_name: itemName,
         quantity,
@@ -44,15 +89,10 @@ export default function ConstructionMaterialsPage() {
         transport_cost: transportCost,
         treasury_medium: medium,
         invoice_image: invoice,
-      });
-      setInvoice(null);
-      setItemName('');
-      setQuantity('');
-      setUnit('');
-      setUnitRate('');
-      setSupplierName('');
-      setSupplierId('');
-      setTransportCost('0');
+      };
+      if (editingId) await materialsApi.updateMaterialPurchase(editingId, payload);
+      else await materialsApi.recordMaterialPurchase(payload);
+      resetForm();
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
@@ -74,6 +114,14 @@ export default function ConstructionMaterialsPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="mb-2 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-4">
+          {editingId && (
+            <div className="col-span-2 flex flex-wrap items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-4">
+              <span>{lang === 'bn' ? 'আপনি একটি অনুমোদনের অপেক্ষায় থাকা ক্রয় সংশোধন করছেন। সংরক্ষণ করলে খরচের পরিমাণও বদলে যাবে। ফটো না দিলে আগেরটাই থাকবে।' : 'You are correcting a purchase that is waiting for approval. Its expense changes with it. Leave the photo empty to keep the old one.'}</span>
+              <button type="button" onClick={resetForm} className="ml-auto rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs hover:bg-amber-100">
+                {lang === 'bn' ? 'সংশোধন বাদ দিন' : 'Stop editing'}
+              </button>
+            </div>
+          )}
           <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <input required placeholder={t('materials.itemName')} value={itemName} onChange={(e) => setItemName(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <input required type="number" step="0.01" placeholder={t('materials.quantity')} value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
@@ -88,7 +136,7 @@ export default function ConstructionMaterialsPage() {
             <option value="BANK">BANK</option>
           </select>
           <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
-            {t('common.submit')}
+            {editingId ? (lang === 'bn' ? 'সংশোধন সংরক্ষণ করুন' : 'Save correction') : t('common.submit')}
           </button>
           <div className="col-span-2 sm:col-span-4">
             <InvoicePicker file={invoice} onChange={setInvoice} />
@@ -108,6 +156,7 @@ export default function ConstructionMaterialsPage() {
                 <th className="px-4 py-3">{t('materials.totalCost')}</th>
                 <th className="px-4 py-3">{t('common.status')}</th>
                 <th className="px-4 py-3">{t('invoice.col')}</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -121,6 +170,20 @@ export default function ConstructionMaterialsPage() {
                   <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
                   <td className="px-4 py-3">
                     <InvoiceCell type="materials" id={p.id} hasInvoice={p.has_invoice} invoiceKb={p.invoice_kb} onChanged={load} />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    {p.editable ? (
+                      <>
+                        <button onClick={() => startEdit(p)} className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs text-brand-700 hover:bg-brand-100">
+                          {lang === 'bn' ? 'সংশোধন' : 'Edit'}
+                        </button>
+                        <button onClick={() => handleCancel(p)} className="ml-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs text-status-due hover:bg-red-50">
+                          {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-navy-500">{lang === 'bn' ? 'অনুমোদিত' : 'Locked'}</span>
+                    )}
                   </td>
                 </tr>
               ))}
