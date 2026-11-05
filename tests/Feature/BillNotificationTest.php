@@ -54,6 +54,30 @@ class BillNotificationTest extends TestCase
         $this->assertStringContainsString('4,000.00', $ownerB->notifications->first()->data['body']);
     }
 
+    public function test_bills_brought_in_for_a_past_month_can_skip_the_announcement(): void
+    {
+        $office = User::factory()->create();
+        $flat = Flat::factory()->create(['occupancy_status' => 'OWNER_OCCUPIED']);
+        $owner = $this->resident($flat);
+
+        app(BillGenerationService::class)->generate(2026, 9, $office->id, notify: false);
+
+        $this->assertSame(1, Bill::where('flat_id', $flat->id)->count());
+        $this->assertCount(0, $owner->notifications);
+    }
+
+    public function test_the_generate_route_takes_notify_false(): void
+    {
+        $this->seed([\Database\Seeders\RoleSeeder::class, \Database\Seeders\MoneyCorePermissionSeeder::class]);
+        $admin = User::factory()->create(['role' => 'super_admin']);
+        $admin->assignRole('super_admin');
+        $owner = $this->resident(Flat::factory()->create(['occupancy_status' => 'OWNER_OCCUPIED']));
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/billing/generate', ['year' => 2026, 'month' => 9, 'notify' => false])->assertCreated();
+
+        $this->assertCount(0, $owner->notifications);
+    }
+
     public function test_a_person_who_left_the_flat_is_not_told(): void
     {
         $office = User::factory()->create();

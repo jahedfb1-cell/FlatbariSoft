@@ -16,6 +16,8 @@ class GenerateBillingPeriodRequest extends FormRequest
         return [
             'year' => ['required', 'integer', 'min:2020', 'max:2100'],
             'month' => ['required', 'integer', 'min:1', 'max:12'],
+            // false = bring a past month's bills in without telling the flats (the bills are ready, but not news)
+            'notify' => ['sometimes', 'boolean'],
         ];
     }
 }

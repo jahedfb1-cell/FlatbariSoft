@@ -23,6 +23,7 @@ class BillingController extends Controller
             $request->validated('year'),
             $request->validated('month'),
             Auth::id(),
+            $request->boolean('notify', true),
         );
 
         return response()->json([
