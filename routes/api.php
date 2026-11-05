@@ -123,7 +123,9 @@ Route::prefix('expenses')->middleware('auth:sanctum')->group(function () {
     Route::delete('/attachments/{attachment}', [ExpenseController::class, 'removeFile'])->middleware('permission:expense.create');
     Route::get('/{expense}', [ExpenseController::class, 'show'])->middleware('permission:expense.view');
     Route::post('/{expense}/attachments', [ExpenseController::class, 'attach'])->middleware('permission:expense.create');
+    Route::put('/{expense}', [ExpenseController::class, 'update'])->middleware('permission:expense.create');
     Route::post('/{expense}/approve', [ExpenseController::class, 'approve'])->middleware('permission:expense.approve');
+    Route::post('/{expense}/reject', [ExpenseController::class, 'reject'])->middleware('permission:expense.approve');
 });
 
 Route::get('/expense-heads', [\App\Http\Controllers\Api\ExpenseHeadController::class, 'index'])
@@ -234,6 +236,8 @@ Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
 Route::prefix('construction-materials')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'index'])->middleware('permission:expense.view');
     Route::post('/', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'store'])->middleware('permission:expense.create');
+    Route::put('/{purchase}', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'update'])->middleware('permission:expense.create');
+    Route::delete('/{purchase}', [\App\Http\Controllers\Api\ConstructionMaterialPurchaseController::class, 'destroy'])->middleware('permission:expense.create');
 });
 
 // Purchase-invoice photos. The same three operations exist for each purchase

@@ -17,11 +17,14 @@ class ConstructionMaterialPurchaseResource extends JsonResource
             'unit' => $this->unit,
             'unit_rate' => $this->unit_rate,
             'supplier_name' => $this->supplier_name,
+            'supplier_id' => $this->supplier_id ?? null,
             'transport_cost' => $this->transport_cost,
             'total_cost' => $this->total_cost,
             'has_invoice' => (bool) $this->invoice_file,
             'invoice_kb' => $this->invoice_file ? app(\App\Services\InvoiceImageService::class)->sizeKb($this->invoice_file) : null,
             'expense_status' => $this->whenLoaded('expense', fn () => $this->expense->status),
+            'treasury_medium' => $this->whenLoaded('expense', fn () => $this->expense->treasury_medium),
+            'editable' => $this->whenLoaded('expense', fn () => $this->expense->status === 'PENDING'),
         ];
     }
 }

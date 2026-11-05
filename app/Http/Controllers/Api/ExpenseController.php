@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ApproveExpenseRequest;
 use App\Http\Requests\StoreExpenseAttachmentsRequest;
+use App\Http\Requests\RejectExpenseRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
@@ -54,6 +55,19 @@ class ExpenseController extends Controller
         $expense = $this->service->approve($expense, Auth::id(), trim($request->validated('note')));
 
         return new ExpenseResource($expense);
+    }
+
+    /** Correct an expense nobody has approved yet. */
+    public function update(StoreExpenseRequest $request, Expense $expense)
+    {
+        return new ExpenseResource($this->service->update($expense, $request->validated()));
+    }
+
+    public function reject(RejectExpenseRequest $request, Expense $expense)
+    {
+        $this->service->reject($expense, Auth::id(), trim($request->validated('reason')));
+
+        return response()->json(['message' => 'খরচ প্রত্যাখ্যান করা হয়েছে।']);
     }
 
     public function attach(StoreExpenseAttachmentsRequest $request, Expense $expense)
