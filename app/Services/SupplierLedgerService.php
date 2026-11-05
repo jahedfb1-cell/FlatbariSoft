@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
  */
 class SupplierLedgerService
 {
-    public const KINDS = ['gas', 'materials'];
+    public const KINDS = ['gas', 'materials', 'others'];
 
     /** The key two spellings of one supplier share. */
     public static function key(?string $name): string
@@ -27,14 +27,52 @@ class SupplierLedgerService
     /** @return Collection<int, GasPurchase|ConstructionMaterialPurchase> */
     private function all(string $kind): Collection
     {
+        if ($kind === 'others') {
+            return $this->otherExpenses();
+        }
         $model = $kind === 'materials' ? ConstructionMaterialPurchase::class : GasPurchase::class;
 
         return $model::with('expense')->orderBy('date')->orderBy('id')->get();
     }
 
+    /** name key => [category, registered name], for every registered supplier outside the gas and material books. */
+    private function otherSuppliers(): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('suppliers')) {
+            return [];
+        }
+        $map = [];
+        foreach (\App\Models\Supplier::whereIn('kind', \App\Models\Supplier::OTHER_KINDS)->get() as $m) {
+            $map[self::key($m->name)] = [$m->kind, $m->name];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Ordinary expenses paid to a registered supplier of another category, shaped like a purchase: the expense is the bill when
+     * it is entered and the payment once it is approved.
+     *
+     * @return Collection<int, object>
+     */
+    private function otherExpenses(): Collection
+    {
+        $known = $this->otherSuppliers();
+        if (! $known) {
+            return collect();
+        }
+
+        return \App\Models\Expense::orderBy('date')->orderBy('id')->get()
+            ->filter(fn ($e) => isset($known[self::key($e->payee)]))
+            ->map(fn ($e) => (object) [
+                'id' => $e->id, 'date' => $e->date, 'supplier_name' => $known[self::key($e->payee)][1], 'total_cost' => $e->amount, 'transport_cost' => 0,
+                'description' => $e->description, 'category' => $known[self::key($e->payee)][0], 'registered_name' => $known[self::key($e->payee)][1], 'expense' => $e,
+            ])->values();
+    }
+
     private function ref(string $kind, $p): string
     {
-        return ($kind === 'materials' ? 'CM-' : 'GP-').str_pad((string) $p->id, 6, '0', STR_PAD_LEFT);
+        return ($kind === 'others' ? 'EX-' : ($kind === 'materials' ? 'CM-' : 'GP-')).str_pad((string) $p->id, 6, '0', STR_PAD_LEFT);
     }
 
     private function isPaid($p): bool
@@ -88,6 +126,7 @@ class SupplierLedgerService
                 'owed' => bcsub($billed, $paid, 4),
                 'avg_cost_per_kg' => bccomp($kg, '0', 4) > 0 ? bcdiv($billed, $kg, 4) : '0.0000',
                 'last_purchase' => $purchases->max(fn ($p) => $p->date->toDateString()),
+                'category' => $kind === 'others' ? ($purchases->first()->category ?? null) : null,
             ];
             $totals['count'] = bcadd($totals['count'], (string) $purchases->count(), 0);
             $totals['quantity_kg'] = bcadd($totals['quantity_kg'], $kg, 4);
@@ -99,9 +138,10 @@ class SupplierLedgerService
         // suppliers created on the suppliers list but not bought from (yet) still show, with nothing owed
         if (\Illuminate\Support\Facades\Schema::hasTable('suppliers')) {
             $seen = array_column($rows, 'key');
-            foreach (\App\Models\Supplier::where('is_active', true)->whereIn('kind', [$kind === 'materials' ? 'MATERIALS' : 'GAS', 'OTHER'])->orderBy('name')->get() as $m) {
+            $kinds = $kind === 'others' ? \App\Models\Supplier::OTHER_KINDS : [$kind === 'materials' ? 'MATERIALS' : 'GAS'];
+            foreach (\App\Models\Supplier::where('is_active', true)->whereIn('kind', $kinds)->orderBy('name')->get() as $m) {
                 if (! in_array(self::key($m->name), $seen, true)) {
-                    $rows[] = ['key' => self::key($m->name), 'name' => $m->name, 'count' => 0, 'quantity_kg' => '0.0000', 'billed' => '0.0000', 'paid' => '0.0000', 'owed' => '0.0000', 'avg_cost_per_kg' => '0.0000', 'last_purchase' => null];
+                    $rows[] = ['key' => self::key($m->name), 'name' => $m->name, 'count' => 0, 'quantity_kg' => '0.0000', 'billed' => '0.0000', 'paid' => '0.0000', 'owed' => '0.0000', 'avg_cost_per_kg' => '0.0000', 'last_purchase' => null, 'category' => $kind === 'others' ? $m->kind : null];
                 }
             }
         }
@@ -182,6 +222,10 @@ class SupplierLedgerService
     private function describe(string $kind, $p): string
     {
         $transport = (float) $p->transport_cost > 0 ? ' + transport '.$this->num($p->transport_cost) : '';
+
+        if ($kind === 'others') {
+            return trim((string) $p->description) !== '' ? (string) $p->description : 'Expense';
+        }
 
         return $kind === 'materials'
             ? sprintf('%s — %s %s @ %s%s', $p->item_name, $this->num($p->quantity), $p->unit, $this->num($p->unit_rate), $transport)
