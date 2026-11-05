@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  */
 class BillGenerationService
 {
-    public function generate(int $year, int $month, int $generatedBy): BillingPeriod
+    public function generate(int $year, int $month, int $generatedBy, bool $notify = true): BillingPeriod
     {
         // Explicit 'status' => 'DRAFT': Eloquent doesn't reflect a column's
         // DB-level default in the in-memory model right after create(), so
@@ -90,7 +90,9 @@ class BillGenerationService
         });
 
         // told only once the bills are safely saved; this can never undo or block them
-        app(BillNotifier::class)->billsGenerated($generated);
+        if ($notify) {
+            app(BillNotifier::class)->billsGenerated($generated);
+        }
 
         return $generated;
     }
