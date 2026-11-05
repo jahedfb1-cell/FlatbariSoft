@@ -346,8 +346,8 @@ Route::prefix('treasury')->middleware('auth:sanctum')->group(function () {
 });
 
 // Supplier accounts: what was bought from each gas / construction-material supplier, what was paid, what is owed.
-foreach (['gas' => 'gas.view', 'materials' => 'expense.view'] as $supplierKind => $supplierPermission) {
-    $supplierBase = $supplierKind === 'gas' ? 'gas/suppliers' : 'construction-materials/suppliers';
+foreach (['gas' => 'gas.view', 'materials' => 'expense.view', 'others' => 'expense.view'] as $supplierKind => $supplierPermission) {
+    $supplierBase = ['gas' => 'gas/suppliers', 'materials' => 'construction-materials/suppliers', 'others' => 'other-suppliers'][$supplierKind];
     $supplierController = \App\Http\Controllers\Api\SupplierLedgerController::class;
     foreach ([
         '' => 'index', '/ledger' => 'ledger', '/ledger/pdf' => 'pdf', '/ledger/excel' => 'excel',

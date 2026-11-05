@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import ExpenseReviewModal from '../components/ExpenseReviewModal';
+import SupplierPicker from '../components/SupplierPicker';
 import * as expensesApi from '../api/expenses';
 import * as workApi from '../api/workBudgets';
 import type { ExpenseRow, ExpenseHead } from '../api/expenses';
@@ -20,6 +21,7 @@ export default function ExpensesPage() {
   const [headId, setHeadId] = useState('');
   const [date, setDate] = useState(() => new Date(Date.now() + 6 * 3600 * 1000).toISOString().slice(0, 10)); // Dhaka date
   const [payee, setPayee] = useState('');
+  const [supplierId, setSupplierId] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -61,6 +63,7 @@ export default function ExpensesPage() {
         attachments: files,
       });
       setPayee('');
+      setSupplierId('');
       setAmount('');
       setDescription('');
       setFiles([]);
@@ -112,7 +115,10 @@ export default function ExpensesPage() {
                 </option>
               ))}
             </select>
-            <input required placeholder={t('expenses.payee')} value={payee} onChange={(e) => setPayee(e.target.value)} className={input} />
+            <div className="col-span-2">
+              <SupplierPicker kind="ANY" required={false} value={supplierId} onChange={(id, name) => { setSupplierId(id); if (name) setPayee(name); }} />
+            </div>
+            <input required placeholder={t('expenses.payee')} value={payee} onChange={(e) => { setPayee(e.target.value); setSupplierId(''); }} className={`${input} col-span-2`} />
             <input required type="number" step="0.01" placeholder={t('common.amount')} value={amount} onChange={(e) => setAmount(e.target.value)} className={input} />
             <select value={medium} onChange={(e) => setMedium(e.target.value)} className={input}>
               <option value="CASH">CASH</option>

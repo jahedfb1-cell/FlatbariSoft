@@ -6,7 +6,8 @@ import { useLanguage } from '../context/LanguageContext';
 export interface MasterSupplier {
   id: number;
   name: string;
-  kind: 'GAS' | 'MATERIALS' | 'OTHER';
+  kind: string;
+  kind_label?: string;
   phone: string | null;
   address: string | null;
   is_active: boolean;
@@ -16,10 +17,26 @@ export const listMasterSuppliers = (kind?: string, active = true) =>
   client.get<MasterSupplier[]>('/supplier-master', { params: { ...(kind ? { kind } : {}), ...(active ? { active: 1 } : {}) } }).then((r) => r.data);
 export const createMasterSupplier = (d: { name: string; kind: string; phone?: string; address?: string }) => client.post<MasterSupplier>('/supplier-master', d).then((r) => r.data);
 
+/** Supplier categories: code => Bengali / English name. The codes are the ones the server accepts. */
+export const SUPPLIER_KINDS: Record<string, [string, string]> = {
+  GAS: ['গ্যাস', 'Gas'],
+  MATERIALS: ['নির্মাণ সামগ্রী', 'Construction material'],
+  ELECTRIC: ['বৈদ্যুতিক', 'Electrical'],
+  PLUMBING: ['প্লাম্বিং ও পানি', 'Plumbing & water'],
+  LIFT: ['লিফট', 'Lift'],
+  GENERATOR: ['জেনারেটর ও জ্বালানি', 'Generator & fuel'],
+  CLEANING: ['পরিচ্ছন্নতা', 'Cleaning'],
+  SECURITY: ['নিরাপত্তা ও সিসিটিভি', 'Security & CCTV'],
+  REPAIR: ['মেরামত ও রক্ষণাবেক্ষণ', 'Repair & maintenance'],
+  OFFICE: ['অফিস ও স্টেশনারি', 'Office & stationery'],
+  OTHER: ['অন্যান্য', 'Other'],
+};
+export const kindLabel = (code: string | null | undefined, bn: boolean) => (code && SUPPLIER_KINDS[code] ? SUPPLIER_KINDS[code][bn ? 0 : 1] : (code ?? ''));
+
 const input = 'w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500';
 
 /** Create a supplier: name, phone, address. Used by the picker and the suppliers list. */
-export function NewSupplierForm({ kind, onCreated, onCancel }: { kind: 'GAS' | 'MATERIALS' | 'OTHER'; onCreated: (s: MasterSupplier) => void; onCancel?: () => void }) {
+export function NewSupplierForm({ kind, onCreated, onCancel }: { kind: string; onCreated: (s: MasterSupplier) => void; onCancel?: () => void }) {
   const { lang } = useLanguage();
   const bn = lang === 'bn';
   const L = (b: string, e: string) => (bn ? b : e);
@@ -50,9 +67,10 @@ export function NewSupplierForm({ kind, onCreated, onCancel }: { kind: 'GAS' | '
         <input className={input} inputMode="tel" placeholder={L('ফোন', 'Phone')} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
         <input className={`${input} sm:col-span-2`} placeholder={L('ঠিকানা', 'Address')} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} />
         {kind === 'OTHER' && (
-          <select className={input} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-            <option value="GAS">{L('গ্যাস সরবরাহকারী', 'Gas supplier')}</option>
-            <option value="MATERIALS">{L('নির্মাণ সামগ্রী সরবরাহকারী', 'Material supplier')}</option>
+          <select className={`${input} sm:col-span-2`} value={type} onChange={(e) => setType(e.target.value)} aria-label={L('ধরন', 'Category')}>
+            {Object.keys(SUPPLIER_KINDS).map((k) => (
+              <option key={k} value={k}>{L('ধরন', 'Category')}: {kindLabel(k, bn)}</option>
+            ))}
           </select>
         )}
       </div>
@@ -72,7 +90,8 @@ export function NewSupplierForm({ kind, onCreated, onCancel }: { kind: 'GAS' | '
 }
 
 /** Pick a supplier from the list, or create one on the spot. */
-export default function SupplierPicker({ kind, value, onChange, required = true }: { kind: 'GAS' | 'MATERIALS'; value: string; onChange: (id: string, name: string) => void; required?: boolean }) {
+/** `kind` is one category, or 'ANY' to choose among every supplier (the new-supplier form then asks for the category). */
+export default function SupplierPicker({ kind, value, onChange, required = true }: { kind: string; value: string; onChange: (id: string, name: string) => void; required?: boolean }) {
   const { lang } = useLanguage();
   const bn = lang === 'bn';
   const L = (b: string, e: string) => (bn ? b : e);
@@ -80,7 +99,7 @@ export default function SupplierPicker({ kind, value, onChange, required = true 
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    listMasterSuppliers(kind).then(setList).catch(() => undefined);
+    listMasterSuppliers(kind === 'ANY' ? undefined : kind).then(setList).catch(() => undefined);
   }, [kind]);
 
   return (
@@ -97,7 +116,7 @@ export default function SupplierPicker({ kind, value, onChange, required = true 
         >
           <option value="">{L('— সরবরাহকারী বাছুন —', '— choose a supplier —')}</option>
           {list.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}{s.phone ? ` · ${s.phone}` : ''}</option>
+            <option key={s.id} value={s.id}>{s.name}{kind === 'ANY' ? ` (${kindLabel(s.kind, bn)})` : ''}{s.phone ? ` · ${s.phone}` : ''}</option>
           ))}
         </select>
         <button type="button" onClick={() => setAdding(!adding)} className="shrink-0 rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-700 hover:bg-brand-100">
@@ -106,7 +125,7 @@ export default function SupplierPicker({ kind, value, onChange, required = true 
       </div>
       {adding && (
         <NewSupplierForm
-          kind={kind}
+          kind={kind === 'ANY' ? 'OTHER' : kind}
           onCancel={() => setAdding(false)}
           onCreated={(s) => {
             setList([...list, s].sort((a, b) => a.name.localeCompare(b.name)));

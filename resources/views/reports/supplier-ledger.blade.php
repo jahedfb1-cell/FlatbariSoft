@@ -21,7 +21,7 @@
 @php($t = $ledger['totals'])
 <div class="head">
     <h1>{{ $building->name ?? 'Green Valley' }}</h1>
-    <div>Supplier Ledger — {{ $ledger['kind'] === 'materials' ? 'Construction material' : 'Gas' }}</div>
+    <div>Supplier Ledger — {{ ['materials' => 'Construction material', 'others' => 'Other suppliers'][$ledger['kind']] ?? 'Gas' }}</div>
     <div><b>{{ $ledger['supplier'] }}</b></div>
     <div class="muted">
         Period:

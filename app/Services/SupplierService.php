@@ -28,7 +28,7 @@ class SupplierService
     /** @return array<string, mixed> */
     public function present(Supplier $s): array
     {
-        return ['id' => $s->id, 'name' => $s->name, 'kind' => $s->kind, 'phone' => $s->phone, 'address' => $s->address, 'notes' => $s->notes, 'is_active' => $s->is_active];
+        return ['id' => $s->id, 'name' => $s->name, 'kind' => $s->kind, 'kind_label' => \App\Models\Supplier::LABELS[$s->kind] ?? $s->kind, 'phone' => $s->phone, 'address' => $s->address, 'notes' => $s->notes, 'is_active' => $s->is_active];
     }
 
     /** @param  array<string, mixed>  $data */
@@ -59,7 +59,7 @@ class SupplierService
     {
         if ($supplierId && $this->ready()) {
             $s = Supplier::find($supplierId);
-            if (! $s || ! $s->is_active || ($s->kind !== $kind && $s->kind !== 'OTHER')) {
+            if (! $s || ! $s->is_active || $s->kind !== $kind) {
                 throw ValidationException::withMessages(['supplier_id' => 'এই সরবরাহকারী বাছা যাবে না — তালিকা থেকে সক্রিয় সরবরাহকারী বাছুন।']);
             }
 

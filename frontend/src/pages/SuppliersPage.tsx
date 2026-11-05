@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import LanguageToggle from '../components/LanguageToggle';
-import { NewSupplierForm } from '../components/SupplierPicker';
+import { NewSupplierForm, kindLabel } from '../components/SupplierPicker';
 import { blobErrorMessage } from '../utils/download';
 import * as api from '../api/suppliers';
 import type { SupplierKind, SupplierLedger, SupplierList } from '../api/suppliers';
@@ -22,7 +22,7 @@ export default function SuppliersPage() {
   const [params, setParams] = useSearchParams();
   const isAdmin = !!user?.roles.includes('super_admin');
   const can = (p: string) => isAdmin || !!user?.permissions.includes(p);
-  const allowed: SupplierKind[] = [...(can('expense.view') ? (['materials'] as const) : []), ...(can('gas.view') ? (['gas'] as const) : [])];
+  const allowed: SupplierKind[] = [...(can('expense.view') ? (['materials'] as const) : []), ...(can('gas.view') ? (['gas'] as const) : []), ...(can('expense.view') ? (['others'] as const) : [])];
   const asked = params.get('kind') as SupplierKind | null;
   const kind: SupplierKind = asked && allowed.includes(asked) ? asked : (allowed[0] ?? 'materials');
   const supplier = params.get('supplier');
@@ -72,7 +72,7 @@ export default function SuppliersPage() {
       onClick={() => go({ kind: k })}
       className={`rounded-lg px-4 py-2 text-sm font-medium ${kind === k ? 'bg-brand-600 text-white' : 'border border-brand-200 bg-white text-navy-700 hover:bg-brand-100'}`}
     >
-      {t(k === 'gas' ? 'suppliers.gas' : 'suppliers.materials')}
+      {t(k === 'gas' ? 'suppliers.gas' : k === 'others' ? 'suppliers.others' : 'suppliers.materials')}
     </button>
   );
 
@@ -105,7 +105,7 @@ export default function SuppliersPage() {
           <div className="mb-3">
             {adding ? (
               <NewSupplierForm
-                kind={kind === 'gas' ? 'GAS' : 'MATERIALS'}
+                kind={kind === 'gas' ? 'GAS' : kind === 'others' ? 'OTHER' : 'MATERIALS'}
                 onCancel={() => setAdding(false)}
                 onCreated={() => {
                   setAdding(false);
@@ -114,7 +114,7 @@ export default function SuppliersPage() {
               />
             ) : (
               <button onClick={() => setAdding(true)} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-                + {kind === 'gas' ? 'নতুন গ্যাস সরবরাহকারী' : 'নতুন সরবরাহকারী'}
+                + {kind === 'gas' ? 'নতুন গ্যাস সরবরাহকারী' : kind === 'others' ? 'নতুন সরবরাহকারী (যেকোনো ধরন)' : 'নতুন সরবরাহকারী'}
               </button>
             )}
           </div>
@@ -142,6 +142,7 @@ export default function SuppliersPage() {
                       <button className="font-medium text-brand-700 hover:underline" onClick={() => go({ kind, supplier: s.name })}>
                         {s.name}
                       </button>
+                      {s.category && <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs text-navy-700">{kindLabel(s.category, true)}</span>}
                     </td>
                     <td className="p-3 text-right">{s.count}</td>
                     <td className="p-3 text-right">{money(s.billed)}</td>

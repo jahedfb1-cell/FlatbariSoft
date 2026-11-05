@@ -1,7 +1,7 @@
 import client from './client';
 import { downloadFile, openPdf } from '../utils/download';
 
-export type SupplierKind = 'gas' | 'materials';
+export type SupplierKind = 'gas' | 'materials' | 'others';
 
 export interface SupplierSummary {
   key: string;
@@ -13,6 +13,7 @@ export interface SupplierSummary {
   owed: string;
   avg_cost_per_kg: string;
   last_purchase: string;
+  category?: string | null;
 }
 
 export interface SupplierList {
@@ -44,7 +45,7 @@ export interface SupplierLedger {
   totals: { purchased: string; paid: string; quantity_kg: string; closing: string };
 }
 
-const base = (kind: SupplierKind) => (kind === 'gas' ? '/gas/suppliers' : '/construction-materials/suppliers');
+const base = (kind: SupplierKind) => ({ gas: '/gas/suppliers', materials: '/construction-materials/suppliers', others: '/other-suppliers' })[kind];
 const range = (from: string, to: string) => ({ ...(from ? { from } : {}), ...(to ? { to } : {}) });
 
 export const listSuppliers = (kind: SupplierKind, from: string, to: string) =>
