@@ -34,7 +34,7 @@ class BillGenerationService
             ]);
         }
 
-        return DB::transaction(function () use ($period, $year, $month, $generatedBy) {
+        $generated = DB::transaction(function () use ($period, $year, $month, $generatedBy) {
             $dueDate = Carbon::create($year, $month, app(SettingsService::class)->int('bill_due_day'));
             $serviceChargeHead = CollectionHead::where('code', 'SERVICE_CHARGE')->firstOrFail();
             $currentKey = $year * 100 + $month;
@@ -88,6 +88,11 @@ class BillGenerationService
 
             return $period->fresh();
         });
+
+        // told only once the bills are safely saved; this can never undo or block them
+        app(BillNotifier::class)->billsGenerated($generated);
+
+        return $generated;
     }
 
     /**

@@ -51,6 +51,7 @@ import StatementsPage from './pages/StatementsPage';
 import OwnerContributionsPage from './pages/owner/OwnerContributionsPage';
 import OwnerParkingPage from './pages/owner/OwnerParkingPage';
 import OwnerHallPage from './pages/owner/OwnerHallPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 const OWNER_ROLES = ['flat_owner', 'tenant'];
 
@@ -123,6 +124,7 @@ function AppRoutes() {
         <Route path="/parking" element={<ParkingPage />} />
         <Route path="/contributions" element={<ContributionsPage />} />
         <Route path="/statements" element={<StatementsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
       <Route path="/print/nid" element={<NidPrintPage />} />
 
@@ -139,6 +141,7 @@ function AppRoutes() {
       <Route path="/owner/tenant-request" element={<OwnerTenantRequestPage />} />
       <Route path="/owner/visitors" element={<OwnerVisitorsPage />} />
       <Route path="/owner/contributions" element={<OwnerContributionsPage />} />
+      <Route path="/owner/notifications" element={<NotificationsPage owner />} />
     </Routes>
   );
 }

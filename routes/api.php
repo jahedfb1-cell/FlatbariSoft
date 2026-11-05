@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\BankAccountController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\ExpenseController;
@@ -387,6 +388,9 @@ Route::get('/me/visitors', [\App\Http\Controllers\Api\VisitorController::class, 
 Route::get('/backup/download', [\App\Http\Controllers\Api\BackupController::class, 'download'])->middleware(['auth:sanctum', 'permission:backup.manage']);
 
 // A resident's own payments (any logged-in resident; each action is scoped to the flats they hold).
+Route::get('/me/notifications', [NotificationController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/me/notifications/read-all', [NotificationController::class, 'readAll'])->middleware('auth:sanctum');
+Route::post('/me/notifications/{id}/read', [NotificationController::class, 'read'])->middleware('auth:sanctum');
 Route::get('/me/payments', [\App\Http\Controllers\Api\MyPaymentController::class, 'index'])->middleware('auth:sanctum');
 Route::post('/me/payments', [\App\Http\Controllers\Api\MyPaymentController::class, 'store'])->middleware('auth:sanctum');
 Route::get('/me/payments/{payment}/receipt', [\App\Http\Controllers\Api\MyPaymentController::class, 'receipt'])->middleware('auth:sanctum');
