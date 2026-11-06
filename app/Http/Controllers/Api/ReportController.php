@@ -40,13 +40,6 @@ class ReportController extends Controller
         return response()->json($this->service->balanceSheet());
     }
 
-    public function dashboard(Request $request)
-    {
-        $request->validate(['year' => 'required|integer', 'month' => 'required|integer|min:1|max:12']);
-
-        return response()->json($this->service->dashboardKpis($request->integer('year'), $request->integer('month')));
-    }
-
     // --- PDF exports (English-labelled — see PdfFontService) ----------
 
     public function trialBalancePdf()

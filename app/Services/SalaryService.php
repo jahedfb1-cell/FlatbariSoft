@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Expense;
 use App\Models\ExpenseHead;
 use App\Models\SalaryPayment;
 use App\Models\Staff;
