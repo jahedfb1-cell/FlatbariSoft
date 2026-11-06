@@ -80,4 +80,9 @@ class ReceiptAndNewestBillTest extends TestCase
         $this->assertNull($oct['newest_month']);
         $this->assertSame('7000.0000', $oct['total_payable']); // October's bill carries September's 3,500
     }
+
+    public function test_a_month_nobody_has_billed_is_an_empty_register_not_an_error(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')->getJson('/api/billing/2030/1')->assertOk()->assertExactJson([]);
+    }
 }

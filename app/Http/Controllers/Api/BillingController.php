@@ -86,7 +86,11 @@ class BillingController extends Controller
 
     public function show(int $year, int $month)
     {
-        $period = BillingPeriod::where('year', $year)->where('month', $month)->firstOrFail();
+        // a month nobody has billed yet is an empty register, not an error
+        $period = BillingPeriod::where('year', $year)->where('month', $month)->first();
+        if (! $period) {
+            return response()->json([]);
+        }
 
         $bills = $period->bills()->with('flat.currentOwners.person', 'flat.currentTenant.person')
             ->withSum(['payments as pending_amount' => fn ($q) => $q->where('status', 'PENDING')], 'amount')
