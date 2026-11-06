@@ -11,7 +11,6 @@ use App\Services\ExpenseService;
 use App\Services\PaymentService;
 use App\Services\ReportingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class Phase41To43ReportingTest extends TestCase
@@ -99,25 +98,5 @@ class Phase41To43ReportingTest extends TestCase
         $sheet = $this->reporting->balanceSheet();
 
         $this->assertTrue($sheet['balanced']);
-    }
-
-    public function test_dashboard_kpis_reflect_real_activity(): void
-    {
-        $user = User::factory()->create();
-        $flat = Flat::factory()->create(['occupancy_status' => 'OWNER_OCCUPIED', 'service_charge_rate' => 3500]);
-        $period = BillingPeriod::create(['year' => 2026, 'month' => 8, 'status' => 'GENERATED']);
-        $bill = Bill::create([
-            'billing_period_id' => $period->id, 'flat_id' => $flat->id,
-            'service_charge' => 3500, 'gas_amount' => 0, 'previous_due' => 0,
-            'total_payable' => 3500, 'paid_amount' => 0, 'due_date' => '2026-08-10', 'status' => 'UNPAID',
-        ]);
-        $paymentService = app(PaymentService::class);
-        $payment = $paymentService->create(['flat_id' => $flat->id, 'bill_id' => $bill->id, 'amount' => 2000, 'payment_date' => '2026-08-05', 'method' => 'CASH'], $user->id);
-        $paymentService->approve($payment, $user->id);
-
-        $kpis = $this->reporting->dashboardKpis(2026, 8);
-
-        $this->assertSame(2000.0, $kpis['collection']);
-        $this->assertSame(1500.0, $kpis['outstanding_due']);
     }
 }

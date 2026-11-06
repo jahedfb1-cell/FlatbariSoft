@@ -18,12 +18,6 @@ export interface PaymentRow {
   status: 'PENDING' | 'APPROVED';
 }
 
-export function listPayments(status?: string) {
-  return client
-    .get<{ data: PaymentRow[] }>('/payments', { params: status ? { status } : {} })
-    .then((r) => (r.data as any).data ?? r.data);
-}
-
 export function createPayment(data: {
   flat_id: number;
   bill_id?: number;

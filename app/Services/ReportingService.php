@@ -2,12 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Bill;
 use App\Models\ChartOfAccount;
 use App\Models\Expense;
-use App\Models\GasConsumer;
 use App\Models\JournalLine;
-use App\Models\Payment;
 
 class ReportingService
 {
@@ -111,34 +108,6 @@ class ReportingService
             'funds' => $funds,
             'current_net_income' => $currentNetIncome,
             'balanced' => abs($assets - ($liabilities + $funds + $currentNetIncome)) < 0.01,
-        ];
-    }
-
-    public function dashboardKpis(int $year, int $month): array
-    {
-        $collection = Payment::where('status', 'APPROVED')
-            ->whereYear('payment_date', $year)->whereMonth('payment_date', $month)
-            ->sum('amount');
-
-        $outstandingDue = Bill::where('status', '!=', 'PAID')
-            ->selectRaw('SUM(total_payable - paid_amount) as total')
-            ->value('total') ?? 0;
-
-        $expense = Expense::where('status', 'APPROVED')
-            ->whereYear('date', $year)->whereMonth('date', $month)
-            ->sum('amount');
-
-        $sinkingFund = ChartOfAccount::where('code', '3300')
-            ->leftJoin('journal_lines', 'journal_lines.account_id', '=', 'chart_of_accounts.id')
-            ->selectRaw('COALESCE(SUM(journal_lines.credit),0) - COALESCE(SUM(journal_lines.debit),0) as balance')
-            ->value('balance') ?? 0;
-
-        return [
-            'collection' => (float) $collection,
-            'outstanding_due' => (float) $outstandingDue,
-            'expense' => (float) $expense,
-            'sinking_fund_balance' => (float) $sinkingFund,
-            'gas_consumer_count' => GasConsumer::where('is_internal', false)->where('active', true)->count(),
         ];
     }
 }

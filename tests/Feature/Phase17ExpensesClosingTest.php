@@ -4,10 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Bill;
 use App\Models\BillingPeriod;
-use App\Models\Expense;
 use App\Models\ExpenseHead;
 use App\Models\Flat;
-use App\Models\Payment;
 use App\Models\User;
 use App\Services\ExpenseService;
 use App\Services\MonthlyClosingService;

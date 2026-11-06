@@ -2,7 +2,6 @@ import client from './client';
 import { downloadFile, openPdf } from '../utils/download';
 
 export type FundCode = 'OPERATING' | 'GAS' | 'CAPITAL' | 'SINKING';
-export const FUNDS: FundCode[] = ['OPERATING', 'GAS', 'CAPITAL', 'SINKING'];
 
 export interface Line {
   date: string;

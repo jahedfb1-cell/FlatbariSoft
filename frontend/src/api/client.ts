@@ -1,10 +1,5 @@
 import axios from 'axios';
 
-export interface ApiErrorPayload {
-  message: string;
-  errors?: Record<string, string[]>;
-}
-
 const client = axios.create({
   // Production sets VITE_API_BASE_URL at build time. With it unset (dev / a phone on the same WiFi
   // opening http://<pc-ip>:4000) the API is assumed to sit on the SAME host, port 8100 - a hardcoded

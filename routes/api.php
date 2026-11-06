@@ -170,7 +170,6 @@ Route::prefix('reports')->middleware(['auth:sanctum', 'permission:accounting.vie
     Route::get('/trial-balance', [ReportController::class, 'trialBalance']);
     Route::get('/income-statement', [ReportController::class, 'incomeStatement']);
     Route::get('/balance-sheet', [ReportController::class, 'balanceSheet']);
-    Route::get('/dashboard', [ReportController::class, 'dashboard']);
 
     // the year-end statements (cash flow, income & expenditure, balance sheet)
     Route::get('/annual', [\App\Http\Controllers\Api\AnnualStatementController::class, 'show']);

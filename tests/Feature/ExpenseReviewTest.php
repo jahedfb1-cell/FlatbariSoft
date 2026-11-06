@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\ConstructionMaterialPurchase;
 use App\Models\Expense;
 use App\Models\ExpenseHead;
 use App\Models\User;

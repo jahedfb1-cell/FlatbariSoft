@@ -31,14 +31,6 @@ export interface BalanceSheet {
   balanced: boolean;
 }
 
-export interface DashboardKpis {
-  collection: number;
-  outstanding_due: number;
-  expense: number;
-  sinking_fund_balance: number;
-  gas_consumer_count: number;
-}
-
 export function getTrialBalance() {
   return client.get<TrialBalance>('/reports/trial-balance').then((r) => r.data);
 }
@@ -49,10 +41,6 @@ export function getIncomeStatement(fiscalYear?: string) {
 
 export function getBalanceSheet() {
   return client.get<BalanceSheet>('/reports/balance-sheet').then((r) => r.data);
-}
-
-export function getDashboard(year: number, month: number) {
-  return client.get<DashboardKpis>('/reports/dashboard', { params: { year, month } }).then((r) => r.data);
 }
 
 export type ReportKind = 'trial-balance' | 'balance-sheet' | 'income-statement';

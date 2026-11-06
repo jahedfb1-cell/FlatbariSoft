@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\SmsLog;
 use App\Models\User;
 use App\Services\SmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;

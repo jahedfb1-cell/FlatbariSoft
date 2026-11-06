@@ -69,12 +69,6 @@ class GasReadingSheetService
         })->all();
     }
 
-    /** How many flats (not the office) still have no reading entered for the month. */
-    public function missingFlats(int $year, int $month): int
-    {
-        return collect($this->sheet($year, $month))->where('is_office', false)->whereNull('current_reading')->count();
-    }
-
     /**
      * Works out every row (previous, current, units) and finds what is wrong, saving nothing.
      * A row with nothing typed is skipped. $rows: [['flat_no' | 'consumer_id', 'previous_reading'?, 'current_reading'?, 'units'?], ...]
