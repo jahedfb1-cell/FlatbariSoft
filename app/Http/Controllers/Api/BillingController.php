@@ -8,7 +8,12 @@ use App\Http\Requests\UpdateBillRequest;
 use App\Http\Resources\BillResource;
 use App\Models\Bill;
 use App\Models\BillingPeriod;
+use App\Models\Building;
+use App\Models\Flat;
 use App\Services\BillGenerationService;
+use App\Services\BillPrintService;
+use App\Support\PdfName;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -61,6 +66,22 @@ class BillingController extends Controller
         Log::info('Bill corrected', ['bill_id' => $bill->id, 'by' => Auth::id(), 'reason' => $request->validated('reason')]);
 
         return new BillResource($bill->load('flat.currentOwners.person', 'flat.currentTenant.person'));
+    }
+
+    /**
+     * The month's bills on paper, four to an A4 page: every flat in one file, or one flat alone (?flat_id=).
+     * Named like the owners' other papers - "10A-Nazrul Islam-Bill Sep 2026.pdf" / "All Flat Bills-Sep 2026.pdf".
+     */
+    public function pdf(Request $request, int $year, int $month, BillPrintService $print)
+    {
+        $flatId = $request->filled('flat_id') ? (int) $request->query('flat_id') : null;
+        $slips = $print->slips($year, $month, $flatId);
+
+        $name = $flatId
+            ? PdfName::forOwner(Flat::findOrFail($flatId), 'Bill '.PdfName::month($year, $month))
+            : PdfName::make('All Flat Bills', PdfName::month($year, $month));
+
+        return PdfName::titled(Pdf::loadView('reports.bill-slips', ['building' => Building::first(), 'slips' => $slips])->setPaper('a4', 'portrait'), $name)->stream($name);
     }
 
     public function show(int $year, int $month)

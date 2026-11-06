@@ -196,6 +196,15 @@ export default function BillingPage() {
               {t('billing.generateBtn')}
             </button>
           )}
+          {bills.length > 0 && (
+            <button
+              onClick={() => billingApi.printMonthBills(year, month).catch(async (err) => setMessage(await blobErrorMessage(err, t('somethingWrong'))))}
+              className={btnGhost}
+              title={bn ? 'প্রতি A4 পাতায় ৪টি ফ্ল্যাটের বিল — সব ফ্ল্যাট এক ফাইলে' : 'Four flats\' bills to an A4 page - every flat in one file'}
+            >
+              🖨 {bn ? 'সব ফ্ল্যাটের বিল (PDF)' : 'All flat bills (PDF)'}
+            </button>
+          )}
           <label className="ml-auto flex items-center gap-1 text-sm text-navy-700">
             <input type="checkbox" checked={onlyDue} onChange={(e) => setOnlyDue(e.target.checked)} /> {t('billing.onlyDue')}
           </label>
@@ -284,6 +293,13 @@ export default function BillingPage() {
                       <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[b.status]}`}>{t(`billing.status.${b.status}` as TranslationKey)}</span>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">
+                      <button
+                        className="mr-3 font-medium text-navy-700 hover:underline"
+                        title={bn ? 'এই ফ্ল্যাটের বিল প্রিন্ট' : 'Print this flat\'s bill'}
+                        onClick={() => billingApi.printMonthBills(year, month, { id: b.flat_id, no: b.flat_no ?? String(b.flat_id) }).catch(async (err) => setMessage(await blobErrorMessage(err, t('somethingWrong'))))}
+                      >
+                        🖨 {bn ? 'বিল' : 'Bill'}
+                      </button>
                       {can('billing.manage') && (
                         <button className="mr-3 font-medium text-navy-700 hover:underline" onClick={() => setEditing(b)}>
                           {lang === 'bn' ? 'সংশোধন' : 'Edit'}

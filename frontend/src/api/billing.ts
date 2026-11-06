@@ -1,4 +1,5 @@
 import client from './client';
+import { openPdf } from '../utils/download';
 
 export interface BillRow {
   id: number;
@@ -63,3 +64,7 @@ export interface BillCorrection {
 export function correctBill(id: number, d: BillCorrection) {
   return client.put<BillRow>(`/billing/bills/${id}`, d).then((r) => r.data);
 }
+
+/** The month's bills on paper, four to an A4 page: every flat in one file, or one flat alone. */
+export const printMonthBills = (year: number, month: number, flat?: { id: number; no: string }) =>
+  openPdf(`/billing/${year}/${month}/pdf`, flat ? { flat_id: String(flat.id) } : undefined, flat ? `${flat.no}-Bill-${year}-${month}.pdf` : `All-Flat-Bills-${year}-${month}.pdf`);
