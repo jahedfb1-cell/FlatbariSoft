@@ -19,8 +19,8 @@ export interface BillRow {
   status: 'UNPAID' | 'PARTIAL' | 'PAID';
 }
 
-export function generateBilling(year: number, month: number) {
-  return client.post('/billing/generate', { year, month }).then((r) => r.data);
+export function generateBilling(year: number, month: number, allowWithoutGas = false) {
+  return client.post('/billing/generate', { year, month, ...(allowWithoutGas ? { allow_without_gas: true } : {}) }).then((r) => r.data);
 }
 
 export function getBillingRegister(year: number, month: number) {

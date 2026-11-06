@@ -73,7 +73,7 @@ class BillNotificationTest extends TestCase
         $admin->assignRole('super_admin');
         $owner = $this->resident(Flat::factory()->create(['occupancy_status' => 'OWNER_OCCUPIED']));
 
-        $this->actingAs($admin, 'sanctum')->postJson('/api/billing/generate', ['year' => 2026, 'month' => 9, 'notify' => false])->assertCreated();
+        $this->actingAs($admin, 'sanctum')->postJson('/api/billing/generate', ['year' => 2026, 'month' => 9, 'notify' => false, 'allow_without_gas' => true])->assertCreated();
 
         $this->assertCount(0, $owner->notifications);
     }

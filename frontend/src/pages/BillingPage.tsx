@@ -84,7 +84,28 @@ export default function BillingPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await billingApi.generateBilling(year, month);
+      let res;
+      try {
+        res = await billingApi.generateBilling(year, month);
+      } catch (err: any) {
+        // some flats have no gas reading: say so, and only go on if the office really wants bills without gas
+        const noGas = err.response?.data?.errors?.gas?.[0];
+        if (!noGas) throw err;
+        const go = window.confirm(
+          noGas + (lang === 'bn'
+            ? '
+
+গ্যাস ছাড়াই বিল তৈরি করবেন? (রিডিং না থাকা ফ্ল্যাটের বিলে গ্যাস ০ থাকবে; পরে গ্যাস পাতা থেকে যোগ করতে হবে।)'
+            : '
+
+Generate the bills without gas? (Flats with no reading get no gas until it is added from the Gas page.)'),
+        );
+        if (!go) {
+          setMessage(noGas);
+          return;
+        }
+        res = await billingApi.generateBilling(year, month, true);
+      }
       setMessage(res.message + ` (${res.bill_count})`);
       loadRegister();
     } catch (err: any) {
