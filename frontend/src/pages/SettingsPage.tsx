@@ -22,6 +22,8 @@ export default function SettingsPage() {
   const [logs, setLogs] = useState<SmsLogRow[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const canAddFlat = !!user && (user.roles.includes('super_admin') || user.permissions.includes('flat.create'));
   const [buildingId, setBuildingId] = useState<number | null>(null);
   const [addingFlat, setAddingFlat] = useState(false);
@@ -31,19 +33,21 @@ export default function SettingsPage() {
     ops.getSettings().then((r) => {
       setS(r.settings);
       setGateway(r.sms_gateway);
-    });
+    }).catch(() => setLoadFailed(true));
     ops.getSmsLogs().then(setLogs).catch(() => undefined);
     listBuildings().then((b) => setBuildingId(b[0]?.id ?? null)).catch(() => undefined);
   }, []);
 
-  if (!s) return <div className="p-8 text-navy-700">{t('loading')}</div>;
+  if (!s) return <div className={`p-8 ${loadFailed ? 'text-status-due' : 'text-navy-700'}`}>{loadFailed ? t('somethingWrong') : t('loading')}</div>;
   const set = (k: keyof Settings, v: string) => setS({ ...s, [k]: v });
   const flag = (k: keyof Settings) => s[k] === '1';
   const toggle = (k: keyof Settings) => set(k, flag(k) ? '0' : '1');
 
   async function save() {
+    if (saving) return;
     setMsg(null);
     setError(null);
+    setSaving(true);
     try {
       const next = await ops.saveSettings({
         ...s!,
@@ -56,6 +60,8 @@ export default function SettingsPage() {
     } catch (e: any) {
       const errs = e?.response?.data?.errors;
       setError(errs ? (Object.values(errs) as string[][]).flat().join(' ') : (e?.response?.data?.message ?? t('somethingWrong')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -160,7 +166,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <button onClick={save} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 sm:w-auto">
+        <button onClick={save} disabled={saving} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:w-auto">
           {t('settings.save')}
         </button>
 
@@ -189,9 +195,9 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
-      </div>
 
-      <BuildingContactsCard />
+        <BuildingContactsCard />
+      </div>
 
       {addingFlat && buildingId && (
         <FlatFormModal

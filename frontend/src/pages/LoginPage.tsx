@@ -131,6 +131,7 @@ export default function LoginPage() {
               <label className="mb-1 block text-sm font-medium text-navy-900">{t('login.passwordLabel')}</label>
               <input
                 type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

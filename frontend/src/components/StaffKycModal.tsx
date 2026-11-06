@@ -58,6 +58,7 @@ export default function StaffKycModal({ staff, onClose }: { staff: Staff; onClos
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [docType, setDocType] = useState<StaffDocType>('CV');
   const [files, setFiles] = useState<File[]>([]);
+  const [fileKey, setFileKey] = useState(0); // a new key empties the file box after an upload
 
   const apply = (k: StaffKyc) => {
     setKyc(k);
@@ -100,6 +101,7 @@ export default function StaffKycModal({ staff, onClose }: { staff: Staff; onClos
     try {
       apply(await staffApi.uploadStaffDocs(staff.id, docType, files));
       setFiles([]);
+      setFileKey((k) => k + 1);
       setMsg({ ok: true, text: L('ফাইল জমা হয়েছে।', 'File uploaded.') });
     } catch (err) {
       setMsg({ ok: false, text: apiError(err, L('ফাইল জমা হয়নি।', 'Upload failed.')) });
@@ -268,7 +270,7 @@ export default function StaffKycModal({ staff, onClose }: { staff: Staff; onClos
                 </label>
                 <label className="min-w-0 flex-1 text-sm text-navy-700">
                   {L('PDF বা ছবি (সর্বোচ্চ ১০ MB)', 'PDF or image (max 10 MB)')}
-                  <input type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" className={`${input} mt-1`} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+                  <input key={fileKey} type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" className={`${input} mt-1`} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
                 </label>
                 <button type="button" className={btn} disabled={busy || files.length === 0 || !kyc?.ready} onClick={upload}>
                   ⬆ {L('জমা দিন', 'Upload')}

@@ -17,7 +17,7 @@ export default function BuildingContactsCard() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    api.listBuildingContacts().then(setRows).catch((e) => setError(apiError(e, 'Error')));
+    api.listBuildingContacts().then(setRows).catch((e) => setError(apiError(e, L('কিছু একটা সমস্যা হয়েছে।', 'Something went wrong.'))));
   }, []);
   useEffect(load, [load]);
 
@@ -30,6 +30,7 @@ export default function BuildingContactsCard() {
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -39,7 +40,7 @@ export default function BuildingContactsCard() {
       reset();
       load();
     } catch (err) {
-      setError(apiError(err, 'Error'));
+      setError(apiError(err, L('কিছু একটা সমস্যা হয়েছে।', 'Something went wrong.')));
     } finally {
       setBusy(false);
     }
@@ -51,7 +52,7 @@ export default function BuildingContactsCard() {
       await action();
       load();
     } catch (err) {
-      setError(apiError(err, 'Error'));
+      setError(apiError(err, L('কিছু একটা সমস্যা হয়েছে।', 'Something went wrong.')));
     }
   }
 

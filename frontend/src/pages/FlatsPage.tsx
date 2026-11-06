@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import FlatLabel from '../components/FlatLabel';
 import * as flatsApi from '../api/flats';
@@ -19,11 +19,14 @@ export default function FlatsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  // typing quickly: only the newest search may fill the table
+  const seq = useRef(0);
   function load() {
+    const mine = ++seq.current;
     setLoading(true);
     flatsApi.listFlats({ search: search || undefined }).then((data) => {
-      setFlats(data);
-    }).catch(() => undefined).finally(() => setLoading(false));
+      if (mine === seq.current) setFlats(data);
+    }).catch(() => undefined).finally(() => mine === seq.current && setLoading(false));
   }
 
   useEffect(() => {
@@ -80,7 +83,7 @@ export default function FlatsPage() {
                 </tr>
               )}
               {flats.map((flat) => (
-                <tr key={flat.id} className="cursor-pointer border-t border-brand-100 transition hover:bg-brand-50">
+                <tr key={flat.id} className="border-t border-brand-100 transition hover:bg-brand-50">
                   <td className="px-4 py-3">
                     <FlatLabel flatId={flat.id} flatNo={flat.flat_no} owner={flat.owner_name} tenant={flat.tenant_name} />
                   </td>

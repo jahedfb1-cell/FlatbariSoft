@@ -23,6 +23,7 @@ export default function MeetingsPage() {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function load() {
     governanceApi.listMeetings().then(setMeetings).catch(() => undefined);
@@ -32,10 +33,19 @@ export default function MeetingsPage() {
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
-    await governanceApi.createMeeting({ title, meeting_date: date });
-    setTitle('');
-    setDate('');
-    load();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await governanceApi.createMeeting({ title, meeting_date: date });
+      setTitle('');
+      setDate('');
+      load();
+    } catch (err) {
+      setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -52,9 +62,9 @@ export default function MeetingsPage() {
         </div>
 
         <form onSubmit={handleCreate} className="mb-6 flex flex-wrap gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
-          <input required placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1 rounded-lg border border-brand-200 px-3 py-2" />
+          <input required placeholder={t('common.title')} value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1 rounded-lg border border-brand-200 px-3 py-2" />
           <input required type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <button type="submit" className="rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700">
+          <button type="submit" disabled={busy} className="rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 disabled:opacity-50">
             {t('meetings.addMeeting')}
           </button>
         </form>

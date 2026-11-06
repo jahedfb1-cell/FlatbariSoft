@@ -389,17 +389,23 @@ function BookingDetailModal({
     hallApi.getBooking(id).then(setB).catch((e) => setError(hallApi.apiError(e, t('somethingWrong'))));
   }, [id, t]);
 
+  const [working, setWorking] = useState(false);
   async function run(action: () => Promise<HallBooking>) {
+    if (working) return; // a payment, an approval or a cancellation goes through once, however many times it is tapped
     setError(null);
+    setWorking(true);
     try {
       setB(await action());
       setReasonFor(null);
       setReason('');
       setRefund('');
       setAmount('');
+      setReference('');
       onChanged();
     } catch (err) {
       setError(hallApi.apiError(err, t('somethingWrong')));
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -479,7 +485,7 @@ function BookingDetailModal({
               <input required type="date" className={input} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
             </div>
             <input className={input} placeholder={t('hall.reference')} value={reference} onChange={(e) => setReference(e.target.value)} />
-            <button type="submit" className={`${btn} w-full`}>
+            <button type="submit" disabled={working} className={`${btn} w-full`}>
               {t('hall.confirmAction')}
             </button>
           </form>
@@ -489,7 +495,7 @@ function BookingDetailModal({
           <div className="flex flex-wrap gap-2">
             {b.status === 'PENDING' && (
               <>
-                <button className={btn} onClick={() => run(() => hallApi.approveBooking(b.id))}>
+                <button className={btn} disabled={working} onClick={() => run(() => hallApi.approveBooking(b.id))}>
                   {t('hall.approve')}
                 </button>
                 <button className={btnGhost} onClick={() => setReasonFor('reject')}>
@@ -498,7 +504,7 @@ function BookingDetailModal({
               </>
             )}
             {b.status === 'CONFIRMED' && b.booking_date <= today && (
-              <button className={btn} onClick={() => run(() => hallApi.completeBooking(b.id))}>
+              <button className={btn} disabled={working} onClick={() => run(() => hallApi.completeBooking(b.id))}>
                 {t('hall.complete')}
               </button>
             )}
@@ -524,7 +530,7 @@ function BookingDetailModal({
             )}
             <button
               className={btn}
-              disabled={!reason.trim()}
+              disabled={!reason.trim() || working}
               onClick={() =>
                 run(() =>
                   reasonFor === 'reject'
@@ -554,7 +560,7 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 }
 
 function SettingsPanel({ hall, onSaved }: { hall: Hall; onSaved: (h: Hall) => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [f, setF] = useState(hall);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -631,7 +637,7 @@ function SettingsPanel({ hall, onSaved }: { hall: Hall; onSaved: (h: Hall) => vo
                   <input required type="time" className={input} value={r.end_time} onChange={(e) => setRate(r.slot, 'end_time', e.target.value)} />
                 </td>
                 <td className="pr-2">
-                  <input required type="number" min={0} step="0.01" className={input} value={r.resident_rate ?? ''} placeholder="0 = ফ্রি" onChange={(e) => setRate(r.slot, 'resident_rate', e.target.value)} />
+                  <input required type="number" min={0} step="0.01" className={input} value={r.resident_rate ?? ''} placeholder={lang === 'bn' ? '0 = ফ্রি' : '0 = free'} onChange={(e) => setRate(r.slot, 'resident_rate', e.target.value)} />
                 </td>
                 <td>
                   <input required type="number" min={0} step="0.01" className={input} value={r.outsider_rate ?? ''} onChange={(e) => setRate(r.slot, 'outsider_rate', e.target.value)} />

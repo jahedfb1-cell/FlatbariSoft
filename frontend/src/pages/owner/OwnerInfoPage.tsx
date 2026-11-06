@@ -11,10 +11,11 @@ export default function OwnerInfoPage() {
   const L = (bn: string, en: string) => (lang === 'bn' ? bn : en);
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [decisions, setDecisions] = useState<PortalDecision[] | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    myApi.myContacts().then(setContacts).catch(() => setContacts([]));
-    myApi.myDecisions().then(setDecisions).catch(() => setDecisions([]));
+    myApi.myContacts().then(setContacts).catch(() => { setFailed(true); setContacts([]); });
+    myApi.myDecisions().then(setDecisions).catch(() => { setFailed(true); setDecisions([]); });
   }, []);
 
   const status = (s: PortalDecision['status']) => (s === 'DONE' ? L('সম্পন্ন', 'Done') : s === 'ONGOING' ? L('চলছে', 'In progress') : L('অপেক্ষমাণ', 'Pending'));
@@ -29,6 +30,8 @@ export default function OwnerInfoPage() {
           <h1 className="mt-1 text-xl font-semibold text-navy-900">{L('ভবনের তথ্য', 'Building info')}</h1>
         </div>
 
+        {failed && <p className="rounded-xl bg-white p-3 text-sm text-status-due shadow-sm">{t('somethingWrong')}</p>}
+
         <section>
           <h2 className="mb-2 font-semibold text-navy-900">📞 {L('জরুরি নম্বর', 'Phone numbers')}</h2>
           <div className="space-y-2">
@@ -41,7 +44,7 @@ export default function OwnerInfoPage() {
                 <span className="whitespace-nowrap rounded-full bg-brand-600 px-3 py-1.5 text-sm font-medium text-white">📞 {c.phone}</span>
               </a>
             ))}
-            {contacts && contacts.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 shadow-sm">{L('অফিস এখনও কোনো নম্বর যোগ করেনি।', 'The office has not added any numbers yet.')}</p>}
+            {contacts && contacts.length === 0 && !failed && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 shadow-sm">{L('অফিস এখনও কোনো নম্বর যোগ করেনি।', 'The office has not added any numbers yet.')}</p>}
             {!contacts && <div className="h-16 animate-pulse rounded-2xl bg-white/70" />}
           </div>
         </section>
@@ -62,7 +65,7 @@ export default function OwnerInfoPage() {
                 {d.decision && <p className="mt-1 text-sm text-navy-700">→ {d.decision}</p>}
               </div>
             ))}
-            {decisions && decisions.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 shadow-sm">{L('এখনও কোনো সিদ্ধান্ত প্রকাশিত হয়নি।', 'No decisions have been published yet.')}</p>}
+            {decisions && decisions.length === 0 && !failed && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 shadow-sm">{L('এখনও কোনো সিদ্ধান্ত প্রকাশিত হয়নি।', 'No decisions have been published yet.')}</p>}
             {!decisions && <div className="h-16 animate-pulse rounded-2xl bg-white/70" />}
           </div>
         </section>

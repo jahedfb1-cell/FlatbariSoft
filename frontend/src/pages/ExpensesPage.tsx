@@ -33,6 +33,7 @@ export default function ExpensesPage() {
   const [closingMsg, setClosingMsg] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
   const todayDhaka = () => new Date(Date.now() + 6 * 3600 * 1000).toISOString().slice(0, 10);
 
   function resetForm() {
@@ -82,7 +83,9 @@ export default function ExpensesPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (saving) return; // slow upload + a second tap must not enter the expense twice
     setError(null);
+    setSaving(true);
     try {
       const body = {
         date,
@@ -104,19 +107,22 @@ export default function ExpensesPage() {
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
-      setError(errors ? (Object.values(errors) as string[][]).flat().join(' ') : err.response?.data?.message);
+      setError(errors ? (Object.values(errors) as string[][]).flat().join(' ') : err.response?.data?.message || t('somethingWrong'));
+    } finally {
+      setSaving(false);
     }
   }
 
   async function handleClose() {
     // closing a month locks it and moves its surplus: never on a single stray tap
-    if (!window.confirm(lang === 'bn' ? 'এই মাস ক্লোজ করবেন? মাসের উদ্বৃত্ত স্থানান্তর হবে এবং মাসটি আর বদলানো যাবে না।' : 'Close this month? Its surplus is transferred and the month can no longer be changed.')) return;
     const now = new Date();
+    const monthName = now.toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long', year: 'numeric' });
+    if (!window.confirm(lang === 'bn' ? `${monthName} মাস ক্লোজ করবেন? মাসের উদ্বৃত্ত স্থানান্তর হবে এবং মাসটি আর বদলানো যাবে না।` : `Close ${monthName}? Its surplus is transferred and the month can no longer be changed.`)) return;
     try {
       const res = await expensesApi.closeMonth(now.getFullYear(), now.getMonth() + 1);
       setClosingMsg(`${res.message} (৳${res.surplus_transferred ?? 0})`);
     } catch (err: any) {
-      setClosingMsg(err.response?.data?.errors?.period?.[0] || err.response?.data?.message);
+      setClosingMsg(err.response?.data?.errors?.period?.[0] || err.response?.data?.message || t('somethingWrong'));
     }
   }
 
@@ -162,13 +168,13 @@ export default function ExpensesPage() {
               <SupplierPicker kind="ANY" required={false} value={supplierId} onChange={(id, name) => { setSupplierId(id); if (name) setPayee(name); }} />
             </div>
             <input required placeholder={t('expenses.payee')} value={payee} onChange={(e) => { setPayee(e.target.value); setSupplierId(''); }} className={`${input} col-span-2`} />
-            <input required type="number" step="0.01" placeholder={t('common.amount')} value={amount} onChange={(e) => setAmount(e.target.value)} className={input} />
+            <input required type="number" min="0.01" step="0.01" placeholder={t('common.amount')} value={amount} onChange={(e) => setAmount(e.target.value)} className={input} />
             <select value={medium} onChange={(e) => setMedium(e.target.value)} className={input}>
               <option value="CASH">CASH</option>
               <option value="BANK">BANK</option>
             </select>
             <select value={workId} onChange={(e) => setWorkId(e.target.value)} className={input} aria-label="work">
-              <option value="">— কাজ নয় (সাধারণ খরচ) —</option>
+              <option value="">{lang === 'bn' ? '— কাজ নয় (সাধারণ খরচ) —' : '— Not a work (general expense) —'}</option>
               {works.map((w) => (
                 <option key={w.id} value={w.id}>🏗️ {w.title}</option>
               ))}
@@ -188,7 +194,7 @@ export default function ExpensesPage() {
               <span className="ml-2 text-xs text-navy-700">{t('expenses.attachHint')}</span>
               {files.length > 0 && <p className="mt-1 text-xs text-navy-700">{files.map((f) => f.name).join(', ')}</p>}
             </div>
-            <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-4">
+            <button type="submit" disabled={saving} className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 disabled:opacity-50 sm:col-span-4">
               {editingId ? (lang === 'bn' ? 'সংশোধন সংরক্ষণ করুন' : 'Save correction') : t('common.submit')}
             </button>
           </form>

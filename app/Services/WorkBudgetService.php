@@ -128,9 +128,14 @@ class WorkBudgetService
             $keep = [];
             foreach ($shares as $s) {
                 $keep[] = (int) $s['flat_id'];
+                $values = ['target_amount' => bcadd((string) $s['amount'], '0', 4)];
+                // a share sent without a note keeps the one it has (a waiver's reason must not vanish when only the amount is edited)
+                if (array_key_exists('note', $s)) {
+                    $values['note'] = $s['note'];
+                }
                 FlatContributionTarget::updateOrCreate(
                     ['flat_id' => (int) $s['flat_id'], 'contribution_book_id' => $work->contribution_book_id],
-                    ['target_amount' => bcadd((string) $s['amount'], '0', 4), 'note' => $s['note'] ?? null],
+                    $values,
                 );
             }
             FlatContributionTarget::where('contribution_book_id', $work->contribution_book_id)->whereNotIn('flat_id', $keep)->delete();

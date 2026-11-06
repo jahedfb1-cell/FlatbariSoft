@@ -4,6 +4,7 @@ import LanguageToggle from '../../components/LanguageToggle';
 import OwnerNav from '../../components/OwnerNav';
 import * as myApi from '../../api/my';
 import type { Flat } from '../../api/flats';
+import { apiError } from '../../api/hall';
 
 export default function OwnerComplaintsPage() {
   const { t } = useLanguage();
@@ -13,6 +14,8 @@ export default function OwnerComplaintsPage() {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
     myApi.myComplaints().then(setComplaints).catch(() => undefined);
@@ -26,11 +29,20 @@ export default function OwnerComplaintsPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    await myApi.submitMyComplaint({ flat_id: Number(flatId), category, description });
-    setCategory('');
-    setDescription('');
-    setShowForm(false);
-    load();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await myApi.submitMyComplaint({ flat_id: Number(flatId), category, description });
+      setCategory('');
+      setDescription('');
+      setShowForm(false);
+      load();
+    } catch (err) {
+      setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -59,7 +71,8 @@ export default function OwnerComplaintsPage() {
             </select>
             <input required placeholder={t('common.category')} value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-brand-200 px-3 py-2" />
             <textarea required placeholder={t('common.description')} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-lg border border-brand-200 px-3 py-2" rows={3} />
-            <button type="submit" className="w-full rounded-lg bg-brand-600 px-4 py-2 text-white hover:bg-brand-700">
+            {error && <p className="text-sm text-status-due">{error}</p>}
+            <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand-600 px-4 py-2 text-white hover:bg-brand-700 disabled:opacity-50">
               {t('common.submit')}
             </button>
           </form>
@@ -70,7 +83,7 @@ export default function OwnerComplaintsPage() {
             <div key={c.id} className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
               <p className="font-medium text-navy-900">{c.category}</p>
               <p className="text-sm text-navy-700">{c.description}</p>
-              <p className="mt-1 text-xs text-navy-700">{c.status}</p>
+              <p className="mt-1 text-xs text-navy-700">{t(`complaints.status.${c.status}` as any)}</p>
               {c.resolution_note && <p className="mt-2 rounded-lg bg-green-50 p-2 text-sm text-navy-900">✔ {c.resolution_note}</p>}
             </div>
           ))}

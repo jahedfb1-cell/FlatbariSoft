@@ -17,7 +17,11 @@ export default function OwnerBillsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    myApi.myBillDetails().then(setBills).catch(() => setBills([]));
+    myApi.myBillDetails().then(setBills).catch(() => {
+      setError(t('somethingWrong')); // a failed load must not read as "no bill yet"
+      setBills([]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const chip = (s: string) =>
@@ -94,7 +98,7 @@ export default function OwnerBillsPage() {
               </div>
             </div>
           ))}
-          {bills && bills.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 shadow-sm">{L('এখনও কোনো বিল তৈরি হয়নি।', 'No bill has been made yet.')}</p>}
+          {bills && bills.length === 0 && !error && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 shadow-sm">{L('এখনও কোনো বিল তৈরি হয়নি।', 'No bill has been made yet.')}</p>}
         </div>
       </div>
       <OwnerNav />

@@ -48,7 +48,8 @@ const get = () => client.get<Listing>('/tenant-vacate-requests').then((r) => r.d
  * office; an admin accepts, which ends the tenancy and empties the flat. The admin sees every request here.
  */
 export default function TenantVacatePanel({ onDecided }: { onDecided?: () => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const [working, setWorking] = useState(false);
   const [data, setData] = useState<Listing | null>(null);
   const [open, setOpen] = useState<number | null>(null);
   const [date, setDate] = useState(today());
@@ -69,8 +70,10 @@ export default function TenantVacatePanel({ onDecided }: { onDecided?: () => voi
   };
 
   async function act(fn: () => Promise<unknown>, done?: string) {
+    if (working) return; // accepting ends a tenancy: once only
     setMsg(null);
     setError(null);
+    setWorking(true);
     try {
       await fn();
       if (done) setMsg(done);
@@ -82,6 +85,8 @@ export default function TenantVacatePanel({ onDecided }: { onDecided?: () => voi
       onDecided?.();
     } catch (e) {
       fail(e);
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -122,8 +127,9 @@ export default function TenantVacatePanel({ onDecided }: { onDecided?: () => voi
                   <input type="date" className={input} value={date} onChange={(e) => setDate(e.target.value)} />
                   <textarea rows={2} className={input} placeholder={t('tv.notePlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} />
                   <button
+                    disabled={working}
                     onClick={() => act(() => client.post('/tenant-vacate-requests', { tenant_id: x.tenant_id, end_date: date, note: note || undefined }), t('tv.sent'))}
-                    className="w-full rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 sm:w-auto"
+                    className="w-full rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:w-auto"
                   >
                     {t('tv.send')}
                   </button>
@@ -159,13 +165,13 @@ export default function TenantVacatePanel({ onDecided }: { onDecided?: () => voi
               <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-brand-100 pt-3">
                 {data.can_decide ? (
                   <>
-                    <button onClick={() => act(() => client.post(`/tenant-vacate-requests/${r.id}/approve`), t('tv.approved'))} className="rounded-lg bg-status-paid px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+                    <button disabled={working} onClick={() => window.confirm(lang === 'bn' ? `${r.tenant_name} — চলে যাওয়া মেনে নেবেন? ভাড়া শেষ হয়ে ফ্ল্যাট খালি হবে।` : `Accept that ${r.tenant_name} is leaving? The tenancy ends and the flat becomes empty.`) && act(() => client.post(`/tenant-vacate-requests/${r.id}/approve`), t('tv.approved'))} className="rounded-lg bg-status-paid px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
                       ✔ {t('tr.approve')}
                     </button>
                     {rejecting === r.id ? (
                       <>
                         <input className="min-w-40 flex-1 rounded-lg border border-brand-200 px-3 py-2 text-sm" placeholder={t('tr.reasonHint')} value={reason} onChange={(e) => setReason(e.target.value)} />
-                        <button disabled={reason.trim().length < 3} onClick={() => act(() => client.post(`/tenant-vacate-requests/${r.id}/reject`, { reason: reason.trim() }))} className="rounded-lg bg-status-due px-3 py-2 text-sm text-white disabled:opacity-50">
+                        <button disabled={reason.trim().length < 3 || working} onClick={() => act(() => client.post(`/tenant-vacate-requests/${r.id}/reject`, { reason: reason.trim() }))} className="rounded-lg bg-status-due px-3 py-2 text-sm text-white disabled:opacity-50">
                           {t('tr.rejectConfirm')}
                         </button>
                       </>

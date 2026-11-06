@@ -12,6 +12,7 @@ const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { 
 export default function OwnerContributionsPage() {
   const { t, lang } = useLanguage();
   const [ledgers, setLedgers] = useState<FlatLedger[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.myLedgers().then(setLedgers).catch(() => setLedgers([]));
@@ -36,10 +37,12 @@ export default function OwnerContributionsPage() {
         {ledgers && ledgers.length === 0 && <p className="text-sm text-navy-700">{t('contrib.myNone')}</p>}
 
         {ledgers && ledgers.length > 0 && (
-          <button className="rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm text-navy-700 hover:bg-brand-100" onClick={() => api.printMyLedger()}>
+          <button className="rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm text-navy-700 hover:bg-brand-100" onClick={() => { setError(null); api.printMyLedger().catch(() => setError(t('somethingWrong'))); }}>
             🖨 {t('contrib.ledgerPdf')}
           </button>
         )}
+
+        {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-status-due">{error}</p>}
 
         {visible.map((l) => {
           const bal = l.balance === null ? null : Number(l.balance);

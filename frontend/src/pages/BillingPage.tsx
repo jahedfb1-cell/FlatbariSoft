@@ -30,7 +30,9 @@ const STATUS_COLOR: Record<BillRow['status'], string> = {
 };
 
 /** What can still be taken on a bill: what is owed less what is already waiting for approval. */
-const collectable = (b: BillRow) => Math.max(0, Number(b.due) - Number(b.pending_amount));
+const cents = (n: number) => Math.round(n * 100) / 100; // 2500.4 - never 2500.3999999999996 in an amount box
+const collectable = (b: BillRow) => cents(Math.max(0, Number(b.due) - Number(b.pending_amount)));
+const SHORT_BN = ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'];
 
 /** The month's bills for every flat, with a one-click way to take a flat's payment (service charge, gas and previous due together). */
 export default function BillingPage() {
@@ -226,7 +228,7 @@ export default function BillingPage() {
                     onClick={() => { setYear(m.year); setMonth(m.month); }}
                     className={`rounded-lg border px-2 py-2 text-left text-xs transition ${current ? 'border-brand-600 bg-brand-600 text-white' : 'border-brand-200 hover:bg-brand-100'}`}
                   >
-                    <span className="block font-medium">{MONTHS[m.month - 1].slice(0, lang === 'bn' ? 6 : 3)} {String(m.year).slice(2)}</span>
+                    <span className="block font-medium">{lang === 'bn' ? SHORT_BN[m.month - 1] : MONTHS[m.month - 1].slice(0, 3)} {String(m.year).slice(2)}</span>
                     <span className={`block ${current ? 'text-white/90' : billed ? (owing ? 'text-status-due' : 'text-status-paid') : 'text-navy-700'}`}>
                       {billed ? (owing ? money(m.due) + (lang === 'bn' ? ' বাকি' : ' due') : lang === 'bn' ? 'পরিশোধিত' : 'Paid') : lang === 'bn' ? 'বিল হয়নি' : 'Not billed'}
                     </span>
@@ -431,14 +433,14 @@ function PayModal({ bill, period, notice, canApprove, onClose, onDone }: { bill:
     if (canCollect) workApi.collectionsForFlat(bill.flat_id).then(setCollections).catch(() => undefined);
   }, [bill.flat_id, canCollect]);
   const work = typeof purpose === 'number' ? collections.find((c) => c.work_id === purpose) : undefined;
-  const owing = work ? Number(work.due) : collectable(bill);
+  const owing = work ? cents(Number(work.due)) : collectable(bill);
   // this month's own charges as far as they are still unpaid - the previous balance is only taken on request
-  const thisMonth = work ? owing : Math.min(owing, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee));
+  const thisMonth = work ? owing : cents(Math.min(owing, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee)));
   const [amount, setAmount] = useState(String(owing));
   const choosePurpose = (p: 'BILL' | number) => {
     setPurpose(p);
     const w = typeof p === 'number' ? collections.find((c) => c.work_id === p) : undefined;
-    const o = w ? Number(w.due) : collectable(bill);
+    const o = w ? cents(Number(w.due)) : collectable(bill);
     setAmount(String(o));
     setError(null);
   };

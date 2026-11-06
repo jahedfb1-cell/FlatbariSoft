@@ -51,6 +51,7 @@ export default function GasPage() {
   const [pInvoice, setPInvoice] = useState<File | null>(null);
   const [pError, setPError] = useState<string | null>(null);
   const [editingPurchase, setEditingPurchase] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   function resetPurchaseForm() {
     setEditingPurchase(null);
@@ -95,7 +96,7 @@ export default function GasPage() {
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
-      setPError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+      setPError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || t('somethingWrong'));
     }
   }
 
@@ -110,7 +111,9 @@ export default function GasPage() {
 
   async function handleRecordPurchase(e: FormEvent) {
     e.preventDefault();
+    if (saving) return; // one purchase, one entry - however slow the photo upload is
     setPError(null);
+    setSaving(true);
     try {
       const payload = {
         date: pDate,
@@ -128,7 +131,9 @@ export default function GasPage() {
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
-      setPError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+      setPError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || t('somethingWrong'));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -288,7 +293,7 @@ export default function GasPage() {
                 <option value="BANK">{lang === 'bn' ? 'ব্যাংক' : 'Bank'}</option>
               </select>
             </label>
-            <button type="submit" disabled={!pSupplier} className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+            <button type="submit" disabled={!pSupplier || saving} className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
               {editingPurchase ? (lang === 'bn' ? 'সংশোধন সংরক্ষণ করুন' : 'Save correction') : t('gas.recordPurchase')}
             </button>
           </div>
@@ -314,7 +319,7 @@ export default function GasPage() {
                 <tr key={p.id} className="border-t border-brand-100">
                   <td className="px-4 py-3 text-navy-900">{p.date}</td>
                   <td className="px-4 py-3 text-navy-900">{p.supplier_name}</td>
-                  <td className="px-4 py-3 text-navy-900">{p.quantity_kg}</td>
+                  <td className="px-4 py-3 text-navy-900">{kgFmt(p.quantity_kg)}</td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(p.total_cost).toLocaleString('en-BD')}</td>
                   <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>
                   <td className="px-4 py-3">
@@ -405,7 +410,7 @@ export default function GasPage() {
                   </div>
                 ) : (
                   <p className="font-medium text-navy-900">
-                    {c.name} {c.flat_no ? `(${c.flat_no})` : ''} {c.is_internal && '· অভ্যন্তরীণ'} {!c.active && `· ${t('gas.off')}`}
+                    {c.name} {c.flat_no ? `(${c.flat_no})` : ''} {c.is_internal && `· ${lang === 'bn' ? 'অভ্যন্তরীণ' : 'internal'}`} {!c.active && `· ${t('gas.off')}`}
                   </p>
                 )}
                 <p className="text-sm text-navy-700">

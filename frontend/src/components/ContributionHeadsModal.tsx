@@ -24,11 +24,12 @@ export default function ContributionHeadsModal({ bookCode, bookName, onClose, on
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    api.listHeads(bookCode).then(setHeads).catch((e) => setError(apiError(e, 'Error')));
+    api.listHeads(bookCode).then(setHeads).catch((e) => setError(apiError(e, L('কিছু একটা সমস্যা হয়েছে।', 'Something went wrong.'))));
   }, [bookCode]);
   useEffect(load, [load]);
 
   async function run(action: () => Promise<HeadRow[]>, after?: () => void) {
+    if (busy) return;
     setError(null);
     setBusy(true);
     try {
@@ -36,7 +37,7 @@ export default function ContributionHeadsModal({ bookCode, bookName, onClose, on
       after?.();
       onChanged();
     } catch (e) {
-      setError(apiError(e, 'Error'));
+      setError(apiError(e, L('কিছু একটা সমস্যা হয়েছে।', 'Something went wrong.')));
     } finally {
       setBusy(false);
     }

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import { apiError } from '../api/hall';
 import * as assetsApi from '../api/assets';
 import type { AssetRow } from '../api/assets';
 
@@ -11,6 +12,8 @@ export default function AssetsPage() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('LIFT');
   const [nextService, setNextService] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
     assetsApi.listAssets().then(setAssets).catch(() => undefined);
@@ -20,10 +23,19 @@ export default function AssetsPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    await assetsApi.createAsset({ name, category, next_service_date: nextService || undefined } as any);
-    setName('');
-    setNextService('');
-    load();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await assetsApi.createAsset({ name, category, next_service_date: nextService || undefined } as any);
+      setName('');
+      setNextService('');
+      load();
+    } catch (err) {
+      setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -40,7 +52,7 @@ export default function AssetsPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-2 gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm sm:grid-cols-4">
-          <input required placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required placeholder={t('common.name')} value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2">
             {['LIFT', 'SOLAR', 'SUBSTATION', 'PUMP', 'GENERATOR', 'OTHER'].map((c) => (
               <option key={c} value={c}>
@@ -49,10 +61,11 @@ export default function AssetsPage() {
             ))}
           </select>
           <input type="date" value={nextService} onChange={(e) => setNextService(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <button type="submit" className="rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700">
+          <button type="submit" disabled={busy} className="rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 disabled:opacity-50">
             {t('common.add')}
           </button>
         </form>
+        {error && <p className="mb-4 text-sm text-status-due">{error}</p>}
 
         <div className="space-y-2">
           {assets.map((a) => (

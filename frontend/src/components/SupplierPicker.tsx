@@ -60,7 +60,16 @@ export function NewSupplierForm({ kind, onCreated, onCancel }: { kind: string; o
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-brand-200 bg-brand-50 p-3">
+    <div
+      className="space-y-2 rounded-xl border border-brand-200 bg-brand-50 p-3"
+      // this box often sits inside the expense / purchase form: Enter here creates the supplier, it must not send that whole form
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+          e.preventDefault();
+          if (f.name.trim() && !busy) submit(e as unknown as FormEvent);
+        }
+      }}
+    >
       <p className="text-sm font-medium text-navy-900">{L('নতুন সরবরাহকারী', 'New supplier')}</p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input className={input} placeholder={L('নাম *', 'Name *')} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />

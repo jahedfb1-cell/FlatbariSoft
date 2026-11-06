@@ -86,6 +86,7 @@ export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose,
     try {
       const url = await fetchInvoiceImageUrl(d.source.type, d.source.purchase_id);
       if (tab) tab.location.href = url;
+      else window.location.href = url; // pop-up blocked: open it here instead of doing nothing
     } catch (e) {
       tab?.close();
       setError(await blobErrorMessage(e, t('somethingWrong')));
@@ -217,7 +218,7 @@ export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose,
               {pending && canUpload && (
                 <label className="mt-3 inline-block cursor-pointer rounded-lg border border-brand-200 px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
                   📎 {t('review.addPapers')}
-                  <input type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => upload(e.target.files)} />
+                  <input type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => { upload(e.target.files); e.target.value = ''; }} />
                 </label>
               )}
             </div>

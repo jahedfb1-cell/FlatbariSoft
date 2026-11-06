@@ -17,7 +17,7 @@ const btnGhost = 'rounded-lg border border-brand-200 px-3 py-2 text-sm text-navy
  * still owed - printable as PDF and Excel.
  */
 export default function SuppliersPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const isAdmin = !!user?.roles.includes('super_admin');
@@ -114,7 +114,9 @@ export default function SuppliersPage() {
               />
             ) : (
               <button onClick={() => setAdding(true)} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-                + {kind === 'gas' ? 'নতুন গ্যাস সরবরাহকারী' : kind === 'others' ? 'নতুন সরবরাহকারী (যেকোনো ধরন)' : 'নতুন সরবরাহকারী'}
+                + {lang === 'bn'
+                  ? kind === 'gas' ? 'নতুন গ্যাস সরবরাহকারী' : kind === 'others' ? 'নতুন সরবরাহকারী (যেকোনো ধরন)' : 'নতুন সরবরাহকারী'
+                  : kind === 'gas' ? 'New gas supplier' : kind === 'others' ? 'New supplier (any kind)' : 'New supplier'}
               </button>
             )}
           </div>

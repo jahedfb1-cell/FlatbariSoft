@@ -48,14 +48,14 @@ export default function DocumentManagerModal(props: Props) {
         await docsApi.uploadOwnerDocument(props.personId, {
           flat_id: props.flatId,
           document_type: documentType,
-          side: documentType === 'NID' ? side : undefined,
+          side: documentType === 'NID' ? freeSide : undefined,
           document_year: documentType === 'LAND_TAX_RECEIPT' ? documentYear : undefined,
           file,
         });
       } else {
         await docsApi.uploadTenantDocument(props.tenantId, {
           document_type: documentType,
-          side: documentType === 'NID' ? side : undefined,
+          side: documentType === 'NID' ? freeSide : undefined,
           file,
         });
       }
@@ -72,18 +72,25 @@ export default function DocumentManagerModal(props: Props) {
 
   async function handleDelete(id: number) {
     if (!confirm(t('documents.confirmDelete'))) return;
-    if (props.kind === 'owner') {
-      await docsApi.deleteOwnerDocument(id);
-    } else {
-      await docsApi.deleteTenantDocument(id);
+    setError(null);
+    try {
+      if (props.kind === 'owner') {
+        await docsApi.deleteOwnerDocument(id);
+      } else {
+        await docsApi.deleteTenantDocument(id);
+      }
+      load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t('somethingWrong'));
     }
-    load();
   }
 
   const typeOptions = props.kind === 'owner' ? ownerTypes : tenantTypes;
   const nidDocs = documents.filter((d) => d.document_type === 'NID');
   const nidFront = nidDocs.find((d) => d.side === 'FRONT');
   const nidBack = nidDocs.find((d) => d.side === 'BACK');
+  // a side already uploaded cannot be chosen again: the box shows (and sends) the one that is still free
+  const freeSide = side === 'FRONT' && nidFront ? 'BACK' : side === 'BACK' && nidBack ? 'FRONT' : side;
 
   function openNidPrint() {
     if (!nidFront || !nidBack) return;
@@ -131,7 +138,7 @@ export default function DocumentManagerModal(props: Props) {
           {documentType === 'NID' && (
             <div className="mb-3">
               <label className={labelClass}>{t('documents.side')}</label>
-              <select value={side} onChange={(e) => setSide(e.target.value)} className={inputClass}>
+              <select value={freeSide} onChange={(e) => setSide(e.target.value)} className={inputClass}>
                 <option value="FRONT" disabled={!!nidFront}>
                   {t('side.FRONT')}
                 </option>
@@ -162,7 +169,7 @@ export default function DocumentManagerModal(props: Props) {
 
           <button
             onClick={handleUpload}
-            disabled={!file || submitting}
+            disabled={!file || submitting || (props.kind === 'owner' && documentType === 'LAND_TAX_RECEIPT' && !documentYear)}
             className="mt-3 w-full rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
           >
             {submitting ? t('documents.uploading') : t('documents.upload')}

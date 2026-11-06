@@ -52,6 +52,7 @@ export default function ContributionsPage() {
   const load = useCallback(() => {
     const id = ++latest.current;
     setData(null);
+    setError(null);
     api
       .getStatement(bookCode)
       .then((d) => {
@@ -181,7 +182,7 @@ export default function ContributionsPage() {
                   <td className="px-3 py-2">{t('contrib.total')}</td>
                   {data.heads.map((h) => (
                     <td key={h.code} className="px-3 py-2 text-right">
-                      {money(totals[h.code])}
+                      {money(totals[h.code] ?? 0)}
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right">{money(totals.collected)}</td>
@@ -306,14 +307,19 @@ function LedgerModal({
     setError(null);
   }, [bookCode, book, ledger?.target]);
 
+  const [working, setWorking] = useState(false);
   async function act(action: () => Promise<unknown>) {
+    if (working) return; // a second tap while the first is still on its way changes nothing twice
     setError(null);
+    setWorking(true);
     try {
       await action();
       load();
       onChanged();
     } catch (e) {
       setError(apiError(e, t('somethingWrong')));
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -420,19 +426,24 @@ function LedgerModal({
         {reversing !== null && (
           <div className="space-y-2 rounded-lg border border-status-due/40 p-3">
             <input className={input} placeholder={t('contrib.reverseReason')} value={reason} onChange={(e) => setReason(e.target.value)} />
-            <button
-              className={btn}
-              disabled={!reason.trim()}
-              onClick={() =>
-                act(async () => {
-                  await api.reverse(reversing, reason);
-                  setReversing(null);
-                  setReason('');
-                })
-              }
-            >
-              {t('hall.confirmAction')}
-            </button>
+            <div className="flex gap-2">
+              <button
+                className={btn}
+                disabled={!reason.trim() || working}
+                onClick={() =>
+                  act(async () => {
+                    await api.reverse(reversing, reason.trim());
+                    setReversing(null);
+                    setReason('');
+                  })
+                }
+              >
+                {t('hall.confirmAction')}
+              </button>
+              <button className={btnGhost} onClick={() => { setReversing(null); setReason(''); }}>
+                {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -441,10 +452,10 @@ function LedgerModal({
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 p-3">
             <span className="text-navy-700">{t('contrib.ownTarget')}:</span>
             <input type="number" min={0} className="w-32 rounded-lg border border-brand-200 px-2 py-1" value={target} onChange={(e) => setTarget(e.target.value)} />
-            <button className={btnGhost} disabled={target === ''} onClick={() => act(() => api.setFlatTarget(bookCode, flatId, target))}>
+            <button className={btnGhost} disabled={target === '' || working} onClick={() => act(() => api.setFlatTarget(bookCode, flatId, target))}>
               {t('hall.save')}
             </button>
-            <button className="text-sm text-brand-700 hover:underline" onClick={() => act(() => api.setFlatTarget(bookCode, flatId, null))}>
+            <button className="text-sm text-brand-700 hover:underline disabled:opacity-50" disabled={working} onClick={() => act(() => api.setFlatTarget(bookCode, flatId, null))}>
               {t('contrib.useDefault')}
             </button>
           </div>
@@ -506,8 +517,11 @@ function ImportModal({
   const [error, setError] = useState<string | null>(null);
   const codes = heads.map((h) => h.code);
 
+  const [busy, setBusy] = useState(false);
   async function submit(dry: boolean) {
+    if (busy) return; // the real import must never run twice
     setError(null);
+    setBusy(true);
     try {
       const res = await api.importOpening(book, parsePaste(text, codes), asOf, dry);
       if (dry) setPreview(res);
@@ -516,6 +530,8 @@ function ImportModal({
       const list = e?.response?.data?.errors?.rows;
       setError(Array.isArray(list) ? list.join(' · ') : apiError(e, t('somethingWrong')));
       setPreview(null);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -550,10 +566,10 @@ function ImportModal({
         )}
         {error && <p className="text-status-due">{error}</p>}
         <div className="flex gap-2">
-          <button className={btnGhost} disabled={!text.trim()} onClick={() => submit(true)}>
+          <button className={btnGhost} disabled={!text.trim() || busy} onClick={() => submit(true)}>
             {t('contrib.importCheck')}
           </button>
-          <button className={btn} disabled={!preview} onClick={() => submit(false)}>
+          <button className={btn} disabled={!preview || busy} onClick={() => submit(false)}>
             {t('contrib.importConfirm')}
           </button>
         </div>

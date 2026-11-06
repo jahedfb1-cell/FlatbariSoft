@@ -6,10 +6,13 @@ import * as duesApi from '../api/dues';
 import type { ConstructionDue } from '../api/dues';
 
 export default function DuesPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const bn = lang === 'bn';
   const [dues, setDues] = useState<ConstructionDue[]>([]);
   const [aging, setAging] = useState<{ '0-30': number; '31-90': number; '90+': number } | null>(null);
   const [payAmounts, setPayAmounts] = useState<Record<number, string>>({});
+  const [paying, setPaying] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
     duesApi.listDues().then(setDues).catch(() => undefined);
@@ -20,10 +23,19 @@ export default function DuesPage() {
 
   async function handlePay(installmentId: number) {
     const amount = payAmounts[installmentId];
-    if (!amount) return;
-    await duesApi.payInstallment(installmentId, amount);
-    setPayAmounts((p) => ({ ...p, [installmentId]: '' }));
-    load();
+    if (!amount || paying !== null) return; // one tap, one payment
+    setError(null);
+    setPaying(installmentId);
+    try {
+      await duesApi.payInstallment(installmentId, amount);
+      setPayAmounts((p) => ({ ...p, [installmentId]: '' }));
+      load();
+    } catch (err: any) {
+      const errors = err?.response?.data?.errors;
+      setError(errors ? (Object.values(errors) as string[][]).flat().join(' ') : err?.response?.data?.message || t('somethingWrong'));
+    } finally {
+      setPaying(null);
+    }
   }
 
   return (
@@ -42,19 +54,21 @@ export default function DuesPage() {
         {aging && (
           <div className="mb-6 grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-brand-200 bg-white p-3 text-center shadow-sm">
-              <p className="text-xs text-navy-700">0-30 দিন</p>
+              <p className="text-xs text-navy-700">0-30 {bn ? 'দিন' : 'days'}</p>
               <p className="font-semibold text-navy-900">৳{aging['0-30'].toLocaleString('en-BD')}</p>
             </div>
             <div className="rounded-xl border border-brand-200 bg-white p-3 text-center shadow-sm">
-              <p className="text-xs text-navy-700">31-90 দিন</p>
+              <p className="text-xs text-navy-700">31-90 {bn ? 'দিন' : 'days'}</p>
               <p className="font-semibold text-status-partial">৳{aging['31-90'].toLocaleString('en-BD')}</p>
             </div>
             <div className="rounded-xl border border-brand-200 bg-white p-3 text-center shadow-sm">
-              <p className="text-xs text-navy-700">90+ দিন</p>
+              <p className="text-xs text-navy-700">90+ {bn ? 'দিন' : 'days'}</p>
               <p className="font-semibold text-status-due">৳{aging['90+'].toLocaleString('en-BD')}</p>
             </div>
           </div>
         )}
+
+        {error && <p className="mb-3 text-sm text-status-due">{error}</p>}
 
         <div className="space-y-4">
           {dues.map((due) => (
@@ -74,12 +88,14 @@ export default function DuesPage() {
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
+                        min="0.01"
+                        step="0.01"
                         placeholder={t('common.amount')}
                         value={payAmounts[inst.id] ?? ''}
                         onChange={(e) => setPayAmounts((p) => ({ ...p, [inst.id]: e.target.value }))}
                         className="w-24 rounded-lg border border-brand-200 px-2 py-1"
                       />
-                      <button onClick={() => handlePay(inst.id)} className="text-brand-700 hover:underline">
+                      <button onClick={() => handlePay(inst.id)} disabled={paying !== null} className="text-brand-700 hover:underline disabled:opacity-50">
                         {t('common.submit')}
                       </button>
                     </div>

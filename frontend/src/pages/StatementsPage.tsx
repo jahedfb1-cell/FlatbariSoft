@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -58,13 +58,15 @@ export default function StatementsPage() {
   };
 
   // all four funds' balances sit on the fund buttons, so the summary is always loaded for the month
+  // a slow answer for the month or fund just left must not land on the one now on screen
+  const latest = useRef(0);
   const load = useCallback(() => {
+    const id = ++latest.current;
     setError(null);
-    api.getSummary(year, month).then(setSummary).catch((e) => setError(apiError(e, t('somethingWrong'))));
-    if (fund === 'ALL') setStmt(null);
-    else {
-      setStmt(null);
-      api.getStatement(fund, year, month).then(setStmt).catch((e) => setError(apiError(e, t('somethingWrong'))));
+    setStmt(null);
+    api.getSummary(year, month).then((d) => id === latest.current && setSummary(d)).catch((e) => id === latest.current && setError(apiError(e, t('somethingWrong'))));
+    if (fund !== 'ALL') {
+      api.getStatement(fund, year, month).then((d) => id === latest.current && setStmt(d)).catch((e) => id === latest.current && setError(apiError(e, t('somethingWrong'))));
     }
   }, [fund, year, month, t]);
   useEffect(load, [load]);
@@ -422,6 +424,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
   const [error, setError] = useState<string | null>(null);
   const [reversing, setReversing] = useState<number | null>(null);
   const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const loadEntries = useCallback(() => {
     api.listEntries().then(setEntries).catch(() => {});
@@ -429,10 +432,14 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
   useEffect(loadEntries, [loadEntries]);
 
   const funds: FundCode[] = ['OPERATING', 'GAS', 'CAPITAL', 'SINKING'];
+  // a fund cannot lend to itself: when the "from" fund is changed onto the chosen "to" fund, the list shows (and sends) the next one
+  const to: FundCode = toFund === fund ? (funds.find((f) => f !== fund) as FundCode) : toFund;
   const fundName = (c: FundCode) => t(`stmt.fund.${c}` as TranslationKey);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return; // one tap, one entry in the books
+    setBusy(true);
     setError(null);
     setMsg(null);
     const common = { date, notes: notes || undefined };
@@ -441,8 +448,8 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
       else if (action === 'DEPOSIT') await api.bankDeposit({ fund, amount, ...common });
       else if (action === 'WITHDRAW') await api.bankWithdrawal({ fund, amount, ...common });
       else if (action === 'PROFIT') await api.bankProfit({ fund, amount, ...common });
-      else if (action === 'LOAN') await api.lend({ from_fund: fund, to_fund: toFund, medium, amount, ...common });
-      else await api.repay({ from_fund: fund, to_fund: toFund, medium, amount, ...common });
+      else if (action === 'LOAN') await api.lend({ from_fund: fund, to_fund: to, medium, amount, ...common });
+      else await api.repay({ from_fund: fund, to_fund: to, medium, amount, ...common });
       setMsg(t('stmt.saved'));
       setAmount('');
       setCash('');
@@ -452,19 +459,25 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
       onChanged();
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
   async function reverse(id: number) {
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
-      await api.reverseEntry(id, reason);
+      await api.reverseEntry(id, reason.trim());
       setReversing(null);
       setReason('');
       loadEntries();
       onChanged();
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -506,7 +519,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
             {twoFunds && (
               <label className="text-navy-700">
                 {action === 'LOAN' ? t('stmt.to') : t('stmt.lender')}
-                <select className={`${input} mt-1`} value={toFund} onChange={(e) => setToFund(e.target.value as FundCode)}>
+                <select className={`${input} mt-1`} value={to} onChange={(e) => setToFund(e.target.value as FundCode)}>
                   {funds.filter((f) => f !== fund).map((f) => (
                     <option key={f} value={f}>
                       {fundName(f)}
@@ -541,7 +554,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
           <input className={input} placeholder={t('stmt.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
           {error && <p className="text-status-due">{error}</p>}
           {msg && <p className="text-status-paid">{msg}</p>}
-          <button type="submit" className={`${btn} w-full`}>
+          <button type="submit" disabled={busy} className={`${btn} w-full`}>
             {t('stmt.save')}
           </button>
         </form>
@@ -575,9 +588,10 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
                 {reversing === e.id && (
                   <div className="mt-2 flex gap-2 no-underline">
                     <input className={input} placeholder={t('stmt.reason')} value={reason} onChange={(ev) => setReason(ev.target.value)} />
-                    <button className={btn} disabled={!reason.trim()} onClick={() => reverse(e.id)}>
+                    <button className={btn} disabled={!reason.trim() || busy} onClick={() => reverse(e.id)}>
                       {t('hall.confirmAction')}
                     </button>
+                    <button className={btnGhost} onClick={() => { setReversing(null); setReason(''); }}>✕</button>
                   </div>
                 )}
               </li>

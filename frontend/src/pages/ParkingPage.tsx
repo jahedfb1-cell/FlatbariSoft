@@ -189,10 +189,13 @@ function SlotModal({ slot, onClose, onDone }: { slot: ParkingSlot | null; onClos
   const [fee, setFee] = useState(slot ? String(Number(slot.monthly_fee)) : '');
   const [active, setActive] = useState(slot?.is_active ?? true);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return; // one tap, one entry
     setError(null);
+    setBusy(true);
     const data = { code, zone: zone || null, vehicle_type: type, monthly_fee: fee, is_active: active };
     try {
       if (slot) await parkingApi.updateSlot(slot.id, data);
@@ -200,6 +203,8 @@ function SlotModal({ slot, onClose, onDone }: { slot: ParkingSlot | null; onClos
       onDone();
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -223,7 +228,7 @@ function SlotModal({ slot, onClose, onDone }: { slot: ParkingSlot | null; onClos
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> {t('parking.active')}
         </label>
         {error && <p className="text-sm text-status-due">{error}</p>}
-        <button type="submit" className={`${btn} w-full`}>
+        <button type="submit" disabled={busy} className={`${btn} w-full`}>
           {t('parking.save')}
         </button>
       </form>
@@ -239,6 +244,7 @@ function AllocateModal({ slot, onClose, onDone }: { slot: ParkingSlot; onClose: 
   const [from, setFrom] = useState(localToday());
   const [fee, setFee] = useState(String(Number(slot.monthly_fee)));
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     flatsApi.listFlats().then((f: any) => setFlats(Array.isArray(f) ? f : f.data ?? [])).catch(() => {});
@@ -246,12 +252,16 @@ function AllocateModal({ slot, onClose, onDone }: { slot: ParkingSlot; onClose: 
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return; // one tap, one entry
     setError(null);
+    setBusy(true);
     try {
       await parkingApi.allocateSlot(slot.id, { flat_id: Number(flatId), vehicle_no: vehicleNo || undefined, from_date: from, monthly_fee: fee });
       onDone();
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -272,7 +282,7 @@ function AllocateModal({ slot, onClose, onDone }: { slot: ParkingSlot; onClose: 
           <input required type="number" min={0} step="0.01" className={input} placeholder={t('parking.fee')} value={fee} onChange={(e) => setFee(e.target.value)} />
         </div>
         {error && <p className="text-sm text-status-due">{error}</p>}
-        <button type="submit" className={`${btn} w-full`}>
+        <button type="submit" disabled={busy} className={`${btn} w-full`}>
           {t('parking.allocate')}
         </button>
       </form>
@@ -284,15 +294,20 @@ function ReleaseModal({ slot, onClose, onDone }: { slot: ParkingSlot; onClose: (
   const { t } = useLanguage();
   const [to, setTo] = useState(localToday());
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return; // one tap, one entry
     setError(null);
+    setBusy(true);
     try {
       await parkingApi.releaseAllocation(slot.holder!.allocation_id, to);
       onDone();
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -304,7 +319,7 @@ function ReleaseModal({ slot, onClose, onDone }: { slot: ParkingSlot; onClose: (
           <input required type="date" className={`${input} mt-1`} value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
         {error && <p className="text-sm text-status-due">{error}</p>}
-        <button type="submit" className={`${btn} w-full`}>
+        <button type="submit" disabled={busy} className={`${btn} w-full`}>
           {t('parking.release')}
         </button>
       </form>
@@ -313,7 +328,7 @@ function ReleaseModal({ slot, onClose, onDone }: { slot: ParkingSlot; onClose: (
 }
 
 function ChargesTab({ canManage, canCollect }: { canManage: boolean; canCollect: boolean }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -347,7 +362,7 @@ function ChargesTab({ canManage, canCollect }: { canManage: boolean; canCollect:
         <select className="rounded-lg border border-brand-200 px-3 py-1.5" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
             <option key={m} value={m}>
-              {new Date(2000, m - 1, 1).toLocaleDateString('en-GB', { month: 'long' })}
+              {new Date(2000, m - 1, 1).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long' })}
             </option>
           ))}
         </select>
@@ -447,15 +462,20 @@ function PayModal({ charge, onClose, onDone }: { charge: ParkingCharge; onClose:
   const [paidOn, setPaidOn] = useState(localToday());
   const [reference, setReference] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return; // one tap, one entry
     setError(null);
+    setBusy(true);
     try {
       await parkingApi.payCharge(charge.id, { amount, method, paid_on: paidOn, reference_no: reference || undefined });
       onDone();
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -466,7 +486,7 @@ function PayModal({ charge, onClose, onDone }: { charge: ParkingCharge; onClose:
           {t('parking.due')}: <b>{money(charge.due)}</b>
         </p>
         <div className="grid grid-cols-2 gap-2">
-          <input required type="number" min="0.01" step="0.01" className={input} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <input required type="number" min="0.01" max={Number(charge.due)} step="0.01" className={input} value={amount} onChange={(e) => setAmount(e.target.value)} />
           <select className={input} value={method} onChange={(e) => setMethod(e.target.value)}>
             {['CASH', 'BANK', 'BKASH', 'NAGAD'].map((m) => (
               <option key={m}>{m}</option>
@@ -476,7 +496,7 @@ function PayModal({ charge, onClose, onDone }: { charge: ParkingCharge; onClose:
           <input className={input} placeholder={t('hall.reference')} value={reference} onChange={(e) => setReference(e.target.value)} />
         </div>
         {error && <p className="text-sm text-status-due">{error}</p>}
-        <button type="submit" className={`${btn} w-full`}>
+        <button type="submit" disabled={busy} className={`${btn} w-full`}>
           {t('parking.collect')}
         </button>
       </form>

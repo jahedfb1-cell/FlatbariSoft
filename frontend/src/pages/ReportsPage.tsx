@@ -5,6 +5,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import InvoiceAuditPack from '../components/InvoiceAuditPack';
 import SimpleReports from '../components/SimpleReports';
 import AnnualStatements from '../components/AnnualStatements';
+import { blobErrorMessage } from '../utils/download';
 import * as reportsApi from '../api/reports';
 import type { TrialBalance, BalanceSheet, IncomeStatement, ReportKind } from '../api/reports';
 
@@ -14,6 +15,7 @@ export default function ReportsPage() {
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheet | null>(null);
   const [incomeStatement, setIncomeStatement] = useState<IncomeStatement | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     reportsApi.getTrialBalance().then(setTrialBalance).catch(() => undefined);
@@ -24,9 +26,12 @@ export default function ReportsPage() {
   async function handleDownload(kind: ReportKind, format: 'pdf' | 'excel') {
     const key = `${kind}-${format}`;
     setDownloading(key);
+    setError(null);
     try {
       if (format === 'pdf') await reportsApi.downloadReportPdf(kind);
       else await reportsApi.downloadReportExcel(kind);
+    } catch (e) {
+      setError(await blobErrorMessage(e, t('somethingWrong')));
     } finally {
       setDownloading(null);
     }
@@ -78,6 +83,8 @@ export default function ReportsPage() {
         </div>
 
         <h1 className="mb-4 hidden text-xl font-semibold text-navy-900 print:block">{t('reports.title')} — Green Valley</h1>
+
+        {error && <p className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-status-due print:hidden">{error}</p>}
 
         <AnnualStatements />
 

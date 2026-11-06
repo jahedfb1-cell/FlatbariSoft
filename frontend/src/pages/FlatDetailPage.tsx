@@ -8,6 +8,7 @@ import FlatFormModal from '../components/FlatFormModal';
 import DocumentManagerModal from '../components/DocumentManagerModal';
 import LanguageToggle from '../components/LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
+import { apiError } from '../api/hall';
 import type { TranslationKey } from '../i18n/translations';
 
 type DocTarget = { kind: 'owner'; personId: number } | { kind: 'tenant'; tenantId: number };
@@ -26,27 +27,43 @@ export default function FlatDetailPage() {
   const [flat, setFlat] = useState<Flat | null>(null);
   const [modal, setModal] = useState<'owner' | 'tenant' | 'edit' | null>(null);
   const [docTarget, setDocTarget] = useState<DocTarget | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function load() {
-    flatsApi.getFlat(flatId).then(setFlat).catch(() => undefined);
+    flatsApi.getFlat(flatId).then(setFlat).catch((e) => setError(apiError(e, t('somethingWrong'))));
   }
 
   useEffect(load, [flatId]);
 
   async function handleEndOwnership(flatPartyId: number) {
     if (!confirm(t('flatDetail.confirmEndOwnership'))) return;
-    await flatsApi.endOwnership(flatId, flatPartyId);
-    load();
+    setError(null);
+    try {
+      await flatsApi.endOwnership(flatId, flatPartyId);
+      load();
+    } catch (e) {
+      setError(apiError(e, t('somethingWrong')));
+    }
   }
 
   async function handleVacate(tenantId: number) {
     if (!confirm(t('flatDetail.confirmVacate'))) return;
-    await flatsApi.vacateTenant(tenantId);
-    load();
+    setError(null);
+    try {
+      await flatsApi.vacateTenant(tenantId);
+      load();
+    } catch (e) {
+      setError(apiError(e, t('somethingWrong')));
+    }
   }
 
   if (!flat) {
-    return <div className="flex min-h-screen items-center justify-center text-navy-700">{t('loading')}</div>;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center text-navy-700">
+        {error ? <p className="text-status-due">{error}</p> : t('loading')}
+        {error && <Link to="/flats" className="text-sm hover:underline">← {t('flatDetail.back')}</Link>}
+      </div>
+    );
   }
 
   return (
@@ -58,6 +75,8 @@ export default function FlatDetailPage() {
           </Link>
           <LanguageToggle />
         </div>
+
+        {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-status-due">{error}</p>}
 
         <div className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm">
           <div className="flex items-start justify-between">

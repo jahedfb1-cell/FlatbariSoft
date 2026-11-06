@@ -170,8 +170,12 @@ function Overlay({ title, sub, onClose, children }: { title: string; sub?: strin
 }
 
 const addMonths = (iso: string, n: number) => {
-  const d = new Date(iso + 'T00:00:00');
+  const d = new Date((iso || localToday()) + 'T00:00:00');
+  // 31 January + 1 month is 28 February - not 3 March
+  const day = d.getDate();
+  d.setDate(1);
   d.setMonth(d.getMonth() + n);
+  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
@@ -269,7 +273,7 @@ function NewWorkWizard({ onClose, onCreated }: { onClose: () => void; onCreated:
       const sorted = [...f].filter((x) => x.status === 'ACTIVE').sort((a, b) => a.flat_no.localeCompare(b.flat_no, undefined, { numeric: true }));
       setFlats(sorted);
       setChosen(new Set(sorted.map((x) => x.id)));
-    });
+    }).catch((e) => setError(apiError(e, L('ফ্ল্যাটের তালিকা আনা যায়নি।', 'Could not load the flats.'))));
     listMeetings()
       .then((ms) => setResolutions(ms.flatMap((m) => m.resolutions.map((r) => ({ id: r.id, label: `${r.resolution_no} — ${m.title}` })))))
       .catch(() => undefined);
@@ -520,7 +524,7 @@ function WorkDetailView({ id, canManage, onClose }: { id: number; canManage: boo
     setBusy(true);
     setError(null);
     try {
-      setW(await api.saveShares(w.id, w.rows.map((r) => ({ flat_id: r.flat_id, amount: draft[r.flat_id]?.amount || 0, note: draft[r.flat_id]?.note || null }))));
+      setW(await api.saveShares(w.id, w.rows.map((r) => ({ flat_id: r.flat_id, amount: draft[r.flat_id]?.amount || 0 }))));
       setEditing(false);
     } catch (err) {
       setError(apiError(err, L('সংরক্ষণ করা যায়নি।', 'Could not save.')));
@@ -596,7 +600,11 @@ function WorkDetailView({ id, canManage, onClose }: { id: number; canManage: boo
         {canManage && plan === null && <button className={btnGhost} onClick={() => setPlan(w.schedule.map((x) => ({ due_date: x.due_date, percent: Number(x.percent) })))}>📅 {L('কিস্তি ঠিক করুন', 'Set installments')}</button>}
         {canManage && estimate === null && <button className={btnGhost} onClick={() => setEstimate(String(Number(w.estimated)))}>{L('প্রাক্কলিত খরচ বদলান', 'Change estimate')}</button>}
         {canManage && (
-          <select className={`${input} w-auto`} value={w.status} onChange={(e) => patch({ status: e.target.value as WorkStatus })} aria-label="status">
+          <select className={`${input} w-auto`} value={w.status} onChange={(e) => {
+              const next = e.target.value as WorkStatus;
+              if (next === 'CANCELLED' && !window.confirm(L('এই কাজটি বাতিল করবেন?', 'Cancel this work?'))) return;
+              patch({ status: next });
+            }} aria-label="status">
             {(Object.keys(STATUS) as WorkStatus[]).map((s) => (
               <option key={s} value={s}>{bn ? STATUS[s].bn : STATUS[s].en}</option>
             ))}

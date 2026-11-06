@@ -24,6 +24,7 @@ export default function ConstructionMaterialsPage() {
   const [invoice, setInvoice] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   function resetForm() {
     setEditingId(null);
@@ -65,7 +66,7 @@ export default function ConstructionMaterialsPage() {
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
-      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || t('somethingWrong'));
     }
   }
 
@@ -77,7 +78,9 @@ export default function ConstructionMaterialsPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (saving) return; // one purchase, one entry - even if the photo upload is slow and the button is tapped again
     setError(null);
+    setSaving(true);
     try {
       const payload = {
         date,
@@ -97,7 +100,9 @@ export default function ConstructionMaterialsPage() {
       load();
     } catch (err: any) {
       const errors = err.response?.data?.errors;
-      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message);
+      setError(errors ? Object.values(errors).flat().join(' ') : err.response?.data?.message || t('somethingWrong'));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -125,18 +130,18 @@ export default function ConstructionMaterialsPage() {
           )}
           <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <input required placeholder={t('materials.itemName')} value={itemName} onChange={(e) => setItemName(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required type="number" step="0.01" placeholder={t('materials.quantity')} value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required type="number" min="0.01" step="0.01" placeholder={t('materials.quantity')} value={quantity} onChange={(e) => setQuantity(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <input required placeholder={t('materials.unit')} value={unit} onChange={(e) => setUnit(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
-          <input required type="number" step="0.01" placeholder={t('materials.unitRate')} value={unitRate} onChange={(e) => setUnitRate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input required type="number" min="0" step="0.01" placeholder={t('materials.unitRate')} value={unitRate} onChange={(e) => setUnitRate(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <div className="col-span-2 sm:col-span-2">
             <SupplierPicker kind="MATERIALS" required={false} value={supplierId} onChange={(id, name) => { setSupplierId(id); setSupplierName(name); }} />
           </div>
-          <input type="number" step="0.01" placeholder={t('materials.transportCost')} value={transportCost} onChange={(e) => setTransportCost(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
+          <input type="number" min="0" step="0.01" placeholder={t('materials.transportCost')} value={transportCost} onChange={(e) => setTransportCost(e.target.value)} className="rounded-lg border border-brand-200 px-3 py-2" />
           <select value={medium} onChange={(e) => setMedium(e.target.value as 'CASH' | 'BANK')} className="rounded-lg border border-brand-200 px-3 py-2">
             <option value="CASH">CASH</option>
             <option value="BANK">BANK</option>
           </select>
-          <button type="submit" className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 sm:col-span-1">
+          <button type="submit" disabled={saving} className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-white hover:bg-brand-700 disabled:opacity-50 sm:col-span-1">
             {editingId ? (lang === 'bn' ? 'সংশোধন সংরক্ষণ করুন' : 'Save correction') : t('common.submit')}
           </button>
           <div className="col-span-2 sm:col-span-4">
@@ -165,7 +170,7 @@ export default function ConstructionMaterialsPage() {
                 <tr key={p.id} className="border-t border-brand-100">
                   <td className="px-4 py-3 text-navy-900">{p.date}</td>
                   <td className="px-4 py-3 text-navy-900">{p.item_name}</td>
-                  <td className="px-4 py-3 text-navy-900">{p.quantity}</td>
+                  <td className="px-4 py-3 text-navy-900">{Number(p.quantity).toLocaleString('en-BD', { maximumFractionDigits: 2 })}</td>
                   <td className="px-4 py-3 text-navy-900">{p.unit}</td>
                   <td className="px-4 py-3 text-navy-900">৳{Number(p.total_cost).toLocaleString('en-BD')}</td>
                   <td className="px-4 py-3 text-navy-900">{p.expense_status === 'PENDING' ? t('common.pending') : t('common.approved')}</td>

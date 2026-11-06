@@ -5,7 +5,7 @@ import { blobErrorMessage } from '../utils/download';
 import { localToday } from './HallCalendar';
 
 const today = () => localToday();
-const monthStart = () => `${new Date().toISOString().slice(0, 7)}-01`;
+const monthStart = () => `${localToday().slice(0, 7)}-01`; // the local month - toISOString() is UTC, a day behind in Bangladesh each morning
 
 /** Print every purchase invoice in a date range as one black-and-white A4 PDF - for an audit. */
 export default function InvoiceAuditPack() {

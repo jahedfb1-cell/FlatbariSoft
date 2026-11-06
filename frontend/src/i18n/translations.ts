@@ -181,6 +181,8 @@ export const translations = {
     'common.add': '+ যোগ করুন',
     'common.category': 'ধরন',
     'common.description': 'বিবরণ',
+    'common.title': 'শিরোনাম',
+    'common.name': 'নাম',
     'common.close': 'বন্ধ করুন',
     'common.submit': 'জমা দিন',
 
@@ -1135,6 +1137,8 @@ export const translations = {
     'common.add': '+ Add',
     'common.category': 'Category',
     'common.description': 'Description',
+    'common.title': 'Title',
+    'common.name': 'Name',
     'common.close': 'Close',
     'common.submit': 'Submit',
 

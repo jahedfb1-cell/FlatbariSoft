@@ -123,7 +123,7 @@ export default function SalaryPanel({ staff }: { staff: Staff[] }) {
                 </button>
               </>
             )}
-            <button className={`${btnGhost} ml-auto`} onClick={() => api.printSheet(year, month)}>🖨 {L('শিট PDF', 'Sheet PDF')}</button>
+            <button className={`${btnGhost} ml-auto`} onClick={() => api.printSheet(year, month).catch((e) => setMsg({ ok: false, text: apiError(e, L('PDF খোলা যায়নি।', 'Could not open the PDF.')) }))}>🖨 {L('শিট PDF', 'Sheet PDF')}</button>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm">
@@ -167,7 +167,7 @@ export default function SalaryPanel({ staff }: { staff: Staff[] }) {
                         {canPay && r.state === 'UNPAID' && !dirty(r) && (
                           <button className="mr-2 font-medium text-brand-700 hover:underline" disabled={busy} onClick={() => run(() => api.payRow(r.id!, medium), () => L('বেতন এন্ট্রি হয়েছে — অনুমোদনের অপেক্ষায়।', 'Entered - awaiting approval.'))}>{L('বেতন দিন', 'Pay')}</button>
                         )}
-                        {r.id && <button className="text-navy-700 hover:underline" onClick={() => api.printPayslip(r.id!)}>🖨</button>}
+                        {r.id && <button className="text-navy-700 hover:underline" onClick={() => api.printPayslip(r.id!).catch((e) => setMsg({ ok: false, text: apiError(e, L('PDF খোলা যায়নি।', 'Could not open the PDF.')) }))}>🖨</button>}
                       </td>
                     </tr>
                   );

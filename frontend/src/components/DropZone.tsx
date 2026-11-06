@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
 /**
@@ -10,7 +10,9 @@ export default function DropZone({ file, onChange }: { file: File | null; onChan
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const previewUrl = file && file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+  // one preview address per picked file, released when the file changes or the box goes away (not a new one on every render)
+  const previewUrl = useMemo(() => (file && file.type.startsWith('image/') ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   function handleDrop(e: DragEvent) {
     e.preventDefault();

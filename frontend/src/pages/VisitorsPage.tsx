@@ -22,6 +22,7 @@ export default function VisitorsPage() {
   const [q, setQ] = useState('');
   const [form, setForm] = useState({ flat_id: '', visitor_name: '', mobile: '', purpose: 'GUEST' as VisitorPurpose, vehicle_no: '', note: '' });
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     ops.listVisitors({ inside: onlyInside, q }).then(setData).catch(() => setError(t('somethingWrong')));
@@ -37,7 +38,9 @@ export default function VisitorsPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return; // one tap, one line in the gate book
     setError(null);
+    setBusy(true);
     try {
       await ops.addVisitor({ ...form, flat_id: Number(form.flat_id) });
       setForm({ ...form, visitor_name: '', mobile: '', vehicle_no: '', note: '' });
@@ -45,12 +48,23 @@ export default function VisitorsPage() {
     } catch (err: any) {
       const errs = err?.response?.data?.errors;
       setError(errs ? (Object.values(errs) as string[][]).flat().join(' ') : t('somethingWrong'));
+    } finally {
+      setBusy(false);
     }
   }
 
   async function out(v: Visitor) {
-    await ops.checkoutVisitor(v.id);
-    load();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await ops.checkoutVisitor(v.id);
+      load();
+    } catch {
+      setError(t('somethingWrong'));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -93,7 +107,7 @@ export default function VisitorsPage() {
             <input className={input} placeholder={t('visitors.vehicle')} value={form.vehicle_no} onChange={(e) => setForm({ ...form, vehicle_no: e.target.value })} />
             <input className={input} placeholder={t('visitors.note')} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
             {error && <p className="text-sm text-status-due sm:col-span-2">{error}</p>}
-            <button className="rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 sm:col-span-2">{t('visitors.writeIn')}</button>
+            <button disabled={busy} className="rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:col-span-2">{t('visitors.writeIn')}</button>
           </form>
         )}
 
@@ -122,7 +136,7 @@ export default function VisitorsPage() {
               </div>
               {v.inside ? (
                 canWrite ? (
-                  <button onClick={() => out(v)} className="rounded-lg bg-status-partial px-3 py-2 text-sm font-medium text-white hover:opacity-90">
+                  <button onClick={() => out(v)} disabled={busy} className="rounded-lg bg-status-partial px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
                     {t('visitors.writeOut')}
                   </button>
                 ) : (

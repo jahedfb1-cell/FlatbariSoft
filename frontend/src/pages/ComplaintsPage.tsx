@@ -43,9 +43,10 @@ export default function ComplaintsPage() {
   const [finishing, setFinishing] = useState<Complaint | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
 
   const load = useCallback(() => {
-    governanceApi.listComplaints({ status, priority, q }).then(setData).catch(() => setError(t('somethingWrong')));
+    governanceApi.listComplaints({ status, priority, q }).then((d) => { setData(d); setError(null); }).catch(() => setError(t('somethingWrong')));
   }, [status, priority, q, t]);
 
   useEffect(() => {
@@ -59,7 +60,9 @@ export default function ComplaintsPage() {
   }, []);
 
   async function change(c: Complaint, patch: Partial<{ status: ComplaintStatus; assigned_to: number | null; priority: ComplaintPriority; resolution_note: string | null }>) {
+    if (working) return; // the resident is notified of each change: once per tap
     setError(null);
+    setWorking(true);
     try {
       await governanceApi.updateComplaintStatus(c.id, {
         status: patch.status ?? c.status,
@@ -71,6 +74,8 @@ export default function ComplaintsPage() {
       load();
     } catch (e: any) {
       setError(e?.response?.data?.message ?? t('somethingWrong'));
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -241,16 +246,21 @@ function AddModal({ flats, onClose, onSaved }: { flats: Flat[]; onClose: () => v
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<ComplaintPriority>('MEDIUM');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setError(null);
+    setBusy(true);
     try {
       await governanceApi.createComplaint({ flat_id: Number(flatId), category, description, priority });
       onSaved();
     } catch (err: any) {
       const errors = err?.response?.data?.errors;
       setError(errors ? (Object.values(errors) as string[][]).flat().join(' ') : (err?.response?.data?.message ?? t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -279,7 +289,7 @@ function AddModal({ flats, onClose, onSaved }: { flats: Flat[]; onClose: () => v
           <button type="button" onClick={onClose} className="rounded-lg border border-brand-200 px-3 py-2 text-sm text-navy-700">
             {t('complaints.cancel')}
           </button>
-          <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700">{t('common.submit')}</button>
+          <button disabled={busy} className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700 disabled:opacity-50">{t('common.submit')}</button>
         </div>
       </form>
     </Modal>

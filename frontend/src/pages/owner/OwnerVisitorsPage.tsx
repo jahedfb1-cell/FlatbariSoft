@@ -11,7 +11,7 @@ export default function OwnerVisitorsPage() {
   const [rows, setRows] = useState<Visitor[]>([]);
 
   useEffect(() => {
-    myVisitors().then(setRows);
+    myVisitors().then(setRows).catch(() => undefined);
   }, []);
 
   return (

@@ -5,6 +5,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import * as noticesApi from '../api/notices';
 import type { Notice } from '../api/notices';
 import { useAuth } from '../context/AuthContext';
+import { apiError } from '../api/hall';
 
 export default function NoticesPage() {
   const { t } = useLanguage();
@@ -12,6 +13,8 @@ export default function NoticesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const canManage = user?.permissions.includes('notice.manage') || user?.roles.includes('super_admin');
 
   function load() {
@@ -22,10 +25,19 @@ export default function NoticesPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    await noticesApi.createNotice({ title, body });
-    setTitle('');
-    setBody('');
-    load();
+    if (busy) return; // a notice goes out once - residents are told about it
+    setBusy(true);
+    setError(null);
+    try {
+      await noticesApi.createNotice({ title, body });
+      setTitle('');
+      setBody('');
+      load();
+    } catch (err) {
+      setError(apiError(err, t('somethingWrong')));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -43,9 +55,10 @@ export default function NoticesPage() {
 
         {canManage && (
           <form onSubmit={handleSubmit} className="mb-6 space-y-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
-            <input required placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-brand-200 px-3 py-2" />
+            <input required placeholder={t('common.title')} value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-brand-200 px-3 py-2" />
             <textarea required placeholder={t('notices.body')} value={body} onChange={(e) => setBody(e.target.value)} className="w-full rounded-lg border border-brand-200 px-3 py-2" rows={3} />
-            <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-white hover:bg-brand-700">
+            {error && <p className="text-sm text-status-due">{error}</p>}
+            <button type="submit" disabled={busy} className="rounded-lg bg-brand-600 px-4 py-2 text-white hover:bg-brand-700 disabled:opacity-50">
               {t('notices.newNotice')}
             </button>
           </form>

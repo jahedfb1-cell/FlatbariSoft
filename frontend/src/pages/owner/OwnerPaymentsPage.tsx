@@ -23,6 +23,7 @@ export default function OwnerPaymentsPage() {
   const [f, setF] = useState({ flat_id: '', bill_id: '', amount: '', method: 'BKASH' as 'BKASH' | 'NAGAD' | 'BANK', reference_no: '', payment_date: today() });
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function load() {
     myApi.myFlats().then((fl) => {
@@ -38,8 +39,10 @@ export default function OwnerPaymentsPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return; // one report per tap: the accountant sees each as a separate payment to check
     setMsg(null);
     setError(null);
+    setBusy(true);
     try {
       await ops.reportMyPayment({ flat_id: Number(f.flat_id), bill_id: f.bill_id ? Number(f.bill_id) : null, amount: f.amount, method: f.method, reference_no: f.reference_no, payment_date: f.payment_date });
       setF({ ...f, amount: '', reference_no: '' });
@@ -48,6 +51,8 @@ export default function OwnerPaymentsPage() {
     } catch (err: any) {
       const errs = err?.response?.data?.errors;
       setError(errs ? (Object.values(errs) as string[][]).flat().join(' ') : (err?.response?.data?.message ?? t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -103,7 +108,7 @@ export default function OwnerPaymentsPage() {
           <input required type="date" max={today()} className={input} value={f.payment_date} onChange={(e) => setF({ ...f, payment_date: e.target.value })} />
           {msg && <p className="rounded-lg bg-green-50 p-2 text-sm text-status-paid">{msg}</p>}
           {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-status-due">{error}</p>}
-          <button className="w-full rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700">{t('ownerPay.send')}</button>
+          <button disabled={busy} className="w-full rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50">{t('ownerPay.send')}</button>
         </form>
 
         <h2 className="mb-2 mt-6 font-semibold text-navy-900">{t('ownerPay.history')}</h2>

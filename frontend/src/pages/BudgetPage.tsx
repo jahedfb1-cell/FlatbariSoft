@@ -291,6 +291,9 @@ function CopyModal({ toYear, onClose, onCopy }: { toYear: number; onClose: () =>
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
+    // overwriting replaces amounts already typed for this year: ask once
+    if (overwrite && !window.confirm(`${label(toYear)}: ${t('budget.overwrite')}?`)) return;
     setError(null);
     setBusy(true);
     try {

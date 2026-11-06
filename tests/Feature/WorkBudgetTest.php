@@ -96,6 +96,22 @@ class WorkBudgetTest extends TestCase
         $this->assertNotContains($this->flats[1]->id, array_column($r->json('rows'), 'flat_id')); // taken off
     }
 
+    public function test_editing_only_the_amount_keeps_the_waiver_reason(): void
+    {
+        $id = $this->create()->json('id');
+        $api = $this->actingAs($this->admin, 'sanctum');
+        $flat = $this->flats[0]->id;
+
+        $api->putJson("/api/work-budgets/{$id}/shares", ['shares' => [['flat_id' => $flat, 'amount' => 0, 'note' => 'waived by the committee']]])->assertOk();
+        // the detail screen sends amounts only - the reason written earlier must survive
+        $api->putJson("/api/work-budgets/{$id}/shares", ['shares' => [['flat_id' => $flat, 'amount' => 5000]]])->assertOk();
+
+        $this->assertSame('waived by the committee', \App\Models\FlatContributionTarget::where('flat_id', $flat)->value('note'));
+        // and a note sent on purpose still replaces it, or clears it
+        $api->putJson("/api/work-budgets/{$id}/shares", ['shares' => [['flat_id' => $flat, 'amount' => 5000, 'note' => null]]])->assertOk();
+        $this->assertNull(\App\Models\FlatContributionTarget::where('flat_id', $flat)->value('note'));
+    }
+
     public function test_collections_and_expenses_are_read_side_by_side(): void
     {
         $work = $this->create()->json();

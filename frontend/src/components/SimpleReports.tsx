@@ -74,7 +74,7 @@ export default function SimpleReports() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listFlats({}).then((f: Flat[]) => setFlats([...f].sort((a, b) => a.flat_no.localeCompare(b.flat_no, undefined, { numeric: true }))));
+    listFlats({}).then((f: Flat[]) => setFlats([...f].sort((a, b) => a.flat_no.localeCompare(b.flat_no, undefined, { numeric: true })))).catch(() => undefined);
   }, []);
 
   const card = CARDS.find((c) => c.kind === kind);

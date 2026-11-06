@@ -72,6 +72,7 @@ export default function BankAccountsPage() {
   const [editing, setEditing] = useState<BankAccount | 'new' | null>(null);
   const [form, setForm] = useState<FormState>(blank());
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [owners, setOwners] = useState<bankApi.OwnerOption[]>([]);
   useEffect(() => {
     bankApi.listOwnerOptions().then(setOwners).catch(() => undefined);
@@ -90,7 +91,9 @@ export default function BankAccountsPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (saving) return;
     setError(null);
+    setSaving(true);
     try {
       if (editing === 'new') await bankApi.createBankAccount(toInput(form, true));
       else if (editing) await bankApi.updateBankAccount(editing.id, toInput(form, false));
@@ -99,6 +102,8 @@ export default function BankAccountsPage() {
     } catch (err: any) {
       const errs = err?.response?.data?.errors;
       setError(errs ? (Object.values(errs) as string[][]).flat().join(' ') : (err?.response?.data?.message ?? t('somethingWrong')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -241,7 +246,7 @@ export default function BankAccountsPage() {
               <button type="button" onClick={() => setEditing(null)} className="rounded-lg border border-brand-200 px-3 py-2 text-sm text-navy-700">
                 {t('complaints.cancel')}
               </button>
-              <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700">{t('settings.save')}</button>
+              <button disabled={saving} className="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700 disabled:opacity-50">{t('settings.save')}</button>
             </div>
           </form>
         </Modal>

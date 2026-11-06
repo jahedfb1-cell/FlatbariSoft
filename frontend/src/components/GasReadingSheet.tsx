@@ -117,7 +117,7 @@ export default function GasReadingSheet({
         <p className="mr-auto text-sm font-semibold text-navy-900">
           {L('মিটার রিডিং', 'Meter readings')} — {(lang === 'bn' ? MONTHS_BN : MONTHS_EN)[month - 1]} {year}
         </p>
-        <button type="button" onClick={() => gasApi.downloadReadingTemplate(year, month)} className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs text-brand-700 hover:bg-brand-100">
+        <button type="button" onClick={() => gasApi.downloadReadingTemplate(year, month).catch((e: any) => setProblems([apiError(e)]))} className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs text-brand-700 hover:bg-brand-100">
           ⬇ {L('Excel টেমপ্লেট', 'Excel template')}
         </button>
         <button type="button" disabled={busy} onClick={() => file.current?.click()} className="rounded-lg border border-brand-200 px-3 py-1.5 text-xs text-brand-700 hover:bg-brand-100 disabled:opacity-50">

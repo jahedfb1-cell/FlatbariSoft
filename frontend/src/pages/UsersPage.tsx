@@ -261,7 +261,7 @@ function UsersTab({ roles, label, canManage, onChanged }: { roles: RoleInfo[]; l
 }
 
 function NewUserModal({ roles, onClose, onDone }: { roles: RoleInfo[]; onClose: () => void; onDone: () => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
@@ -291,7 +291,7 @@ function NewUserModal({ roles, onClose, onDone }: { roles: RoleInfo[]; onClose: 
         <input required className={input} placeholder={`${t('users.mobile')} (01XXXXXXXXX)`} value={mobile} onChange={(e) => setMobile(e.target.value)} />
         <div>
           <input type="email" className={input} placeholder={`${t('users.email')} (Gmail)`} value={email} onChange={(e) => setEmail(e.target.value)} />
-          <p className="mt-1 text-xs text-navy-700">ইমেইল দিলে ইমেইল দিয়েও লগইন ও পাসওয়ার্ড রিসেট করা যাবে; না দিলে মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে লগইন হবে।</p>
+          <p className="mt-1 text-xs text-navy-700">{lang === 'bn' ? 'ইমেইল দিলে ইমেইল দিয়েও লগইন ও পাসওয়ার্ড রিসেট করা যাবে; না দিলে মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে লগইন হবে।' : 'With an email the person can also log in and reset the password by email; without one, the mobile number and password are used.'}</p>
         </div>
         <div>
           <input type="password" required minLength={8} className={input} placeholder={t('users.password')} value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -400,7 +400,8 @@ function RolesTab({ roles, catalog, canManage, onRoles }: { roles: RoleInfo[]; c
     try {
       const list = await usersApi.createRole(newName, []);
       onRoles(list);
-      setSelected(newName);
+      // the server may tidy the name (case, spaces): select the role that is new, not the text typed
+      setSelected(list.find((r) => !roles.some((o) => o.name === r.name))?.name ?? newName);
       setNewName('');
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));

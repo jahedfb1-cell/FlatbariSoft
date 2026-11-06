@@ -19,7 +19,8 @@ const today = () => new Date(Date.now() + 6 * 3600 * 1000).toISOString().slice(0
  * rejects it - accepting is what creates the tenancy and the tenant's login.
  */
 export default function TenantRequestPanel({ flats, onDecided }: { flats: { id: number; flat_no: string }[]; onDecided?: () => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const [working, setWorking] = useState(false);
   const [rows, setRows] = useState<TenantRequest[]>([]);
   const [canDecide, setCanDecide] = useState(false);
   const [f, setF] = useState({ flat_id: '', name_bn: '', name_en: '', mobile: '', nid: '', start_date: today(), monthly_rent: '', security_deposit: '', occupation: '', family_members_count: '', note: '' });
@@ -33,7 +34,7 @@ export default function TenantRequestPanel({ flats, onDecided }: { flats: { id: 
     api.listTenantRequests().then((r) => {
       setRows(r.requests);
       setCanDecide(r.can_decide);
-    });
+    }).catch(() => undefined);
   }
   useEffect(load, []);
   useEffect(() => {
@@ -75,8 +76,10 @@ export default function TenantRequestPanel({ flats, onDecided }: { flats: { id: 
   }
 
   async function act(fn: () => Promise<unknown>, done?: string) {
+    if (working) return; // accepting creates a tenancy and a login: once only
     setMsg(null);
     setError(null);
+    setWorking(true);
     try {
       await fn();
       if (done) setMsg(done);
@@ -86,6 +89,8 @@ export default function TenantRequestPanel({ flats, onDecided }: { flats: { id: 
       onDecided?.();
     } catch (err) {
       fail(err);
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -188,13 +193,13 @@ export default function TenantRequestPanel({ flats, onDecided }: { flats: { id: 
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-brand-100 pt-3">
                   {canDecide && (
                     <>
-                      <button onClick={() => act(() => api.approveTenantRequest(r.id), t('tr.approved'))} className="rounded-lg bg-status-paid px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+                      <button disabled={working} onClick={() => window.confirm(lang === 'bn' ? `${r.name_bn} — ভাড়াটিয়া হিসেবে গ্রহণ করবেন? লগইন তৈরি হবে।` : `Accept ${r.name_bn} as the tenant? A login is created.`) && act(() => api.approveTenantRequest(r.id), t('tr.approved'))} className="rounded-lg bg-status-paid px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
                         ✔ {t('tr.approve')}
                       </button>
                       {rejecting === r.id ? (
                         <>
                           <input className="min-w-40 flex-1 rounded-lg border border-brand-200 px-3 py-2 text-sm" placeholder={t('tr.reasonHint')} value={reason} onChange={(e) => setReason(e.target.value)} />
-                          <button disabled={reason.trim().length < 3} onClick={() => act(() => api.rejectTenantRequest(r.id, reason.trim()))} className="rounded-lg bg-status-due px-3 py-2 text-sm text-white disabled:opacity-50">
+                          <button disabled={reason.trim().length < 3 || working} onClick={() => act(() => api.rejectTenantRequest(r.id, reason.trim()))} className="rounded-lg bg-status-due px-3 py-2 text-sm text-white disabled:opacity-50">
                             {t('tr.rejectConfirm')}
                           </button>
                         </>

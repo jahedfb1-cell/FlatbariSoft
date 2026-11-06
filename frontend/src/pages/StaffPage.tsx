@@ -7,6 +7,7 @@ import StaffKycModal from '../components/StaffKycModal';
 import SalaryPanel from '../components/SalaryPanel';
 import LanguageToggle from '../components/LanguageToggle';
 import { useLanguage } from '../context/LanguageContext';
+import { apiError } from '../api/hall';
 
 export default function StaffPage() {
   const { t, lang } = useLanguage();
@@ -14,6 +15,7 @@ export default function StaffPage() {
   const [tab, setTab] = useState<'list' | 'salary'>('list');
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Staff | null | undefined>(undefined);
 
   function load() {
@@ -27,8 +29,13 @@ export default function StaffPage() {
 
   async function handleDelete(id: number) {
     if (!confirm(t('staff.confirmDelete'))) return;
-    await staffApi.deleteStaff(id);
-    load();
+    setError(null);
+    try {
+      await staffApi.deleteStaff(id);
+      load();
+    } catch (err) {
+      setError(apiError(err, t('somethingWrong'))); // e.g. a person with salary records cannot simply disappear
+    }
   }
 
   return (
@@ -61,6 +68,7 @@ export default function StaffPage() {
           </button>
         </div>
 
+        {error && <p className="mb-3 text-sm text-status-due">{error}</p>}
         {tab === 'salary' && <SalaryPanel staff={staff} />}
 
         <div className={`overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm ${tab === 'salary' ? 'hidden' : ''}`}>
