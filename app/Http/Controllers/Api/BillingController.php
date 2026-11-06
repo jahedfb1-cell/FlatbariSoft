@@ -24,6 +24,7 @@ class BillingController extends Controller
             $request->validated('month'),
             Auth::id(),
             $request->boolean('notify', true),
+            ! $request->boolean('allow_without_gas'),
         );
 
         return response()->json([

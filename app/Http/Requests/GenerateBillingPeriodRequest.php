@@ -18,6 +18,8 @@ class GenerateBillingPeriodRequest extends FormRequest
             'month' => ['required', 'integer', 'min:1', 'max:12'],
             // false = bring a past month's bills in without telling the flats (the bills are ready, but not news)
             'notify' => ['sometimes', 'boolean'],
+            // true = make the bills even though some flats have no gas reading yet (they get no gas until it is added)
+            'allow_without_gas' => ['sometimes', 'boolean'],
         ];
     }
 }

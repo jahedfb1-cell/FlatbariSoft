@@ -6,6 +6,7 @@ use App\Models\Bill;
 use App\Models\BillingPeriod;
 use App\Models\CollectionHead;
 use App\Models\Flat;
+use App\Models\GasMeterReading;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,14 +14,15 @@ use Illuminate\Validation\ValidationException;
 /**
  * Monthly service-charge bill generation for every active flat.
  *
- * Gas amount starts at 0 here — GasBillingService (Phase 1.5) fills it in
+ * Gas amount starts at 0 here — unless the month's gas readings are already in, in which case they are applied
+ * straight away (the office is asked to enter them first). Otherwise GasBillingService fills it in
  * per flat once meter readings exist for the period, then updates the
- * bill's total_payable. Generating a period before meter readings are in
- * just means gas_amount stays 0 until then; it does not block billing.
+ * bill's total_payable. The screen stops the office when readings are missing and only
+ * goes on if it confirms (allow_without_gas); then gas_amount stays 0 until it is added.
  */
 class BillGenerationService
 {
-    public function generate(int $year, int $month, int $generatedBy, bool $notify = true): BillingPeriod
+    public function generate(int $year, int $month, int $generatedBy, bool $notify = true, bool $requireGas = false): BillingPeriod
     {
         // Explicit 'status' => 'DRAFT': Eloquent doesn't reflect a column's
         // DB-level default in the in-memory model right after create(), so
@@ -32,6 +34,14 @@ class BillGenerationService
             throw ValidationException::withMessages([
                 'period' => "{$year}-{$month} মাসের বিল ইতিমধ্যে জেনারেট করা হয়েছে।",
             ]);
+        }
+
+        // the gas figures must be in before the bill is made, or the flat is told (and billed) without its gas
+        if ($requireGas) {
+            $missing = $this->flatsWithoutGasReading($period);
+            if ($missing > 0) {
+                throw ValidationException::withMessages(['gas' => "{$missing}টি ফ্ল্যাটের গ্যাস রিডিং এখনও দেওয়া হয়নি। আগে গ্যাস পাতায় রিডিং দিন, তারপর বিল তৈরি করুন।"]);
+            }
         }
 
         $generated = DB::transaction(function () use ($period, $year, $month, $generatedBy) {
@@ -84,6 +94,11 @@ class BillGenerationService
                 ]);
             }
 
+            // readings already entered for this month go straight into the bills
+            if (GasMeterReading::where('billing_period_id', $period->id)->exists()) {
+                app(GasBillingService::class)->applyToBills($period->id);
+            }
+
             $period->update(['status' => 'GENERATED', 'generated_by' => $generatedBy]);
 
             return $period->fresh();
@@ -95,6 +110,16 @@ class BillGenerationService
         }
 
         return $generated;
+    }
+
+    /** How many active flats have no gas reading entered for this month (no consumer at all counts as none). */
+    public function flatsWithoutGasReading(BillingPeriod $period): int
+    {
+        $read = GasMeterReading::where('billing_period_id', $period->id)
+            ->join('gas_consumers', 'gas_consumers.id', '=', 'gas_meter_readings.gas_consumer_id')
+            ->whereNotNull('gas_consumers.flat_id')->pluck('gas_consumers.flat_id');
+
+        return Flat::where('status', 'ACTIVE')->whereNotIn('id', $read)->count();
     }
 
     /**
