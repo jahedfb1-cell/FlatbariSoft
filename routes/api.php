@@ -221,6 +221,11 @@ Route::prefix('gas')->middleware('auth:sanctum')->group(function () {
     Route::post('/consumers', [GasController::class, 'storeConsumer'])->middleware('permission:gas.manage');
     Route::put('/consumers/{consumer}', [GasController::class, 'updateConsumer'])->middleware('permission:gas.manage');
     Route::post('/readings', [GasController::class, 'storeReading'])->middleware('permission:gas.manage');
+    // the month's readings for all flats on one sheet: see it, save it, Excel template, check an uploaded Excel
+    Route::get('/readings/sheet', [GasController::class, 'readingSheet'])->middleware('permission:gas.view');
+    Route::post('/readings/sheet', [GasController::class, 'saveReadingSheet'])->middleware('permission:gas.manage');
+    Route::get('/readings/template', [GasController::class, 'readingTemplate'])->middleware('permission:gas.view');
+    Route::post('/readings/import', [GasController::class, 'importReadings'])->middleware('permission:gas.manage');
     Route::post('/periods/{billingPeriodId}/apply', [GasController::class, 'applyToBills'])->middleware('permission:gas.manage');
     Route::get('/periods/{billingPeriodId}/system-loss/{year}/{month}', [GasController::class, 'systemLoss'])->middleware('permission:gas.view');
     Route::get('/purchases', [\App\Http\Controllers\Api\GasPurchaseController::class, 'index'])->middleware('permission:gas.view');

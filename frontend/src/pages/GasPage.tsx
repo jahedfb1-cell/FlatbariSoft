@@ -9,6 +9,7 @@ import * as billingApi from '../api/billing';
 import { listFlats, type Flat } from '../api/flats';
 import type { GasConsumer, GasPurchase, GasSummary } from '../api/gas';
 import SupplierPicker from '../components/SupplierPicker';
+import GasReadingSheet from '../components/GasReadingSheet';
 
 const kgFmt = (v: string | number) => Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 });
 
@@ -17,6 +18,12 @@ export default function GasPage() {
   const now = new Date();
   const [year] = useState(now.getFullYear());
   const [month] = useState(now.getMonth() + 1);
+  // the readings sheet has its own month: usually last month's meters are read at the start of this month
+  const [sheetYM, setSheetYM] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  const stepSheet = (by: number) => setSheetYM((v) => {
+    const idx = v.year * 12 + (v.month - 1) + by;
+    return { year: Math.floor(idx / 12), month: (idx % 12) + 1 };
+  });
   const [consumers, setConsumers] = useState<GasConsumer[]>([]);
   const [readings, setReadings] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -348,6 +355,14 @@ export default function GasPage() {
         </div>
 
         <h2 className="mb-3 mt-8 text-lg font-semibold text-navy-900">{t('gas.readingsTitle')}</h2>
+        <div className="mb-3 flex items-center gap-2">
+          <button onClick={() => stepSheet(-1)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-navy-700 hover:bg-brand-100" aria-label="previous month">‹</button>
+          <span className="text-sm text-navy-900">{sheetYM.month}/{sheetYM.year}</span>
+          <button onClick={() => stepSheet(1)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-navy-700 hover:bg-brand-100" aria-label="next month">›</button>
+        </div>
+        <div className="mb-6">
+          <GasReadingSheet year={sheetYM.year} month={sheetYM.month} onSaved={() => load()} />
+        </div>
         <div className="mb-3">
           <button onClick={() => setShowAdd((v) => !v)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
             + {t('gas.addConsumer')}

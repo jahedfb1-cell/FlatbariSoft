@@ -37,17 +37,16 @@ class GasBillingService
      * backwards; that combination means a data-entry mistake, not a real
      * reading.
      */
-    public function recordReading(GasConsumer $consumer, int $billingPeriodId, float $currentReading, string $readingDate, int $enteredBy, ?string $photo = null): GasMeterReading
+    public function recordReading(GasConsumer $consumer, int $billingPeriodId, float $currentReading, string $readingDate, int $enteredBy, ?string $photo = null, ?string $firstPrevious = null): GasMeterReading
     {
         // typing the same month's reading again is a correction: it replaces the earlier one
         $existing = GasMeterReading::where('gas_consumer_id', $consumer->id)->where('billing_period_id', $billingPeriodId)->first();
 
-        $previous = GasMeterReading::where('gas_consumer_id', $consumer->id)
-            ->where('billing_period_id', '!=', $billingPeriodId)
-            ->orderByDesc('id')
-            ->first();
+        // the meter's last reading is the one from the closest EARLIER month - never a later month's
+        $previous = $this->previousReadingFor($consumer, \App\Models\BillingPeriod::findOrFail($billingPeriodId));
 
-        $previousReading = $previous?->current_reading ?? 0;
+        // the very first month has no earlier reading: the meter's reading at the start is given by hand (0 if it was new)
+        $previousReading = $previous?->current_reading ?? ($firstPrevious !== null && $firstPrevious !== '' ? $firstPrevious : 0);
 
         if ($currentReading < $previousReading) {
             throw ValidationException::withMessages([
@@ -73,6 +72,17 @@ class GasBillingService
         }
 
         return GasMeterReading::create(['gas_consumer_id' => $consumer->id, 'billing_period_id' => $billingPeriodId] + $values);
+    }
+
+    /** The consumer's reading from the closest earlier month, or null when this is its first month. */
+    public function previousReadingFor(GasConsumer $consumer, \App\Models\BillingPeriod $period): ?GasMeterReading
+    {
+        return GasMeterReading::where('gas_meter_readings.gas_consumer_id', $consumer->id)
+            ->join('billing_periods as bp', 'bp.id', '=', 'gas_meter_readings.billing_period_id')
+            ->whereRaw('(bp.year * 100 + bp.month) < ?', [$period->year * 100 + $period->month])
+            ->orderByRaw('(bp.year * 100 + bp.month) desc')
+            ->select('gas_meter_readings.*')
+            ->first();
     }
 
     /**

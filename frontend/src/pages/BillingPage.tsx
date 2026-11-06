@@ -6,11 +6,13 @@ import type { TranslationKey } from '../i18n/translations';
 import LanguageToggle from '../components/LanguageToggle';
 import Modal from '../components/Modal';
 import Sheet from '../components/Sheet';
+import GasReadingSheet from '../components/GasReadingSheet';
 import FlatLabel from '../components/FlatLabel';
 import { localToday } from '../components/HallCalendar';
 import { apiError } from '../api/hall';
 import { blobErrorMessage } from '../utils/download';
 import * as billingApi from '../api/billing';
+import * as gasApi from '../api/gas';
 import * as paymentsApi from '../api/payments';
 import * as workApi from '../api/workBudgets';
 import type { FlatCollection } from '../api/workBudgets';
@@ -34,6 +36,7 @@ const collectable = (b: BillRow) => Math.max(0, Number(b.due) - Number(b.pending
 export default function BillingPage() {
   const { user } = useAuth();
   const { t, lang } = useLanguage();
+  const bn = lang === 'bn';
   const can = (p: string) => !!user && (user.roles.includes('super_admin') || user.permissions.includes(p));
 
   const now = new Date();
@@ -47,6 +50,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState<BillRow | null>(null);
   const [editing, setEditing] = useState<BillRow | null>(null);
+  const [askingReadings, setAskingReadings] = useState(false);
 
   const loadRegister = useCallback(async () => {
     try {
@@ -80,35 +84,40 @@ export default function BillingPage() {
     setMonth((idx % 12) + 1);
   };
 
+  async function generateNow(allowWithoutGas: boolean) {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await billingApi.generateBilling(year, month, allowWithoutGas);
+      setAskingReadings(false);
+      setMessage(res.message + ` (${res.bill_count})`);
+      loadRegister();
+    } catch (err: any) {
+      // the server also guards this: readings missing means the sheet opens instead of bills being made
+      if (err.response?.data?.errors?.gas) setAskingReadings(true);
+      else setMessage(err.response?.data?.errors?.period?.[0] || err.response?.data?.message || 'Error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Generate Bills: the month's gas readings come first. Everyone's reading in -> make the bills; otherwise ask for them.
   async function handleGenerate() {
     setLoading(true);
     setMessage(null);
     try {
-      let res;
-      try {
-        res = await billingApi.generateBilling(year, month);
-      } catch (err: any) {
-        // some flats have no gas reading: say so, and only go on if the office really wants bills without gas
-        const noGas = err.response?.data?.errors?.gas?.[0];
-        if (!noGas) throw err;
-        const go = window.confirm(
-          noGas + (lang === 'bn'
-            ? '\n\nগ্যাস ছাড়াই বিল তৈরি করবেন? (রিডিং না থাকা ফ্ল্যাটের বিলে গ্যাস ০ থাকবে; পরে গ্যাস পাতা থেকে যোগ করতে হবে।)'
-            : '\n\nGenerate the bills without gas? (Flats with no reading get no gas until it is added from the Gas page.)'),
-        );
-        if (!go) {
-          setMessage(noGas);
-          return;
-        }
-        res = await billingApi.generateBilling(year, month, true);
+      const sheet = await gasApi.getReadingSheet(year, month);
+      if (sheet.missing_flats > 0) {
+        setAskingReadings(true);
+        return;
       }
-      setMessage(res.message + ` (${res.bill_count})`);
-      loadRegister();
     } catch (err: any) {
-      setMessage(err.response?.data?.errors?.period?.[0] || err.response?.data?.message || 'Error');
+      setMessage(err.response?.data?.message || 'Error');
+      return;
     } finally {
       setLoading(false);
     }
+    await generateNow(false);
   }
 
   const sum = (f: (b: BillRow) => string | number) => bills.reduce((c, b) => c + Number(f(b)), 0);
@@ -264,6 +273,46 @@ export default function BillingPage() {
           </p>
         )}
       </div>
+
+      {askingReadings && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-navy-900/40 px-3 py-6">
+          <div className="w-full max-w-3xl rounded-xl border border-brand-200 bg-brand-50 p-4 shadow-lg sm:p-5">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-navy-900">{bn ? 'আগে গ্যাসের রিডিং দিন' : 'Gas readings first'}</h2>
+                <p className="text-sm text-navy-700">
+                  {bn
+                    ? 'বিল তৈরির আগে এই মাসের গ্যাস মিটারের রিডিং লাগবে। সবার রিডিং দিয়ে সংরক্ষণ করলে বিল নিজে থেকেই তৈরি হবে, গ্যাসের টাকা সহ।'
+                    : "This month's gas meter readings are needed before the bills. Save everyone's reading and the bills are made right away, gas included."}
+                </p>
+              </div>
+              <button onClick={() => setAskingReadings(false)} className="rounded-lg px-2 py-1 text-navy-700 hover:bg-brand-100" aria-label="close">
+                ✕
+              </button>
+            </div>
+            <GasReadingSheet
+              year={year}
+              month={month}
+              saveLabel={bn ? 'রিডিং সংরক্ষণ করে বিল তৈরি করুন' : 'Save readings and generate bills'}
+              onSaved={({ missing }) => {
+                if (missing === 0) generateNow(false);
+                else setMessage(bn ? `এখনও ${missing}টি ফ্ল্যাটের রিডিং বাকি।` : `${missing} flats still have no reading.`);
+              }}
+              footer={
+                <div className="mt-3 border-t border-brand-100 pt-3 text-right">
+                  <button
+                    disabled={loading}
+                    onClick={() => generateNow(true)}
+                    className="text-xs text-navy-700 underline hover:text-navy-900 disabled:opacity-50"
+                  >
+                    {bn ? 'রিডিং ছাড়াই বিল তৈরি করুন (গ্যাস ০ থাকবে, পরে যোগ হবে)' : 'Generate without readings (gas stays 0, added later)'}
+                  </button>
+                </div>
+              }
+            />
+          </div>
+        </div>
+      )}
 
       {editing && (
         <EditBillModal

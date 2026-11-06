@@ -1,5 +1,6 @@
 import client from './client';
 import { toFormData } from './invoices';
+import { downloadFile } from '../utils/download';
 
 export interface GasConsumer {
   id: number;
@@ -110,3 +111,55 @@ export interface GasSummary {
 export function getGasSummary(year: number, month: number) {
   return client.get<GasSummary>('/gas/summary', { params: { year, month } }).then((r) => r.data);
 }
+
+// ---- the month's readings for every flat on one sheet
+
+export interface ReadingSheetRow {
+  consumer_id: number;
+  flat_no: string | null;
+  name: string;
+  is_office: boolean;
+  previous_reading: string | null;
+  previous_known: boolean;
+  current_reading: string | null;
+  units_used: string | null;
+}
+
+export interface ReadingSheet {
+  year: number;
+  month: number;
+  rows: ReadingSheetRow[];
+  missing_flats: number;
+}
+
+export function getReadingSheet(year: number, month: number) {
+  return client.get<ReadingSheet>('/gas/readings/sheet', { params: { year, month } }).then((r) => r.data);
+}
+
+export interface SheetEntry {
+  consumer_id: number;
+  previous_reading?: string;
+  current_reading?: string;
+}
+
+export function saveReadingSheet(year: number, month: number, rows: SheetEntry[]) {
+  return client.post<{ saved: number; skipped: number; period_id: number; message: string }>('/gas/readings/sheet', { year, month, rows }).then((r) => r.data);
+}
+
+export interface SheetCheck {
+  rows: ReadingSheetRow[];
+  problems: string[];
+  ready: number;
+  skipped: number;
+}
+
+export function checkReadingFile(year: number, month: number, file: File) {
+  const form = new FormData();
+  form.append('year', String(year));
+  form.append('month', String(month));
+  form.append('file', file);
+  return client.post<SheetCheck>('/gas/readings/import', form).then((r) => r.data);
+}
+
+export const downloadReadingTemplate = (year: number, month: number) =>
+  downloadFile(`/gas/readings/template?year=${year}&month=${month}`, `gas-readings-${year}-${String(month).padStart(2, '0')}.xlsx`);
