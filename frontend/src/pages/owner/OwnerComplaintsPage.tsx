@@ -15,11 +15,11 @@ export default function OwnerComplaintsPage() {
   const [showForm, setShowForm] = useState(false);
 
   function load() {
-    myApi.myComplaints().then(setComplaints);
+    myApi.myComplaints().then(setComplaints).catch(() => undefined);
     myApi.myFlats().then((f) => {
       setFlats(f);
       if (f[0]) setFlatId(String(f[0].id));
-    });
+    }).catch(() => undefined);
   }
 
   useEffect(load, []);

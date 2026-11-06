@@ -28,7 +28,7 @@ export default function FlatDetailPage() {
   const [docTarget, setDocTarget] = useState<DocTarget | null>(null);
 
   function load() {
-    flatsApi.getFlat(flatId).then(setFlat);
+    flatsApi.getFlat(flatId).then(setFlat).catch(() => undefined);
   }
 
   useEffect(load, [flatId]);

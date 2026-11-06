@@ -23,8 +23,7 @@ export default function FlatsPage() {
     setLoading(true);
     flatsApi.listFlats({ search: search || undefined }).then((data) => {
       setFlats(data);
-      setLoading(false);
-    });
+    }).catch(() => undefined).finally(() => setLoading(false));
   }
 
   useEffect(() => {

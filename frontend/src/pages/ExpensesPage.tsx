@@ -68,11 +68,11 @@ export default function ExpensesPage() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   function load() {
-    expensesApi.listExpenses().then(setExpenses);
+    expensesApi.listExpenses().then(setExpenses).catch(() => undefined);
     expensesApi.listExpenseHeads().then((h) => {
       setHeads(h);
       setHeadId((cur) => cur || (h[0] ? String(h[0].id) : ''));
-    });
+    }).catch(() => undefined);
   }
 
   useEffect(load, []);
@@ -109,6 +109,8 @@ export default function ExpensesPage() {
   }
 
   async function handleClose() {
+    // closing a month locks it and moves its surplus: never on a single stray tap
+    if (!window.confirm(lang === 'bn' ? 'এই মাস ক্লোজ করবেন? মাসের উদ্বৃত্ত স্থানান্তর হবে এবং মাসটি আর বদলানো যাবে না।' : 'Close this month? Its surplus is transferred and the month can no longer be changed.')) return;
     const now = new Date();
     try {
       const res = await expensesApi.closeMonth(now.getFullYear(), now.getMonth() + 1);

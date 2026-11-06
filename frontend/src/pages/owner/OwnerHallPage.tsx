@@ -47,7 +47,7 @@ export default function OwnerHallPage() {
     myApi.myFlats().then((f) => {
       setFlats(f);
       if (f[0]) setFlatId(String(f[0].id));
-    });
+    }).catch(() => undefined);
     loadMine();
   }, [loadMine, t]);
   useEffect(loadAvailability, [loadAvailability]);
@@ -87,6 +87,7 @@ export default function OwnerHallPage() {
   }
 
   async function cancel(id: number) {
+    if (!window.confirm(t('hall.cancel'))) return;
     await hallApi.cancelMyBooking(id).catch((err) => setError(hallApi.apiError(err, t('somethingWrong'))));
     loadMine();
     loadAvailability();

@@ -13,7 +13,7 @@ export default function AssetsPage() {
   const [nextService, setNextService] = useState('');
 
   function load() {
-    assetsApi.listAssets().then(setAssets);
+    assetsApi.listAssets().then(setAssets).catch(() => undefined);
   }
 
   useEffect(load, []);

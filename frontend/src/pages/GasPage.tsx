@@ -10,6 +10,7 @@ import { listFlats, type Flat } from '../api/flats';
 import type { GasConsumer, GasPurchase, GasSummary } from '../api/gas';
 import SupplierPicker from '../components/SupplierPicker';
 import GasReadingSheet from '../components/GasReadingSheet';
+import { localToday } from '../components/HallCalendar';
 
 const kgFmt = (v: string | number) => Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 });
 
@@ -25,7 +26,6 @@ export default function GasPage() {
     return { year: Math.floor(idx / 12), month: (idx % 12) + 1 };
   });
   const [consumers, setConsumers] = useState<GasConsumer[]>([]);
-  const [readings, setReadings] = useState<Record<number, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [summary, setSummary] = useState<GasSummary | null>(null);
 
@@ -41,7 +41,7 @@ export default function GasPage() {
   const [eMeter, setEMeter] = useState('');
 
   const [purchases, setPurchases] = useState<GasPurchase[]>([]);
-  const [pDate, setPDate] = useState(new Date().toISOString().slice(0, 10));
+  const [pDate, setPDate] = useState(localToday());
   const [pSupplier, setPSupplier] = useState('');
   const [pCylinders, setPCylinders] = useState('1');
   const [pCylKg, setPCylKg] = useState('45');
@@ -61,7 +61,7 @@ export default function GasPage() {
     setPCylPrice('');
     setPTransport('0');
     setPMedium('CASH');
-    setPDate(new Date().toISOString().slice(0, 10));
+    setPDate(localToday());
   }
 
   /** Load a pending purchase into the form to correct it. */
@@ -100,8 +100,8 @@ export default function GasPage() {
   }
 
   function load() {
-    gasApi.listGasConsumers().then(setConsumers);
-    gasApi.listGasPurchases().then(setPurchases);
+    gasApi.listGasConsumers().then(setConsumers).catch(() => undefined);
+    gasApi.listGasPurchases().then(setPurchases).catch(() => undefined);
     gasApi.getGasSummary(year, month).then(setSummary).catch(() => undefined);
     listFlats().then(setFlats).catch(() => undefined);
   }
@@ -177,29 +177,15 @@ export default function GasPage() {
     }
   }
 
-  async function handleSubmit(consumerId: number) {
-    const value = readings[consumerId];
-    if (!value) return;
-    try {
-      const period = await billingApi.findOrCreateBillingPeriod(year, month);
-      await gasApi.recordGasReading({
-        gas_consumer_id: consumerId,
-        billing_period_id: period.id,
-        current_reading: value,
-        reading_date: new Date().toISOString().slice(0, 10),
-      });
-      setMessage('রিডিং সংরক্ষিত হয়েছে।');
-      setReadings((r) => ({ ...r, [consumerId]: '' }));
-      load();
-    } catch (err: any) {
-      setMessage(err.response?.data?.errors?.current_reading?.[0] || err.response?.data?.message || 'Error');
-    }
-  }
-
   async function handleApply() {
-    const period = await billingApi.findOrCreateBillingPeriod(year, month);
-    const res = await gasApi.applyGasToBills(period.id);
-    setMessage(res.message);
+    setMessage(null);
+    try {
+      const period = await billingApi.findOrCreateBillingPeriod(sheetYM.year, sheetYM.month);
+      const res = await gasApi.applyGasToBills(period.id);
+      setMessage(`${sheetYM.month}/${sheetYM.year}: ${res.message}`);
+    } catch (err: any) {
+      setMessage(apiMessage(err));
+    }
   }
 
   return (
@@ -443,23 +429,6 @@ export default function GasPage() {
                   </button>
                 </p>
               </div>
-              {c.active && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  placeholder={t('gas.currentReading')}
-                  value={readings[c.id] ?? ''}
-                  onChange={(e) => setReadings((r) => ({ ...r, [c.id]: e.target.value }))}
-                  className="w-32 rounded-lg border border-brand-200 px-3 py-2"
-                />
-                <button
-                  onClick={() => handleSubmit(c.id)}
-                  className="rounded-lg bg-brand-600 px-3 py-2 text-sm text-white hover:bg-brand-700"
-                >
-                  {t('gas.enterReading')}
-                </button>
-              </div>
-              )}
             </div>
           ))}
         </div>

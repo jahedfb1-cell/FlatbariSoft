@@ -16,9 +16,9 @@ export default function ReportsPage() {
   const [downloading, setDownloading] = useState<string | null>(null);
 
   useEffect(() => {
-    reportsApi.getTrialBalance().then(setTrialBalance);
-    reportsApi.getBalanceSheet().then(setBalanceSheet);
-    reportsApi.getIncomeStatement().then(setIncomeStatement);
+    reportsApi.getTrialBalance().then(setTrialBalance).catch(() => undefined);
+    reportsApi.getBalanceSheet().then(setBalanceSheet).catch(() => undefined);
+    reportsApi.getIncomeStatement().then(setIncomeStatement).catch(() => undefined);
   }, []);
 
   async function handleDownload(kind: ReportKind, format: 'pdf' | 'excel') {

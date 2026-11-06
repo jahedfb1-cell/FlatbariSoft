@@ -13,7 +13,7 @@ export default function OwnerTenantRequestPage() {
   const [flats, setFlats] = useState<{ id: number; flat_no: string }[]>([]);
 
   useEffect(() => {
-    myApi.myFlats().then((f) => setFlats(f.map((x) => ({ id: x.id, flat_no: x.flat_no }))));
+    myApi.myFlats().then((f) => setFlats(f.map((x) => ({ id: x.id, flat_no: x.flat_no })))).catch(() => undefined);
   }, []);
 
   return (

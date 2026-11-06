@@ -7,11 +7,12 @@ import SupplierPicker from '../components/SupplierPicker';
 import InvoiceCell from '../components/InvoiceCell';
 import * as materialsApi from '../api/constructionMaterials';
 import type { ConstructionMaterialPurchase } from '../api/constructionMaterials';
+import { localToday } from '../components/HallCalendar';
 
 export default function ConstructionMaterialsPage() {
   const { t, lang } = useLanguage();
   const [purchases, setPurchases] = useState<ConstructionMaterialPurchase[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(localToday());
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
@@ -35,7 +36,7 @@ export default function ConstructionMaterialsPage() {
     setSupplierId('');
     setTransportCost('0');
     setMedium('CASH');
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(localToday());
   }
 
   /** Load a pending purchase into the form to correct it. */
@@ -69,7 +70,7 @@ export default function ConstructionMaterialsPage() {
   }
 
   function load() {
-    materialsApi.listMaterialPurchases().then(setPurchases);
+    materialsApi.listMaterialPurchases().then(setPurchases).catch(() => undefined);
   }
 
   useEffect(load, []);

@@ -78,7 +78,7 @@ export default function BankAccountsPage() {
   }, []);
 
   function load() {
-    bankApi.listBankAccounts().then(setAccounts);
+    bankApi.listBankAccounts().then(setAccounts).catch(() => undefined);
   }
   useEffect(load, []);
 

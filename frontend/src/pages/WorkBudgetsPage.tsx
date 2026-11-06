@@ -9,6 +9,7 @@ import type { Flat } from '../api/flats';
 import { listMeetings } from '../api/governance';
 import * as api from '../api/workBudgets';
 import type { InstallmentInput, PreviewRow, ShareRow, SplitMethod, WorkDetail, WorkStatus, WorkSummary } from '../api/workBudgets';
+import { localToday } from '../components/HallCalendar';
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 })}`;
 const input = 'w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -180,7 +181,7 @@ function ScheduleEditor({ value, onChange }: { value: InstallmentInput[]; onChan
   const bn = lang === 'bn';
   const L = (b: string, e: string) => (bn ? b : e);
   const [count, setCount] = useState(3);
-  const [start, setStart] = useState(new Date().toISOString().slice(0, 10));
+  const [start, setStart] = useState(localToday());
   const [every, setEvery] = useState(1);
   const sum = value.reduce((c, r) => c + (Number(r.percent) || 0), 0);
 

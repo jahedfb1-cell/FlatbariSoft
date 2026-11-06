@@ -40,6 +40,7 @@ import OwnerHomePage from './pages/owner/OwnerHomePage';
 import OwnerFlatPage from './pages/owner/OwnerFlatPage';
 import OwnerInfoPage from './pages/owner/OwnerInfoPage';
 import OwnerFrame from './components/OwnerFrame';
+import ApiProblemToast from './components/ApiProblemToast';
 import OwnerBillsPage from './pages/owner/OwnerBillsPage';
 import OwnerNoticesPage from './pages/owner/OwnerNoticesPage';
 import OwnerComplaintsPage from './pages/owner/OwnerComplaintsPage';
@@ -159,6 +160,7 @@ function App() {
       <LanguageProvider>
         <AuthProvider>
           <ResponsiveTables />
+          <ApiProblemToast />
           <AppRoutes />
         </AuthProvider>
       </LanguageProvider>

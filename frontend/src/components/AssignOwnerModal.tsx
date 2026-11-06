@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import * as flatsApi from '../api/flats';
 import { useLanguage } from '../context/LanguageContext';
+import { localToday } from './HallCalendar';
 
 const inputClass =
   'w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500';
@@ -19,7 +20,7 @@ export default function AssignOwnerModal({
   const { t } = useLanguage();
   const [nameBn, setNameBn] = useState('');
   const [mobile, setMobile] = useState('');
-  const [fromDate, setFromDate] = useState(new Date().toISOString().slice(0, 10));
+  const [fromDate, setFromDate] = useState(localToday());
   const [isBillingContact, setIsBillingContact] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);

@@ -4,6 +4,7 @@ import type { Staff, StaffDocType, StaffFamilyMember, StaffKyc } from '../api/st
 import { useLanguage } from '../context/LanguageContext';
 import { apiError } from '../api/hall';
 import { blobErrorMessage } from '../utils/download';
+import { localToday } from './HallCalendar';
 
 const input = 'w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500';
 const btn = 'rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50';
@@ -147,7 +148,7 @@ export default function StaffKycModal({ staff, onClose }: { staff: Staff; onClos
   );
 
   const updateMember = (i: number, patch: Partial<StaffFamilyMember>) => setFamily(family.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-navy-900/40 px-3 py-6">

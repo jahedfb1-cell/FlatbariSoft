@@ -12,7 +12,12 @@ const client = axios.create({
 
 // Attach the Sanctum bearer token (if the user is logged in) to every request.
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem('token');
+  } catch {
+    /* storage blocked (private window): the request simply goes without a login */
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -27,6 +32,11 @@ client.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.dispatchEvent(new Event('auth:unauthorized'));
+    } else if (!error.response && !axios.isCancel(error)) {
+      // no answer at all: the phone is offline, or the server cannot be reached
+      window.dispatchEvent(new CustomEvent('api:problem', { detail: 'network' }));
+    } else if (error.response && error.response.status >= 500) {
+      window.dispatchEvent(new CustomEvent('api:problem', { detail: 'server' }));
     }
     return Promise.reject(error);
   },

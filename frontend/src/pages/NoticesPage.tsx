@@ -15,7 +15,7 @@ export default function NoticesPage() {
   const canManage = user?.permissions.includes('notice.manage') || user?.roles.includes('super_admin');
 
   function load() {
-    noticesApi.listNotices().then(setNotices);
+    noticesApi.listNotices().then(setNotices).catch(() => undefined);
   }
 
   useEffect(load, []);

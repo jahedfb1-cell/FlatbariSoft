@@ -14,7 +14,8 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!user) return;
     let alive = true;
-    const check = () => listNotifications().then((d) => alive && setUnread(d.unread)).catch(() => undefined);
+    // a tab nobody is looking at does not need to ask every minute
+    const check = () => (document.hidden ? undefined : listNotifications().then((d) => alive && setUnread(d.unread)).catch(() => undefined));
     check();
     const timer = window.setInterval(check, 60000);
     return () => {

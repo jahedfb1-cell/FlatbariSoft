@@ -25,7 +25,7 @@ export default function MeetingsPage() {
   const [error, setError] = useState<string | null>(null);
 
   function load() {
-    governanceApi.listMeetings().then(setMeetings);
+    governanceApi.listMeetings().then(setMeetings).catch(() => undefined);
   }
 
   useEffect(load, []);

@@ -3,6 +3,7 @@ import Modal from './Modal';
 import * as staffApi from '../api/staff';
 import type { Staff } from '../api/staff';
 import { useLanguage } from '../context/LanguageContext';
+import { localToday } from './HallCalendar';
 
 const inputClass =
   'w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500';
@@ -22,7 +23,7 @@ export default function StaffFormModal({
   const [name, setName] = useState(staff?.name ?? '');
   const [designation, setDesignation] = useState(staff?.designation ?? '');
   const [mobile, setMobile] = useState(staff?.mobile ?? '');
-  const [joinDate, setJoinDate] = useState(staff?.join_date ?? new Date().toISOString().slice(0, 10));
+  const [joinDate, setJoinDate] = useState(staff?.join_date ?? localToday());
   const [monthlySalary, setMonthlySalary] = useState(staff?.monthly_salary ?? '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);

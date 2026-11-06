@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import * as invoicesApi from '../api/invoices';
 import { blobErrorMessage } from '../utils/download';
+import { localToday } from './HallCalendar';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => localToday();
 const monthStart = () => `${new Date().toISOString().slice(0, 7)}-01`;
 
 /** Print every purchase invoice in a date range as one black-and-white A4 PDF - for an audit. */

@@ -10,7 +10,7 @@ export default function OwnerNoticesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
 
   useEffect(() => {
-    noticesApi.listNotices().then(setNotices);
+    noticesApi.listNotices().then(setNotices).catch(() => undefined);
   }, []);
 
   return (

@@ -11,7 +11,7 @@ export default function OwnerDocumentsPage() {
   const [documents, setDocuments] = useState<any[]>([]);
 
   useEffect(() => {
-    myApi.myDocuments().then(setDocuments);
+    myApi.myDocuments().then(setDocuments).catch(() => undefined);
   }, []);
 
   return (

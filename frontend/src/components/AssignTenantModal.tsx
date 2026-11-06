@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import Modal from './Modal';
 import * as flatsApi from '../api/flats';
 import { useLanguage } from '../context/LanguageContext';
+import { localToday } from './HallCalendar';
 
 const inputClass =
   'w-full rounded-lg border border-brand-200 px-3 py-2 text-navy-900 outline-none focus:border-brand-500';
@@ -21,7 +22,7 @@ export default function AssignTenantModal({
   const [mobile, setMobile] = useState('');
   const [occupation, setOccupation] = useState('');
   const [familyMembers, setFamilyMembers] = useState('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(localToday());
   const [monthlyRent, setMonthlyRent] = useState('');
   const [securityDeposit, setSecurityDeposit] = useState('');
   const [error, setError] = useState<string | null>(null);

@@ -28,9 +28,9 @@ export default function OwnerPaymentsPage() {
     myApi.myFlats().then((fl) => {
       setFlats(fl);
       setF((cur) => (cur.flat_id || !fl[0] ? cur : { ...cur, flat_id: String(fl[0].id) }));
-    });
-    myApi.myBills().then(setBills);
-    ops.myPayments().then(setPays);
+    }).catch(() => undefined);
+    myApi.myBills().then(setBills).catch(() => undefined);
+    ops.myPayments().then(setPays).catch(() => undefined);
   }
   useEffect(load, []);
 

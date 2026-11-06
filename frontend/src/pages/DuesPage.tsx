@@ -12,8 +12,8 @@ export default function DuesPage() {
   const [payAmounts, setPayAmounts] = useState<Record<number, string>>({});
 
   function load() {
-    duesApi.listDues().then(setDues);
-    duesApi.agingReport().then(setAging);
+    duesApi.listDues().then(setDues).catch(() => undefined);
+    duesApi.agingReport().then(setAging).catch(() => undefined);
   }
 
   useEffect(load, []);

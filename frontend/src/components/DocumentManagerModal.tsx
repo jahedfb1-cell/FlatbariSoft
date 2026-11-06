@@ -31,9 +31,9 @@ export default function DocumentManagerModal(props: Props) {
 
   function load() {
     if (props.kind === 'owner') {
-      docsApi.listOwnerDocuments(props.personId).then(setDocuments);
+      docsApi.listOwnerDocuments(props.personId).then(setDocuments).catch(() => undefined);
     } else {
-      docsApi.listTenantDocuments(props.tenantId).then(setDocuments);
+      docsApi.listTenantDocuments(props.tenantId).then(setDocuments).catch(() => undefined);
     }
   }
 

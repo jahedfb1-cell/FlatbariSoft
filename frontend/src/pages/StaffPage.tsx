@@ -20,8 +20,7 @@ export default function StaffPage() {
     setLoading(true);
     staffApi.listStaff().then((data) => {
       setStaff(data);
-      setLoading(false);
-    });
+    }).catch(() => undefined).finally(() => setLoading(false));
   }
 
   useEffect(load, []);

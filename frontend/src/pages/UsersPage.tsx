@@ -408,6 +408,7 @@ function RolesTab({ roles, catalog, canManage, onRoles }: { roles: RoleInfo[]; c
   }
 
   async function remove() {
+    if (!window.confirm(`${t('users.deleteRole')}: ${role.name}?`)) return;
     setError(null);
     try {
       const list = await usersApi.deleteRole(role.name);
