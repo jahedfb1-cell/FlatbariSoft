@@ -41,6 +41,26 @@ async function saveInApp(bridge: NativeBridge, blob: Blob, filename: string) {
 }
 
 /**
+ * The name the server gave the file (Content-Disposition), e.g. "10A-Nazrul Islam-Service Charge Sep 2026.pdf".
+ * The server is the one that knows the flat, the owner and what the money was for, so its name wins; the name the
+ * screen passed in is only the fallback (a cross-origin dev setup does not expose the header).
+ */
+export function serverFileName(response: { headers?: unknown }, fallback: string): string {
+  const headers = (response.headers ?? {}) as Record<string, unknown> & { get?: (k: string) => unknown };
+  const raw = String((typeof headers.get === 'function' ? headers.get('content-disposition') : headers['content-disposition']) ?? '');
+  const star = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(raw);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      /* fall through to the plain name */
+    }
+  }
+  const plain = /filename\s*=\s*"?([^";]+)"?/i.exec(raw);
+  return plain ? plain[1].trim() : fallback;
+}
+
+/**
  * PDF/Excel export routes require the Sanctum bearer token, which a plain
  * <a href> download link can't send. Fetch the file through the same
  * authenticated axios client instead, then hand the browser the bytes via
@@ -48,6 +68,7 @@ async function saveInApp(bridge: NativeBridge, blob: Blob, filename: string) {
  */
 export async function downloadFile(path: string, filename: string) {
   const response = await client.get(path, { responseType: 'blob' });
+  filename = serverFileName(response, filename);
 
   const bridge = nativeBridge();
   if (bridge) {
@@ -93,7 +114,7 @@ export async function openPdf(path: string, params?: Record<string, string>, fil
   const bridge = nativeBridge();
   if (bridge) {
     const response = await client.get(path, { responseType: 'blob', params });
-    await saveInApp(bridge, response.data, filename);
+    await saveInApp(bridge, response.data, serverFileName(response, filename));
     return;
   }
 
@@ -135,8 +156,9 @@ export async function openPdfAfter<T>(action: () => Promise<T>, pdf: (result: T)
       return result;
     }
     const response = await client.get(target.path, { responseType: 'blob' });
+    const saveAs = serverFileName(response, target.filename);
     if (bridge) {
-      await saveInApp(bridge, response.data, target.filename);
+      await saveInApp(bridge, response.data, saveAs);
     } else {
       const url = URL.createObjectURL(response.data);
       if (tab) {
@@ -144,7 +166,7 @@ export async function openPdfAfter<T>(action: () => Promise<T>, pdf: (result: T)
       } else {
         const link = document.createElement('a'); // popups blocked: save the file instead of leaving this page
         link.href = url;
-        link.download = target.filename;
+        link.download = saveAs;
         document.body.appendChild(link);
         link.click();
         link.remove();

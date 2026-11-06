@@ -9,6 +9,7 @@ use App\Models\Building;
 use App\Models\Contribution;
 use App\Models\ContributionHead;
 use App\Models\Flat;
+use App\Support\PdfName;
 use App\Services\ContributionService;
 use App\Services\ReportExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -53,7 +54,7 @@ class ContributionController extends Controller
     /** The printable money receipt of one collection - what the owner is handed when the money is taken. */
     public function receipt(Contribution $contribution)
     {
-        return $this->receiptPdf(collect([$contribution]), "receipt-{$contribution->receipt_no}.pdf");
+        return $this->receiptPdf(collect([$contribution]));
     }
 
     /** One receipt for a payment that covered several heads: ?ids[]=12&ids[]=13 (all of one flat, one book). */
@@ -65,10 +66,10 @@ class ContributionController extends Controller
             throw ValidationException::withMessages(['ids' => 'রসিদ পাওয়া যায়নি।']);
         }
 
-        return $this->receiptPdf($rows, 'receipt-'.$rows->first()->receipt_no.($rows->count() > 1 ? '-etc' : '').'.pdf');
+        return $this->receiptPdf($rows);
     }
 
-    private function receiptPdf(Collection $rows, string $filename)
+    private function receiptPdf(Collection $rows)
     {
         $rows->each->loadMissing('flat', 'head.book');
         if ($rows->contains(fn ($c) => $c->method === 'OPENING' || $c->reverses_id !== null)) {
@@ -81,12 +82,15 @@ class ContributionController extends Controller
         $ledger = $this->service->ledger($first->flat, $first->head->book);
         $entries = $rows->map(fn ($c) => collect($ledger['entries'])->firstWhere('id', $c->id))->values()->all();
 
-        return Pdf::loadView('reports.contribution-receipt', [
+        // flat no-owner name-what it was paid for, e.g. 10A-Nazrul Islam-Subscription + Gas line
+        $name = PdfName::forOwner($first->flat, $rows->map(fn ($c) => $c->head->name_en)->unique()->implode(' + '));
+
+        return PdfName::titled(Pdf::loadView('reports.contribution-receipt', [
             'building' => Building::first(),
             'book' => ['name_en' => $first->head->book->name_en],
             'ledger' => $ledger,
             'entries' => $entries,
-        ])->setPaper('a5', 'landscape')->stream($filename);
+        ])->setPaper('a5', 'landscape'), $name)->stream($name);
     }
 
     /** Every head of a book - including those switched off - with whether money was ever collected under it. */
@@ -161,7 +165,7 @@ class ContributionController extends Controller
 
     public function ledgerPdf(Flat $flat)
     {
-        return $this->ledgerPdfResponse($this->service->flatLedgers($flat), "ledger-{$flat->flat_no}.pdf");
+        return $this->ledgerPdfResponse($this->service->flatLedgers($flat), PdfName::forOwner($flat, 'Owner Collection Ledger'));
     }
 
     /** One book's ledger for every flat in one PDF, one page each - to hand out or file. */
@@ -169,13 +173,18 @@ class ContributionController extends Controller
     {
         @set_time_limit(180);
 
-        return $this->ledgerPdfResponse($this->service->allLedgers($this->service->book($book)), "ledgers-{$book}.pdf");
+        $b = $this->service->book($book);
+
+        return $this->ledgerPdfResponse($this->service->allLedgers($b), PdfName::make($b->name_en, 'All Owner Ledgers'));
     }
 
     public function pdf(string $book)
     {
-        return Pdf::loadView('reports.contribution-statement', ['building' => Building::first(), 'report' => $this->service->statement($this->service->book($book))])
-            ->setPaper('a4', 'landscape')->download("contributions-{$book}.pdf");
+        $b = $this->service->book($book);
+        $name = PdfName::make($b->name_en, 'Collection Statement', now('Asia/Dhaka')->format('d M Y'));
+
+        return PdfName::titled(Pdf::loadView('reports.contribution-statement', ['building' => Building::first(), 'report' => $this->service->statement($b)])
+            ->setPaper('a4', 'landscape'), $name)->download($name);
     }
 
     public function excel(ReportExportService $exports, string $book)
@@ -191,7 +200,7 @@ class ContributionController extends Controller
 
     private function ledgerPdfResponse(array $ledgers, string $filename)
     {
-        return Pdf::loadView('reports.contribution-ledger', ['building' => Building::first(), 'ledgers' => $ledgers])
-            ->setPaper('a4', 'portrait')->stream($filename);
+        return PdfName::titled(Pdf::loadView('reports.contribution-ledger', ['building' => Building::first(), 'ledgers' => $ledgers])
+            ->setPaper('a4', 'portrait'), $filename)->stream($filename);
     }
 }

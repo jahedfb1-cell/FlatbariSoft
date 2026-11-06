@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AuditPackRequest;
+use App\Support\PdfName;
 use App\Services\InvoicePrintService;
 
 class InvoiceAuditController extends Controller
@@ -16,9 +17,11 @@ class InvoiceAuditController extends Controller
         $data = $request->validated();
         $pdf = $this->printer->auditPack($data['from'], $data['to'], $data['type'] ?? 'all');
 
+        $name = PdfName::make('Invoice Audit Pack', PdfName::range($data['from'], $data['to']));
+
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "inline; filename=\"invoice-audit-{$data['from']}_{$data['to']}.pdf\"",
+            'Content-Disposition' => PdfName::disposition($name),
         ]);
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Resources\ConstructionMaterialPurchaseResource;
 use App\Http\Resources\GasPurchaseResource;
 use App\Models\ConstructionMaterialPurchase;
 use App\Models\GasPurchase;
+use App\Support\PdfName;
 use App\Services\InvoiceImageService;
 use App\Services\InvoicePrintService;
 use Illuminate\Database\Eloquent\Model;
@@ -69,9 +70,11 @@ class PurchaseInvoiceController extends Controller
         $model = $this->find($type, $purchase);
         abort_unless($this->images->exists($model->invoice_file), 404, 'এই ক্রয়ের সাথে কোনো ইনভয়েসের ছবি নেই।');
 
+        $name = PdfName::make($type === 'gas' ? 'Gas Purchase Invoice' : 'Material Purchase Invoice', $model->supplier_name, $model->date?->format('d M Y'));
+
         return response($this->printer->single($type, $model), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => "inline; filename=\"invoice-{$type}-{$model->id}.pdf\"",
+            'Content-Disposition' => PdfName::disposition($name),
         ]);
     }
 

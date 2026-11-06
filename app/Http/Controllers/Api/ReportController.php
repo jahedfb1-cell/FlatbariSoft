@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Building;
+use App\Support\PdfName;
 use App\Services\AccountingService;
 use App\Services\ReportExportService;
 use App\Services\ReportingService;
@@ -88,7 +89,9 @@ class ReportController extends Controller
     {
         $data['building'] = Building::first();
 
-        return Pdf::loadView($view, $data)->download("{$filename}.pdf");
+        $name = PdfName::make(ucwords(str_replace('-', ' ', $filename)), now('Asia/Dhaka')->format('d M Y'));
+
+        return PdfName::titled(Pdf::loadView($view, $data), $name)->download($name);
     }
 
     private function excel(\PhpOffice\PhpSpreadsheet\Spreadsheet $spreadsheet, string $filename): StreamedResponse

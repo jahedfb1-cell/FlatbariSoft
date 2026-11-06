@@ -7,6 +7,7 @@ use App\Http\Requests\FundStatementRequest;
 use App\Http\Requests\TreasuryActionRequest;
 use App\Models\Building;
 use App\Models\TreasuryEntry;
+use App\Support\PdfName;
 use App\Services\FundStatementService;
 use App\Services\ReportExportService;
 use App\Services\TreasuryService;
@@ -42,8 +43,10 @@ class TreasuryController extends Controller
         $v = $request->validated();
         $report = $this->statements->statement($v['fund'] ?? 'OPERATING', (int) $v['year'], (int) $v['month']);
 
-        return Pdf::loadView('reports.fund-statement', ['building' => Building::first(), 'report' => $report])
-            ->setPaper('a4', 'portrait')->stream("statement-{$report['fund']['code']}-{$v['year']}-{$v['month']}.pdf");
+        $name = PdfName::make('Fund Statement', $report['fund']['name_en'], PdfName::month((int) $v['year'], (int) $v['month']));
+
+        return PdfName::titled(Pdf::loadView('reports.fund-statement', ['building' => Building::first(), 'report' => $report])
+            ->setPaper('a4', 'portrait'), $name)->stream($name);
     }
 
     /** Several funds in ONE document: an all-funds summary page, then each fund's full statement. Default: service charge + gas. */
@@ -54,8 +57,10 @@ class TreasuryController extends Controller
         $funds = array_values(array_intersect($order, $v['funds'] ?? ['OPERATING', 'GAS']));
         $reports = array_map(fn ($f) => $this->statements->statement($f, (int) $v['year'], (int) $v['month']), $funds);
 
-        return Pdf::loadView('reports.fund-statement-combined', ['building' => Building::first(), 'reports' => $reports])
-            ->setPaper('a4', 'portrait')->stream("statement-combined-{$v['year']}-{$v['month']}.pdf");
+        $name = PdfName::make('Fund Statements', 'Combined', PdfName::month((int) $v['year'], (int) $v['month']));
+
+        return PdfName::titled(Pdf::loadView('reports.fund-statement-combined', ['building' => Building::first(), 'reports' => $reports])
+            ->setPaper('a4', 'portrait'), $name)->stream($name);
     }
 
     public function excel(FundStatementRequest $request, ReportExportService $exports)

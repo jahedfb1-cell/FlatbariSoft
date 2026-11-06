@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SupplierLedgerRequest;
+use App\Support\PdfName;
 use App\Services\InvoicePrintService;
 use App\Services\ReportExportService;
 use App\Services\SupplierLedgerService;
@@ -35,9 +36,11 @@ class SupplierLedgerController extends Controller
 
     public function pdf(SupplierLedgerRequest $request)
     {
+        $name = PdfName::make('Supplier Ledger', (string) $request->input('supplier'), PdfName::range($request->input('from'), $request->input('to')));
+
         return response($this->printer->supplierLedger($this->data($request)), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="supplier-ledger.pdf"',
+            'Content-Disposition' => PdfName::disposition($name),
         ]);
     }
 
