@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import LanguageToggle from '../components/LanguageToggle';
 import { ALL_NAV_ITEMS, canOpen } from '../config/nav';
 import * as dashApi from '../api/dashboard';
 import type { DashboardOverview } from '../api/dashboard';
@@ -48,6 +47,18 @@ export default function DashboardPage() {
   const isThisMonth = ym.y === now.getFullYear() && ym.m === now.getMonth() + 1;
 
   const b = data?.billing;
+  const flatsTotal = data?.flats?.total ?? 0;
+  // a greeting for the hour, the date in the reader's language, and the signed-in person's role
+  const hour = now.getHours();
+  const greeting =
+    hour < 5 ? { icon: '🌙', text: bn ? 'শুভ রাত্রি' : 'Good night' } : hour < 12 ? { icon: '🌤️', text: bn ? 'শুভ সকাল' : 'Good morning' } : hour < 16 ? { icon: '☀️', text: bn ? 'শুভ দুপুর' : 'Good afternoon' } : hour < 19 ? { icon: '🌇', text: bn ? 'শুভ বিকাল' : 'Good evening' } : { icon: '🌃', text: bn ? 'শুভ সন্ধ্যা' : 'Good evening' };
+  const todayText = now.toLocaleDateString(bn ? 'bn-BD' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const ROLE_TEXT: Record<string, [string, string]> = {
+    super_admin: ['সুপার অ্যাডমিন', 'Super Admin'], admin: ['অ্যাডমিন', 'Admin'], manager: ['বিল্ডিং ম্যানেজার', 'Manager'],
+    committee_president: ['সভাপতি', 'President'], committee_secretary: ['সম্পাদক', 'Secretary'], committee_treasurer: ['কোষাধ্যক্ষ', 'Treasurer'], committee_member: ['কমিটি সদস্য', 'Committee'],
+  };
+  const roleKey = user?.roles.find((r) => ROLE_TEXT[r]);
+  const roleText = roleKey ? ROLE_TEXT[roleKey][bn ? 0 : 1] : '';
   const attention: { icon: string; label: string; count: number; to: string; tone: 'due' | 'warn' }[] = [];
   if (data?.approvals?.payments) attention.push({ icon: '💳', label: t('dash.pendingPayments'), count: data.approvals.payments, to: '/payments', tone: 'warn' });
   if (data?.approvals?.expenses) attention.push({ icon: '💸', label: t('dash.pendingExpenses'), count: data.approvals.expenses, to: '/expenses', tone: 'warn' });
@@ -59,39 +70,104 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-brand-50 pb-12">
-      {/* header band */}
-      <div className="bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 px-4 pb-24 pt-6 text-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-brand-200">{t('dash.welcome')}</p>
-            <h1 className="text-2xl font-semibold">{t('appName')}</h1>
-            <p className="mt-1 text-sm text-brand-200">
-              {user?.mobile}
-              {data?.flats ? ` · ${data.flats.total} ${t('dash.flatsWord')}` : ''}
+      {/* header band: a greeting for the time of day, the building, who is signed in, and where this month's collection stands */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 px-4 pb-20 pt-6 text-white">
+        {/* soft light and a quiet skyline behind the text */}
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-400/20 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-24 left-1/4 h-64 w-64 rounded-full bg-white/5 blur-3xl" aria-hidden />
+        <svg className="pointer-events-none absolute bottom-0 right-0 hidden h-40 w-auto text-white/[0.07] sm:block" viewBox="0 0 320 160" fill="currentColor" aria-hidden>
+          <rect x="10" y="70" width="46" height="90" rx="3" />
+          <rect x="64" y="30" width="58" height="130" rx="3" />
+          <rect x="130" y="55" width="44" height="105" rx="3" />
+          <rect x="182" y="10" width="64" height="150" rx="3" />
+          <rect x="254" y="60" width="56" height="100" rx="3" />
+          <g className="text-brand-900" fill="currentColor" opacity="0.5">
+            {[0, 1, 2, 3].map((r) => [0, 1, 2].map((c) => <rect key={`a${r}${c}`} x={190 + c * 18} y={24 + r * 26} width="9" height="12" rx="1" />))}
+            {[0, 1, 2].map((r) => [0, 1].map((c) => <rect key={`b${r}${c}`} x={72 + c * 22} y={44 + r * 28} width="10" height="13" rx="1" />))}
+          </g>
+        </svg>
+
+        <div className="relative mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-sm text-brand-100">
+              <span className="text-lg leading-none" aria-hidden>
+                {greeting.icon}
+              </span>
+              {greeting.text}
             </p>
+            <h1 className="mt-1 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{t('appName')}</h1>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">📅 {todayText}</span>
+              {data?.flats && (
+                <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">
+                  🏢 {data.flats.total} {t('dash.flatsWord')}
+                </span>
+              )}
+              <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">
+                👤 {roleText ? `${roleText} · ` : ''}
+                {user?.mobile}
+              </span>
+            </div>
           </div>
+
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <div className="flex items-center rounded-lg bg-white/10">
-              <button onClick={() => shift(-1)} className="px-3 py-1.5 hover:bg-white/10" aria-label="previous month">
+            <div className="flex items-center rounded-full bg-white/10 p-1 ring-1 ring-white/15 backdrop-blur">
+              <button onClick={() => shift(-1)} className="flex h-9 w-9 items-center justify-center rounded-full text-lg hover:bg-white/15" aria-label="previous month">
                 ‹
               </button>
-              <span className="min-w-24 px-2 text-center font-medium">
+              <span className="min-w-24 px-2 text-center font-semibold">
                 {monthName(ym.m)} {ym.y}
               </span>
-              <button onClick={() => shift(1)} disabled={isThisMonth} className="px-3 py-1.5 hover:bg-white/10 disabled:opacity-30" aria-label="next month">
+              <button onClick={() => shift(1)} disabled={isThisMonth} className="flex h-9 w-9 items-center justify-center rounded-full text-lg hover:bg-white/15 disabled:opacity-30" aria-label="next month">
                 ›
               </button>
             </div>
-            <div className="[&_button]:border-white/30 [&_button]:text-white [&_button:hover]:bg-white/10">
-              <LanguageToggle />
-            </div>
+            {!isThisMonth && (
+              <button onClick={() => setYm({ y: now.getFullYear(), m: now.getMonth() + 1 })} className="rounded-full bg-white/15 px-3 py-2 text-xs font-medium hover:bg-white/25">
+                {bn ? 'এই মাস' : 'This month'}
+              </button>
+            )}
             {isResident && (
-              <Link to="/owner" className="rounded-lg border border-white/30 px-3 py-1.5 hover:bg-white/10">
+              <Link to="/owner" className="rounded-full bg-white/10 px-3 py-2 text-xs ring-1 ring-white/15 hover:bg-white/20">
                 {t('users.openPortal')}
               </Link>
             )}
           </div>
         </div>
+
+        {/* this month's collection at a glance: how many flats have paid, part-paid, not paid */}
+        {b?.has_bills && flatsTotal > 0 && (
+          <div className="relative mx-auto mt-5 max-w-6xl rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <p className="text-sm font-medium">
+                {monthName(ym.m)} {bn ? '— আদায়ের অবস্থা' : '— collection'}
+              </p>
+              <p className="text-sm text-brand-100">
+                <b className="text-lg text-white">{b.paid_flats}</b> / {flatsTotal} {bn ? 'ফ্ল্যাট পরিশোধ করেছে' : 'flats have paid'}
+                {b.percent !== null && <span className="ml-2 whitespace-nowrap rounded-full bg-white/15 px-2 py-0.5 text-xs">{Math.round(b.percent)}% {bn ? 'টাকা আদায়' : 'of the money in'}</span>}
+              </p>
+            </div>
+            <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-white/15" role="img" aria-label={`${b.paid_flats} paid, ${b.partial_flats} partly paid, ${b.unpaid_flats} unpaid`}>
+              <div className="bg-emerald-400" style={{ width: `${(b.paid_flats / flatsTotal) * 100}%` }} />
+              <div className="bg-amber-300" style={{ width: `${(b.partial_flats / flatsTotal) * 100}%` }} />
+              <div className="bg-rose-400" style={{ width: `${(b.unpaid_flats / flatsTotal) * 100}%` }} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-brand-100">
+              <span>
+                <i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                {bn ? 'পরিশোধিত' : 'Paid'} {b.paid_flats}
+              </span>
+              <span>
+                <i className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-300" />
+                {bn ? 'আংশিক' : 'Partly'} {b.partial_flats}
+              </span>
+              <span>
+                <i className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-400" />
+                {bn ? 'বকেয়া' : 'Unpaid'} {b.unpaid_flats}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mx-auto -mt-16 max-w-6xl space-y-5 px-4">
