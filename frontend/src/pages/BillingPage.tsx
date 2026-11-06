@@ -93,12 +93,8 @@ export default function BillingPage() {
         if (!noGas) throw err;
         const go = window.confirm(
           noGas + (lang === 'bn'
-            ? '
-
-গ্যাস ছাড়াই বিল তৈরি করবেন? (রিডিং না থাকা ফ্ল্যাটের বিলে গ্যাস ০ থাকবে; পরে গ্যাস পাতা থেকে যোগ করতে হবে।)'
-            : '
-
-Generate the bills without gas? (Flats with no reading get no gas until it is added from the Gas page.)'),
+            ? '\n\nগ্যাস ছাড়াই বিল তৈরি করবেন? (রিডিং না থাকা ফ্ল্যাটের বিলে গ্যাস ০ থাকবে; পরে গ্যাস পাতা থেকে যোগ করতে হবে।)'
+            : '\n\nGenerate the bills without gas? (Flats with no reading get no gas until it is added from the Gas page.)'),
         );
         if (!go) {
           setMessage(noGas);
