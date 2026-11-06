@@ -37,6 +37,9 @@ import BankAccountsPage from './pages/BankAccountsPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import ConstructionMaterialsPage from './pages/ConstructionMaterialsPage';
 import OwnerHomePage from './pages/owner/OwnerHomePage';
+import OwnerFlatPage from './pages/owner/OwnerFlatPage';
+import OwnerInfoPage from './pages/owner/OwnerInfoPage';
+import OwnerFrame from './components/OwnerFrame';
 import OwnerBillsPage from './pages/owner/OwnerBillsPage';
 import OwnerNoticesPage from './pages/owner/OwnerNoticesPage';
 import OwnerComplaintsPage from './pages/owner/OwnerComplaintsPage';
@@ -128,20 +131,24 @@ function AppRoutes() {
       </Route>
       <Route path="/print/nid" element={<NidPrintPage />} />
 
-      {/* Owner/Tenant portal (5 screens, PRD's mobile-first cap) */}
-      <Route path="/owner" element={<OwnerHomePage />} />
-      <Route path="/owner/bills" element={<OwnerBillsPage />} />
-      <Route path="/owner/notices" element={<OwnerNoticesPage />} />
-      <Route path="/owner/complaints" element={<OwnerComplaintsPage />} />
-      <Route path="/owner/documents" element={<OwnerDocumentsPage />} />
-      <Route path="/owner/hall" element={<OwnerHallPage />} />
-      <Route path="/owner/parking" element={<OwnerParkingPage />} />
-      <Route path="/owner/payments" element={<OwnerPaymentsPage />} />
-      <Route path="/owner/kyc" element={<OwnerKycPage />} />
-      <Route path="/owner/tenant-request" element={<OwnerTenantRequestPage />} />
-      <Route path="/owner/visitors" element={<OwnerVisitorsPage />} />
-      <Route path="/owner/contributions" element={<OwnerContributionsPage />} />
-      <Route path="/owner/notifications" element={<NotificationsPage owner />} />
+      {/* Owner/Tenant portal: one frame (top bar) around every screen */}
+      <Route element={<OwnerFrame />}>
+        <Route path="/owner" element={<OwnerHomePage />} />
+        <Route path="/owner/bills" element={<OwnerBillsPage />} />
+        <Route path="/owner/notices" element={<OwnerNoticesPage />} />
+        <Route path="/owner/complaints" element={<OwnerComplaintsPage />} />
+        <Route path="/owner/documents" element={<OwnerDocumentsPage />} />
+        <Route path="/owner/hall" element={<OwnerHallPage />} />
+        <Route path="/owner/parking" element={<OwnerParkingPage />} />
+        <Route path="/owner/payments" element={<OwnerPaymentsPage />} />
+        <Route path="/owner/kyc" element={<OwnerKycPage />} />
+        <Route path="/owner/tenant-request" element={<OwnerTenantRequestPage />} />
+        <Route path="/owner/visitors" element={<OwnerVisitorsPage />} />
+        <Route path="/owner/contributions" element={<OwnerContributionsPage />} />
+        <Route path="/owner/notifications" element={<NotificationsPage owner />} />
+        <Route path="/owner/flat" element={<OwnerFlatPage />} />
+        <Route path="/owner/info" element={<OwnerInfoPage />} />
+      </Route>
     </Routes>
   );
 }

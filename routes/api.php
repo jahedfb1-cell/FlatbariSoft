@@ -113,6 +113,7 @@ Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PaymentController::class, 'index'])->middleware('permission:payment.view');
     Route::post('/', [PaymentController::class, 'store'])->middleware('permission:payment.create');
     Route::post('/{payment}/approve', [PaymentController::class, 'approve'])->middleware('permission:payment.approve');
+    Route::post('/{payment}/reject', [PaymentController::class, 'reject'])->middleware('permission:payment.approve');
     Route::get('/{payment}/review', [PaymentController::class, 'review'])->middleware('permission:payment.view');
     Route::get('/{payment}/receipt', [PaymentController::class, 'receipt'])->middleware('permission:payment.view');
 });
@@ -195,6 +196,13 @@ Route::prefix('me')->middleware('auth:sanctum')->group(function () {
     Route::get('/documents', [MyController::class, 'documents']);
     Route::get('/complaints', [MyController::class, 'complaints']);
     Route::post('/complaints', [MyController::class, 'storeComplaint']);
+
+    // the home screen of a flat owner / tenant: summary card, bills with their breakdown and PDF, committee decisions, building phone numbers
+    Route::get('/summary', [\App\Http\Controllers\Api\MyPortalController::class, 'summary']);
+    Route::get('/bills/details', [\App\Http\Controllers\Api\MyPortalController::class, 'bills']);
+    Route::get('/bills/{bill}/pdf', [\App\Http\Controllers\Api\MyPortalController::class, 'billPdf']);
+    Route::get('/decisions', [\App\Http\Controllers\Api\MyPortalController::class, 'decisions']);
+    Route::get('/contacts', [\App\Http\Controllers\Api\MyPortalController::class, 'contacts']);
 
     // community hall: any logged-in resident (scoped to their own flats inside the controller)
     Route::get('/hall', [MyHallController::class, 'hall']);
@@ -383,6 +391,15 @@ Route::prefix('settings')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\SettingsController::class, 'show'])->middleware('permission:setting.manage');
     Route::put('/', [\App\Http\Controllers\Api\SettingsController::class, 'update'])->middleware('permission:setting.manage');
     Route::get('/sms-logs', [\App\Http\Controllers\Api\SettingsController::class, 'smsLogs'])->middleware('permission:setting.manage');
+});
+
+// The building's own phone numbers: the office keeps them here, residents read them through /me/contacts.
+Route::prefix('building-contacts')->middleware('auth:sanctum')->group(function () {
+    $c = \App\Http\Controllers\Api\BuildingContactController::class;
+    Route::get('/', [$c, 'index'])->middleware('permission:setting.manage');
+    Route::post('/', [$c, 'store'])->middleware('permission:setting.manage');
+    Route::put('/{contact}', [$c, 'update'])->middleware('permission:setting.manage');
+    Route::delete('/{contact}', [$c, 'destroy'])->middleware('permission:setting.manage');
 });
 
 Route::get('/audit-logs', [\App\Http\Controllers\Api\AuditLogController::class, 'index'])->middleware(['auth:sanctum', 'permission:audit.view']);

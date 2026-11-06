@@ -206,6 +206,8 @@ function ReviewSheet({ payment, onClose, onApproved }: { payment: PaymentRow; on
   const [r, setR] = useState<PaymentReview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
 
   useEffect(() => {
     paymentsApi.reviewPayment(payment.id).then(setR).catch((e) => setError(apiError(e, t('somethingWrong'))));
@@ -217,6 +219,18 @@ function ReviewSheet({ payment, onClose, onApproved }: { payment: PaymentRow; on
     try {
       // approving issues the receipt number: the receipt opens straight away, ready to print or save as PDF
       await openPdfAfter(() => paymentsApi.approvePayment(payment.id), (p) => (p.receipt_no ? { path: `/payments/${p.id}/receipt`, filename: `receipt-${p.receipt_no}.pdf` } : null));
+      onApproved();
+    } catch (e) {
+      setError(apiError(e, t('somethingWrong')));
+      setBusy(false);
+    }
+  }
+
+  async function reject() {
+    setBusy(true);
+    setError(null);
+    try {
+      await paymentsApi.rejectPayment(payment.id, reason.trim());
       onApproved();
     } catch (e) {
       setError(apiError(e, t('somethingWrong')));
@@ -241,6 +255,20 @@ function ReviewSheet({ payment, onClose, onApproved }: { payment: PaymentRow; on
       footer={
         <div className="space-y-2">
           {error && <p className="rounded-lg bg-status-due/10 px-3 py-2 text-xs text-status-due">{error}</p>}
+          {rejecting && (
+            <div className="space-y-2 rounded-xl border border-status-due/40 p-3">
+              <p className="text-xs text-navy-700">{L('কেন প্রত্যাখ্যান? কারণটি ফ্ল্যাটের বাসিন্দারা নোটিফিকেশনে দেখবেন।', 'Why? The flat\'s people will see the reason in their alerts.')}</p>
+              <input className="w-full rounded-lg border border-brand-200 px-3 py-2 text-sm" placeholder={L('কারণ (কমপক্ষে ৩ অক্ষর)', 'Reason (at least 3 letters)')} value={reason} onChange={(e) => setReason(e.target.value)} />
+              <button type="button" disabled={busy || reason.trim().length < 3} onClick={reject} className="w-full rounded-xl bg-status-due py-2.5 text-sm font-semibold text-white disabled:opacity-40">
+                {busy ? '…' : L('প্রত্যাখ্যান নিশ্চিত করুন', 'Confirm rejection')}
+              </button>
+            </div>
+          )}
+          {!rejecting && r && (
+            <button type="button" onClick={() => setRejecting(true)} className="w-full text-center text-xs text-status-due hover:underline">
+              ✕ {L('এই পেমেন্ট প্রত্যাখ্যান করুন', 'Reject this payment')}
+            </button>
+          )}
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-brand-200 py-3 text-sm text-navy-700 hover:bg-brand-50">
               {L('বাতিল', 'Cancel')}

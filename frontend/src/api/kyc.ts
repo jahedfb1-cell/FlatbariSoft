@@ -37,7 +37,8 @@ export interface TenantKyc {
 /** What the form sends: the same shape, without the read-only parts. */
 export type TenantKycInput = Omit<TenantKyc, 'tenant_id' | 'flat_id' | 'flat_no' | 'status' | 'start_date' | 'monthly_rent' | 'complete' | 'missing' | 'submitted_at'>;
 
-export const getMyKyc = () => client.get<TenantKyc | null>('/me/kyc').then((r) => r.data);
+// someone who is not a tenant gets an empty object back, not null: only a real tenancy counts
+export const getMyKyc = () => client.get<TenantKyc | null>('/me/kyc').then((r) => (r.data && (r.data as TenantKyc).tenant_id ? r.data : null));
 export const saveMyKyc = (d: TenantKycInput) => client.put<TenantKyc>('/me/kyc', d).then((r) => r.data);
 export const getTenantKyc = (tenantId: number) => client.get<TenantKyc>(`/masters/tenants/${tenantId}/kyc`).then((r) => r.data);
 export const saveTenantKyc = (tenantId: number, d: TenantKycInput) => client.put<TenantKyc>(`/masters/tenants/${tenantId}/kyc`, d).then((r) => r.data);

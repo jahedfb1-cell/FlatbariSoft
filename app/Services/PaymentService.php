@@ -86,7 +86,7 @@ class PaymentService
             throw ValidationException::withMessages(['status' => 'এই পেমেন্ট ইতিমধ্যে অনুমোদিত।']);
         }
 
-        return DB::transaction(function () use ($payment, $approvedBy) {
+        $approved = DB::transaction(function () use ($payment, $approvedBy) {
             // Receipt number derives from this row's own auto-increment id
             // — unique and race-free by construction, no counter to lock.
             $payment->update([
@@ -156,6 +156,38 @@ class PaymentService
 
             return $payment->fresh();
         });
+
+        // the flat's people are told once it is safely in the books; this can never undo or block the approval
+        app(ResidentNotifier::class)->paymentApproved($approved);
+
+        return $approved;
+    }
+
+    /**
+     * An approver turns a pending payment down (a wrong reference, money that never arrived). Nothing has reached the
+     * books or the bill, so it is taken back whole; the reason is written to the audit log and the flat's people are told.
+     */
+    public function reject(Payment $payment, int $by, string $reason): void
+    {
+        if ($payment->status !== 'PENDING') {
+            throw ValidationException::withMessages(['status' => 'অনুমোদিত পেমেন্ট প্রত্যাখ্যান করা যায় না — ভুল হলে হিসাবে উল্টো এন্ট্রি দিতে হয়।']);
+        }
+
+        $facts = ['flat_id' => $payment->flat_id, 'bill_id' => $payment->bill_id, 'amount' => (string) $payment->amount, 'method' => $payment->method, 'reference_no' => $payment->reference_no, 'payment_date' => $payment->payment_date?->toDateString()];
+        $copy = $payment->replicate();
+        $copy->id = $payment->id;
+
+        DB::transaction(function () use ($payment, $by, $reason, $facts) {
+            $payment->delete();
+            if (\Illuminate\Support\Facades\Schema::hasTable('audit_logs')) {
+                \App\Models\AuditLog::create([
+                    'user_id' => $by, 'event' => 'rejected', 'auditable_type' => 'Payment', 'auditable_id' => $payment->id,
+                    'old_values' => $facts, 'new_values' => ['reason' => $reason], 'ip' => request()?->ip(),
+                ]);
+            }
+        });
+
+        app(ResidentNotifier::class)->paymentRejected($copy, $reason);
     }
 
     /**

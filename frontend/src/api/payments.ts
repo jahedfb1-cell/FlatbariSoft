@@ -88,3 +88,8 @@ export interface PaymentReview {
   posting: { medium: 'CASH' | 'BANK'; account: string | null; bank_missing: boolean };
 }
 export const reviewPayment = (id: number) => client.get<PaymentReview>(`/payments/${id}/review`).then((r) => r.data);
+
+/** An approver turns a pending payment down, with a written reason; the flat's people are told. */
+export function rejectPayment(id: number, reason: string) {
+  return client.post<{ message: string }>(`/payments/${id}/reject`, { reason }).then((r) => r.data);
+}

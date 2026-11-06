@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import BuildingContactsCard from '../components/BuildingContactsCard';
 import FlatFormModal from '../components/FlatFormModal';
 import { listBuildings } from '../api/flats';
 import { blobErrorMessage } from '../utils/download';
@@ -189,6 +190,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <BuildingContactsCard />
 
       {addingFlat && buildingId && (
         <FlatFormModal

@@ -107,4 +107,13 @@ class PaymentController extends Controller
 
         return new PaymentResource($payment->load('flat'));
     }
+
+    /** Turn a pending payment down, with a written reason (the flat's people are told). */
+    public function reject(Request $request, Payment $payment)
+    {
+        $v = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:300']], ['reason.required' => 'কারণ লিখুন।', 'reason.min' => 'কারণ কমপক্ষে ৩ অক্ষরের হতে হবে।']);
+        $this->service->reject($payment, Auth::id(), trim($v['reason']));
+
+        return response()->json(['message' => 'পেমেন্ট প্রত্যাখ্যান করা হয়েছে।']);
+    }
 }
