@@ -27,6 +27,9 @@ class BillResource extends JsonResource
             'tenant' => $this->whenLoaded('flat', fn () => $this->flat->occupantNames()['tenant']),
             'due_date' => $this->due_date?->toDateString(),
             'status' => $this->status,
+            // set only when the flat has a newer bill: where this month's balance has moved to
+            'newest_year' => $this->newest_year ?? null,
+            'newest_month' => $this->newest_month ?? null,
         ];
     }
 }

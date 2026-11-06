@@ -67,10 +67,24 @@ class BillingController extends Controller
     {
         $period = BillingPeriod::where('year', $year)->where('month', $month)->firstOrFail();
 
-        return BillResource::collection(
-            $period->bills()->with('flat.currentOwners.person', 'flat.currentTenant.person')
-                ->withSum(['payments as pending_amount' => fn ($q) => $q->where('status', 'PENDING')], 'amount')
-                ->orderBy('flat_id')->get()
-        );
+        $bills = $period->bills()->with('flat.currentOwners.person', 'flat.currentTenant.person')
+            ->withSum(['payments as pending_amount' => fn ($q) => $q->where('status', 'PENDING')], 'amount')
+            ->orderBy('flat_id')->get();
+
+        // a flat's balance moves forward into its newest bill, so money is taken there: tell the screen which bill that is
+        $key = $year * 100 + $month;
+        $latest = \Illuminate\Support\Facades\DB::table('bills')
+            ->join('billing_periods as bp', 'bills.billing_period_id', '=', 'bp.id')
+            ->whereIn('bills.flat_id', $bills->pluck('flat_id'))
+            ->whereRaw('(bp.year * 100 + bp.month) > ?', [$key])
+            ->selectRaw('bills.flat_id, MAX(bp.year * 100 + bp.month) as k')->groupBy('bills.flat_id')->pluck('k', 'flat_id');
+        $bills->each(function ($bill) use ($latest) {
+            if ($k = $latest[$bill->flat_id] ?? null) {
+                $bill->setAttribute('newest_year', intdiv((int) $k, 100));
+                $bill->setAttribute('newest_month', (int) $k % 100);
+            }
+        });
+
+        return BillResource::collection($bills);
     }
 }

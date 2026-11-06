@@ -41,6 +41,24 @@ class ContributionController extends Controller
         return response()->json($this->service->flatLedgers($flat), 201);
     }
 
+    /** The printable money receipt of one collection - what the owner is handed when the money is taken. */
+    public function receipt(Contribution $contribution)
+    {
+        if ($contribution->method === 'OPENING' || $contribution->reverses_id !== null) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['receipt' => 'শুরুর জমা বা বাতিলের এন্ট্রির রসিদ হয় না।']);
+        }
+        $contribution->loadMissing('flat', 'head.book');
+        $ledger = $this->service->ledger($contribution->flat, $contribution->head->book);
+        $entry = collect($ledger['entries'])->firstWhere('id', $contribution->id);
+
+        return Pdf::loadView('reports.contribution-receipt', [
+            'building' => Building::first(),
+            'book' => ['name_en' => $ledger['book']['name_en'] ?? $contribution->head->book->name_en],
+            'ledger' => $ledger,
+            'entry' => $entry,
+        ])->setPaper('a5', 'landscape')->stream("receipt-{$contribution->receipt_no}.pdf");
+    }
+
     public function reverse(ContributionActionRequest $request, Contribution $contribution)
     {
         $this->service->reverse($contribution, $request->validated('reason'), $request->user()->id);
