@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Building;
+use App\Support\PdfName;
 use App\Services\BudgetService;
 use App\Services\ReportExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -58,8 +59,10 @@ class BudgetController extends Controller
     {
         $report = $this->budgets->report($this->year($request));
 
-        return Pdf::loadView('reports.budget', ['building' => Building::first(), 'r' => $report])
-            ->setPaper('a4', 'landscape')->stream("budget-{$report['label']}.pdf");
+        $name = PdfName::make('Budget', $report['label']);
+
+        return PdfName::titled(Pdf::loadView('reports.budget', ['building' => Building::first(), 'r' => $report])
+            ->setPaper('a4', 'landscape'), $name)->stream($name);
     }
 
     public function excel(Request $request, ReportExportService $exports)

@@ -7,6 +7,7 @@ use App\Http\Requests\StorePaymentRequest;
 use App\Http\Resources\PaymentResource;
 use App\Models\Building;
 use App\Models\Payment;
+use App\Support\PdfName;
 use App\Services\PaymentService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -49,12 +50,16 @@ class PaymentController extends Controller
         }
         $payment->load('flat.currentOwners.person', 'bill.billingPeriod');
 
-        return Pdf::loadView('reports.money-receipt', [
+        $alloc = $this->service->allocation($payment);
+        $what = array_filter([bccomp($alloc['service'], '0', 4) > 0 ? 'Service Charge' : null, bccomp($alloc['gas'], '0', 4) > 0 ? 'Gas Bill' : null]);
+        $name = PdfName::forOwner($payment->flat, ($what ? implode(' + ', $what) : 'Payment').($payment->bill ? ' '.PdfName::month($payment->bill->billingPeriod->year, $payment->bill->billingPeriod->month) : ''));
+
+        return PdfName::titled(Pdf::loadView('reports.money-receipt', [
             'building' => Building::first(),
             'payment' => $payment,
             'owner' => $payment->flat->currentOwners->map(fn ($p) => $p->person?->name_en ?: $p->person?->name_bn)->filter()->implode(', '),
-            'alloc' => $this->service->allocation($payment),
-        ])->setPaper('a5', 'landscape')->stream("receipt-{$payment->receipt_no}.pdf");
+            'alloc' => $alloc,
+        ])->setPaper('a5', 'landscape'), $name)->stream($name);
     }
 
     /** Everything an approver should see before saying yes: who paid what, how, against which bill, and which books it will be posted to. */

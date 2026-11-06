@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Flat;
 use App\Models\FlatParty;
+use App\Support\PdfName;
 use App\Services\ContributionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +39,9 @@ class MyContributionController extends Controller
         $ledgers = $this->ledgers();
         abort_if($ledgers === [], 404);
 
-        return Pdf::loadView('reports.contribution-ledger', ['building' => Building::first(), 'ledgers' => $ledgers])
-            ->setPaper('a4', 'portrait')->stream('my-ledger.pdf');
+        $name = PdfName::forOwnerFlats(collect($ledgers)->pluck('flat_no')->all(), collect($ledgers)->pluck('owner')->filter()->first(), 'Owner Collection Ledger');
+
+        return PdfName::titled(Pdf::loadView('reports.contribution-ledger', ['building' => Building::first(), 'ledgers' => $ledgers])
+            ->setPaper('a4', 'portrait'), $name)->stream($name);
     }
 }

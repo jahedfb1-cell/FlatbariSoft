@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Building;
+use App\Support\PdfName;
 use App\Services\ReportExportService;
 use App\Services\SimpleReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -39,7 +40,13 @@ class SimpleReportController extends Controller
     {
         $r = $this->report($request, $type);
 
-        return Pdf::loadView('reports.simple', ['building' => Building::first(), 'r' => $r])->setPaper('a4', 'landscape')->stream("report-{$type}.pdf");
+        $labels = ['dues' => 'Dues Report', 'purposes' => 'Collections by Purpose', 'collections' => 'Collections Report', 'expenses' => 'Expenses Report', 'flat' => 'Flat Statement', 'cashbook' => 'Cash Book'];
+        $flat = $type === 'flat' ? \App\Models\Flat::find($request->query('flat_id')) : null;
+        $name = $flat
+            ? PdfName::forOwner($flat, 'Flat Statement '.PdfName::range($request->query('from'), $request->query('to')))
+            : PdfName::make($labels[$type] ?? $type, PdfName::range($request->query('from'), $request->query('to')));
+
+        return PdfName::titled(Pdf::loadView('reports.simple', ['building' => Building::first(), 'r' => $r])->setPaper('a4', 'landscape'), $name)->stream($name);
     }
 
     public function excel(Request $request, string $type): StreamedResponse

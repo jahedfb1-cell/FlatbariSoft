@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Building;
+use App\Support\PdfName;
 use App\Services\AnnualStatementService;
 use App\Services\ReportExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -33,7 +34,9 @@ class AnnualStatementController extends Controller
     {
         $r = $this->build($request);
 
-        return Pdf::loadView('reports.annual', ['building' => Building::first(), 'r' => $r])->setPaper('a4', 'portrait')->stream("financial-statements-{$r['label']}.pdf");
+        $name = PdfName::make('Financial Statements', $r['label']);
+
+        return PdfName::titled(Pdf::loadView('reports.annual', ['building' => Building::first(), 'r' => $r])->setPaper('a4', 'portrait'), $name)->stream($name);
     }
 
     public function excel(Request $request): StreamedResponse

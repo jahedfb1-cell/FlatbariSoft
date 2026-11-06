@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\SalaryPayment;
+use App\Support\PdfName;
 use App\Services\SalaryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -92,15 +93,19 @@ class SalaryController extends Controller
     {
         $salaryPayment->load('staff', 'expense');
 
-        return Pdf::loadView('reports.payslip', ['building' => Building::first(), 'p' => $salaryPayment])
-            ->setPaper('a5', 'portrait')->stream("payslip-{$salaryPayment->staff->id}-{$salaryPayment->year}-{$salaryPayment->month}.pdf");
+        $name = PdfName::make($salaryPayment->staff->name, 'Payslip', PdfName::month((int) $salaryPayment->year, (int) $salaryPayment->month));
+
+        return PdfName::titled(Pdf::loadView('reports.payslip', ['building' => Building::first(), 'p' => $salaryPayment])
+            ->setPaper('a5', 'portrait'), $name)->stream($name);
     }
 
     public function sheetPdf(Request $request)
     {
         [$y, $m] = $this->period($request);
 
-        return Pdf::loadView('reports.salary-sheet', ['building' => Building::first(), 'sheet' => $this->service->sheet($y, $m)])
-            ->setPaper('a4', 'landscape')->stream("salary-sheet-{$y}-{$m}.pdf");
+        $name = PdfName::make('Salary Sheet', PdfName::month((int) $y, (int) $m));
+
+        return PdfName::titled(Pdf::loadView('reports.salary-sheet', ['building' => Building::first(), 'sheet' => $this->service->sheet($y, $m)])
+            ->setPaper('a4', 'landscape'), $name)->stream($name);
     }
 }

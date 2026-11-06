@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\GasLedgerRequest;
+use App\Support\PdfName;
 use App\Services\GasLedgerService;
 use App\Services\InvoicePrintService;
 use App\Services\ReportExportService;
@@ -29,9 +30,11 @@ class GasLedgerController extends Controller
         $data = $this->ledger->ledger($v['from'] ?? null, $v['to'] ?? null);
         $pdf = $this->printer->gasLedger($data, (bool) ($v['vouchers'] ?? false), $this->ledger->purchases($v['from'] ?? null, $v['to'] ?? null));
 
+        $name = PdfName::make('Gas Purchase Ledger', PdfName::range($v['from'] ?? null, $v['to'] ?? null).(($v['vouchers'] ?? false) ? ' with vouchers' : ''));
+
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="gas-purchase-ledger.pdf"',
+            'Content-Disposition' => PdfName::disposition($name),
         ]);
     }
 
