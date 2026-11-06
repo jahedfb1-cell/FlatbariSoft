@@ -7,10 +7,14 @@ use App\Http\Requests\ContributionActionRequest;
 use App\Http\Requests\StoreContributionRequest;
 use App\Models\Building;
 use App\Models\Contribution;
+use App\Models\ContributionHead;
 use App\Models\Flat;
 use App\Services\ContributionService;
 use App\Services\ReportExportService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
@@ -36,7 +40,12 @@ class ContributionController extends Controller
 
     public function store(StoreContributionRequest $request, Flat $flat)
     {
-        $this->service->record($flat, $request->validated(), $request->user()->id);
+        $v = $request->validated();
+        if (! empty($v['lines'])) {
+            $this->service->recordMany($flat, $v, $request->user()->id);
+        } else {
+            $this->service->record($flat, $v, $request->user()->id);
+        }
 
         return response()->json($this->service->flatLedgers($flat), 201);
     }
@@ -44,19 +53,74 @@ class ContributionController extends Controller
     /** The printable money receipt of one collection - what the owner is handed when the money is taken. */
     public function receipt(Contribution $contribution)
     {
-        if ($contribution->method === 'OPENING' || $contribution->reverses_id !== null) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['receipt' => 'শুরুর জমা বা বাতিলের এন্ট্রির রসিদ হয় না।']);
+        return $this->receiptPdf(collect([$contribution]), "receipt-{$contribution->receipt_no}.pdf");
+    }
+
+    /** One receipt for a payment that covered several heads: ?ids[]=12&ids[]=13 (all of one flat, one book). */
+    public function receipts(Request $request)
+    {
+        $ids = collect((array) $request->query('ids'))->map(fn ($i) => (int) $i)->filter()->unique()->values();
+        $rows = Contribution::whereIn('id', $ids)->orderBy('id')->get();
+        if ($ids->isEmpty() || $rows->count() !== $ids->count()) {
+            throw ValidationException::withMessages(['ids' => 'রসিদ পাওয়া যায়নি।']);
         }
-        $contribution->loadMissing('flat', 'head.book');
-        $ledger = $this->service->ledger($contribution->flat, $contribution->head->book);
-        $entry = collect($ledger['entries'])->firstWhere('id', $contribution->id);
+
+        return $this->receiptPdf($rows, 'receipt-'.$rows->first()->receipt_no.($rows->count() > 1 ? '-etc' : '').'.pdf');
+    }
+
+    private function receiptPdf(Collection $rows, string $filename)
+    {
+        $rows->each->loadMissing('flat', 'head.book');
+        if ($rows->contains(fn ($c) => $c->method === 'OPENING' || $c->reverses_id !== null)) {
+            throw ValidationException::withMessages(['receipt' => 'শুরুর জমা বা বাতিলের এন্ট্রির রসিদ হয় না।']);
+        }
+        if ($rows->pluck('flat_id')->unique()->count() > 1 || $rows->map(fn ($c) => $c->head->contribution_book_id)->unique()->count() > 1) {
+            throw ValidationException::withMessages(['receipt' => 'এক রসিদে একই ফ্ল্যাটের একই খাতার জমা থাকতে হবে।']);
+        }
+        $first = $rows->first();
+        $ledger = $this->service->ledger($first->flat, $first->head->book);
+        $entries = $rows->map(fn ($c) => collect($ledger['entries'])->firstWhere('id', $c->id))->values()->all();
 
         return Pdf::loadView('reports.contribution-receipt', [
             'building' => Building::first(),
-            'book' => ['name_en' => $ledger['book']['name_en'] ?? $contribution->head->book->name_en],
+            'book' => ['name_en' => $first->head->book->name_en],
             'ledger' => $ledger,
-            'entry' => $entry,
-        ])->setPaper('a5', 'landscape')->stream("receipt-{$contribution->receipt_no}.pdf");
+            'entries' => $entries,
+        ])->setPaper('a5', 'landscape')->stream($filename);
+    }
+
+    /** Every head of a book - including those switched off - with whether money was ever collected under it. */
+    public function heads(string $book)
+    {
+        $b = $this->service->book($book);
+        $used = Contribution::select('contribution_head_id')->distinct()->pluck('contribution_head_id')->flip();
+
+        return response()->json(ContributionHead::where('contribution_book_id', $b->id)->orderBy('sort_order')->orderBy('id')->get()->map(fn ($h) => [
+            'id' => $h->id, 'code' => $h->code, 'name_bn' => $h->name_bn, 'name_en' => $h->name_en,
+            'counts_toward_target' => $h->counts_toward_target, 'is_active' => $h->is_active, 'used' => $used->has($h->id),
+        ])->values());
+    }
+
+    public function storeHead(ContributionActionRequest $request, string $book)
+    {
+        $this->service->createHead($this->service->book($book), $request->validated(), $request->user()->id);
+
+        return $this->heads($book);
+    }
+
+    public function updateHead(ContributionActionRequest $request, ContributionHead $head)
+    {
+        $this->service->updateHead($head, $request->validated(), $request->user()->id);
+
+        return $this->heads($head->book->code);
+    }
+
+    public function destroyHead(Request $request, ContributionHead $head)
+    {
+        $code = $head->book->code;
+        $this->service->deleteHead($head, $request->user()->id);
+
+        return $this->heads($code);
     }
 
     public function reverse(ContributionActionRequest $request, Contribution $contribution)

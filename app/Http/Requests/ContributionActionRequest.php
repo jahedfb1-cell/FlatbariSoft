@@ -10,6 +10,8 @@ use Illuminate\Foundation\Http\FormRequest;
  *  setFlatTarget    -> target_amount (null = back to the default), note
  *  setDefaultTarget -> target_amount
  *  import           -> as_of, rows[], dry_run
+ *  storeHead        -> name_bn, name_en?, counts_toward_target?
+ *  updateHead       -> name_bn?, name_en?, counts_toward_target?, is_active?
  */
 class ContributionActionRequest extends FormRequest
 {
@@ -24,6 +26,8 @@ class ContributionActionRequest extends FormRequest
             'reverse' => ['reason' => ['required', 'string', 'max:300']],
             'setFlatTarget' => ['target_amount' => ['present', 'nullable', 'numeric', 'min:0'], 'note' => ['nullable', 'string', 'max:300']],
             'setDefaultTarget' => ['target_amount' => ['required', 'numeric', 'min:0']],
+            'storeHead' => ['name_bn' => ['required', 'string', 'max:120'], 'name_en' => ['nullable', 'string', 'max:120'], 'counts_toward_target' => ['sometimes', 'boolean']],
+            'updateHead' => ['name_bn' => ['sometimes', 'string', 'max:120'], 'name_en' => ['sometimes', 'string', 'max:120'], 'counts_toward_target' => ['sometimes', 'boolean'], 'is_active' => ['sometimes', 'boolean']],
             default => [
                 'as_of' => ['required', 'date'],
                 'dry_run' => ['sometimes', 'boolean'],
@@ -42,6 +46,7 @@ class ContributionActionRequest extends FormRequest
             'target_amount.required' => 'টার্গেটের পরিমাণ আবশ্যক।',
             'as_of.required' => 'কোন তারিখ পর্যন্ত জমা — তারিখ আবশ্যক।',
             'rows.required' => 'কোনো সারি নেই।',
+            'name_bn.required' => 'খাতের নাম লিখুন।',
         ];
     }
 }

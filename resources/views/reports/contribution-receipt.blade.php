@@ -23,33 +23,41 @@
 </head>
 <body>
 @php($f = fn ($v) => number_format((float) $v, 2))
+@php($first = $entries[0])
+@php($last = $entries[count($entries) - 1])
 <div class="head">
     <h1>{{ $building->name ?? 'Green Valley' }}</h1>
     <div class="title">MONEY RECEIPT &mdash; {{ $book['name_en'] }}</div>
 </div>
 
 <table>
-    <tr><th>Receipt no</th><td><b>{{ $entry['receipt_no'] }}</b></td><th>Date</th><td>{{ \Carbon\Carbon::parse($entry['date'])->format('d M Y') }}</td></tr>
+    <tr>
+        <th>Receipt no</th><td><b>{{ collect($entries)->pluck('receipt_no')->implode(', ') }}</b></td>
+        <th>Date</th><td>{{ \Carbon\Carbon::parse($first['date'])->format('d M Y') }}</td>
+    </tr>
     <tr>
         <th>Received from</th><td>{{ $ledger['owner'] ?: '-' }}</td>
         <th>Flat</th><td><b>{{ $ledger['flat_no'] }}</b></td>
     </tr>
     <tr>
-        <th>Towards</th><td>{{ $entry['head_name_en'] }}</td>
-        <th>Paid by</th><td>{{ $entry['method'] }}{{ $entry['reference_no'] ? ' / '.$entry['reference_no'] : '' }}</td>
+        <th>Paid by</th><td colspan="3">{{ $first['method'] }}{{ $first['reference_no'] ? ' / '.$first['reference_no'] : '' }}</td>
     </tr>
 </table>
 
 <table>
-    <tr class="total"><th>Total received (Taka)</th><td class="num">{{ $f($entry['amount']) }}</td></tr>
+    <tr><th style="width:60%">Towards</th><th style="width:20%">Receipt</th><th style="width:20%; text-align:right">Taka</th></tr>
+    @foreach ($entries as $e)
+        <tr><td>{{ $e['head_name_en'] }}</td><td>{{ $e['receipt_no'] }}</td><td class="num">{{ $f($e['amount']) }}</td></tr>
+    @endforeach
+    <tr class="total"><td colspan="2">Total received (Taka)</td><td class="num">{{ $f(collect($entries)->sum(fn ($e) => (float) $e['amount'])) }}</td></tr>
 </table>
 
 @if ($ledger['target'] !== null)
     <table>
-        <tr><th>Total to be paid ({{ $book['name_en'] }})</th><td class="num">{{ $f($ledger['target']) }}</td><th>Paid up to this receipt</th><td class="num">{{ $f(bcsub((string) $ledger['target'], (string) $entry['balance_after'], 4)) }}</td></tr>
+        <tr><th>Total to be paid ({{ $book['name_en'] }})</th><td class="num">{{ $f($ledger['target']) }}</td><th>Paid up to this receipt</th><td class="num">{{ $f(bcsub((string) $ledger['target'], (string) $last['balance_after'], 4)) }}</td></tr>
         <tr>
-            <th>@if (bccomp((string) $entry['balance_after'], '0', 4) < 0)Paid in excess@else Balance due @endif</th>
-            <td class="num"><b>{{ $f(abs((float) $entry['balance_after'])) }}</b></td><th></th><td></td>
+            <th>@if (bccomp((string) $last['balance_after'], '0', 4) < 0)Paid in excess@else Balance due @endif</th>
+            <td class="num"><b>{{ $f(abs((float) $last['balance_after'])) }}</b></td><th></th><td></td>
         </tr>
     </table>
 @endif

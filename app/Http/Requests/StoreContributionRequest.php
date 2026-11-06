@@ -23,8 +23,12 @@ class StoreContributionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'contribution_head_id' => ['required', 'integer', 'exists:contribution_heads,id'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            // one head (contribution_head_id + amount), or several at once (lines)
+            'contribution_head_id' => ['required_without:lines', 'nullable', 'integer', 'exists:contribution_heads,id'],
+            'amount' => ['required_without:lines', 'nullable', 'numeric', 'min:0.01'],
+            'lines' => ['sometimes', 'array', 'min:1', 'max:30'],
+            'lines.*.contribution_head_id' => ['required', 'integer', 'exists:contribution_heads,id'],
+            'lines.*.amount' => ['nullable', 'numeric', 'min:0'],
             'received_on' => ['required', 'date'],
             'method' => ['required', Rule::in(self::methods())],
             'reference_no' => ['nullable', 'string', 'max:100'],
