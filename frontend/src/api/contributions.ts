@@ -108,3 +108,6 @@ export const printFlatLedgers = (flatId: number, flatNo: string) => openPdf(`/co
 
 export const myLedgers = () => client.get<FlatLedger[]>('/me/contributions').then((r) => r.data);
 export const printMyLedger = () => openPdf('/me/contributions/pdf', undefined, 'my-ledger.pdf');
+
+/** The money receipt of one collection, opened for printing / saving. */
+export const printCollectionReceipt = (id: number, receiptNo: string) => openPdf(`/contributions/collections/${id}/receipt`, undefined, `receipt-${receiptNo}.pdf`);

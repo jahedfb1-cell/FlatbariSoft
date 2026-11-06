@@ -111,3 +111,47 @@ export async function openPdf(path: string, params?: Record<string, string>, fil
     throw error;
   }
 }
+
+/**
+ * Runs `action` (taking a payment, approving one) and then shows the PDF it produced, e.g. the money receipt.
+ * The tab is opened at once, while the click still counts for the browser's popup blocker, and filled in when the PDF
+ * is ready. If the action fails the tab is closed again and the error goes to the caller. If only the PDF fails, the
+ * action still stands (the receipt can be printed again from its list) and the result is returned as normal.
+ */
+export async function openPdfAfter<T>(action: () => Promise<T>, pdf: (result: T) => { path: string; filename: string } | null): Promise<T> {
+  const bridge = nativeBridge();
+  const tab = bridge ? null : window.open('', '_blank');
+  let result: T;
+  try {
+    result = await action();
+  } catch (error) {
+    tab?.close();
+    throw error;
+  }
+  try {
+    const target = pdf(result);
+    if (!target) {
+      tab?.close();
+      return result;
+    }
+    const response = await client.get(target.path, { responseType: 'blob' });
+    if (bridge) {
+      await saveInApp(bridge, response.data, target.filename);
+    } else {
+      const url = URL.createObjectURL(response.data);
+      if (tab) {
+        tab.location.href = url;
+      } else {
+        const link = document.createElement('a'); // popups blocked: save the file instead of leaving this page
+        link.href = url;
+        link.download = target.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+    }
+  } catch {
+    tab?.close();
+  }
+  return result;
+}

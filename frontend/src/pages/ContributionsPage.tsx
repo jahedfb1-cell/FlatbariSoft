@@ -7,7 +7,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import Modal from '../components/Modal';
 import { localToday } from '../components/HallCalendar';
 import { apiError } from '../api/hall';
-import { blobErrorMessage } from '../utils/download';
+import { blobErrorMessage, openPdfAfter } from '../utils/download';
 import * as api from '../api/contributions';
 import type { Book, FlatLedger, ImportRow, Statement, StatementRow } from '../api/contributions';
 
@@ -22,6 +22,7 @@ export default function ContributionsPage() {
   const { t, lang } = useLanguage();
   const can = (p: string) => !!user && (user.roles.includes('super_admin') || user.permissions.includes(p));
   const canCollect = can('contribution.collect');
+  const [focusCollect, setFocusCollect] = useState(false);
   const canManage = can('contribution.manage');
 
   const [books, setBooks] = useState<Book[]>([]);
@@ -160,11 +161,12 @@ export default function ContributionsPage() {
                   <th className="px-3 py-2 text-right">{t('contrib.collected')}</th>
                   <th className="px-3 py-2 text-right">{t('contrib.target')}</th>
                   <th className="px-3 py-2 text-right">{t('contrib.balance')}</th>
+                  {canCollect && <th className="px-3 py-2" />}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <Row key={r.flat_id} r={r} heads={data.heads.map((h) => h.code)} onOpen={() => setOpenFlat(r.flat_id)} />
+                  <Row key={r.flat_id} r={r} heads={data.heads.map((h) => h.code)} onOpen={() => { setFocusCollect(false); setOpenFlat(r.flat_id); }} onCollect={canCollect ? () => { setFocusCollect(true); setOpenFlat(r.flat_id); } : undefined} />
                 ))}
                 <tr className="border-t-2 border-brand-300 bg-brand-50 font-semibold">
                   <td className="px-3 py-2">{t('contrib.total')}</td>
@@ -186,7 +188,7 @@ export default function ContributionsPage() {
       </div>
 
       {openFlat !== null && data && (
-        <LedgerModal flatId={openFlat} books={books} startBook={bookCode} canCollect={canCollect} canManage={canManage} onClose={() => setOpenFlat(null)} onChanged={load} />
+        <LedgerModal flatId={openFlat} books={books} startBook={bookCode} canCollect={canCollect} canManage={canManage} focusCollect={focusCollect} onClose={() => setOpenFlat(null)} onChanged={load} />
       )}
       {showImport && (
         <ImportModal
@@ -204,7 +206,8 @@ export default function ContributionsPage() {
   );
 }
 
-function Row({ r, heads, onOpen }: { r: StatementRow; heads: string[]; onOpen: () => void }) {
+function Row({ r, heads, onOpen, onCollect }: { r: StatementRow; heads: string[]; onOpen: () => void; onCollect?: () => void }) {
+  const { lang } = useLanguage();
   const bal = r.balance === null ? null : Number(r.balance);
   return (
     <tr className="cursor-pointer border-t border-brand-100 hover:bg-brand-50" onClick={onOpen}>
@@ -224,6 +227,13 @@ function Row({ r, heads, onOpen }: { r: StatementRow; heads: string[]; onOpen: (
       <td className={`px-3 py-2 text-right font-medium ${bal === null ? 'text-navy-700' : bal > 0 ? 'text-status-due' : bal < 0 ? 'text-status-paid' : 'text-navy-700'}`}>
         {bal === null || bal === 0 ? '–' : bal > 0 ? money(bal) : `(${money(-bal)})`}
       </td>
+      {onCollect && (
+        <td className="whitespace-nowrap px-3 py-2 text-right">
+          <button className="rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700" onClick={(e) => { e.stopPropagation(); onCollect(); }}>
+            {lang === 'bn' ? 'পেমেন্ট নিন' : 'Take payment'}
+          </button>
+        </td>
+      )}
     </tr>
   );
 }
@@ -235,6 +245,7 @@ function LedgerModal({
   startBook,
   canCollect,
   canManage,
+  focusCollect,
   onClose,
   onChanged,
 }: {
@@ -243,6 +254,7 @@ function LedgerModal({
   startBook: string;
   canCollect: boolean;
   canManage: boolean;
+  focusCollect?: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -267,7 +279,11 @@ function LedgerModal({
   }, [flatId, t]);
   useEffect(load, [load]);
 
+  const collectForm = useRef<HTMLFormElement>(null);
   const ledger = ledgers?.find((l) => l.book.code === bookCode);
+  useEffect(() => {
+    if (focusCollect && ledger) collectForm.current?.scrollIntoView({ block: 'center' });
+  }, [focusCollect, ledger?.flat_id]);
   const book = books.find((b) => b.code === bookCode);
 
   // keep the form in step with the book on screen
@@ -358,6 +374,11 @@ function LedgerModal({
                   <td className="pr-2 text-right align-top">{money(e.amount)}</td>
                   <td className="pr-2 text-right align-top">{e.balance_after === null ? '–' : money(e.balance_after)}</td>
                   <td className="text-right align-top no-underline">
+                    {!e.is_reversal && e.method !== 'OPENING' && e.receipt_no && (
+                      <button className="mr-2 text-brand-700 hover:underline" title={t('billing.receipt')} onClick={() => api.printCollectionReceipt(e.id, e.receipt_no ?? String(e.id)).catch(async (er) => setError(await blobErrorMessage(er, t('somethingWrong'))))}>
+                        🖨
+                      </button>
+                    )}
                     {canManage && !e.is_reversal && !e.is_reversed && (
                       <button className="text-status-due hover:underline" onClick={() => setReversing(e.id)}>
                         {t('contrib.reverse')}
@@ -392,11 +413,19 @@ function LedgerModal({
 
         {canCollect && (
           <form
+            ref={collectForm}
             className="space-y-2 rounded-lg border border-brand-200 p-3"
             onSubmit={(e) => {
               e.preventDefault();
               act(async () => {
-                await api.collect(flatId, { contribution_head_id: Number(headId), amount, received_on: date, method, reference_no: reference || undefined });
+                // the money receipt opens at once, ready to print or save as PDF
+                await openPdfAfter(
+                  () => api.collect(flatId, { contribution_head_id: Number(headId), amount, received_on: date, method, reference_no: reference || undefined }),
+                  (all: FlatLedger[]) => {
+                    const e = all.flatMap((l) => l.entries).filter((x) => !x.is_reversal && x.method !== 'OPENING').sort((a, b) => b.id - a.id)[0];
+                    return e?.receipt_no ? { path: `/contributions/collections/${e.id}/receipt`, filename: `receipt-${e.receipt_no}.pdf` } : null;
+                  },
+                );
                 setAmount('');
                 setReference('');
               });

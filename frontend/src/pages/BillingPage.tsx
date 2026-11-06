@@ -10,7 +10,7 @@ import GasReadingSheet from '../components/GasReadingSheet';
 import FlatLabel from '../components/FlatLabel';
 import { localToday } from '../components/HallCalendar';
 import { apiError } from '../api/hall';
-import { blobErrorMessage } from '../utils/download';
+import { blobErrorMessage, openPdfAfter } from '../utils/download';
 import * as billingApi from '../api/billing';
 import * as gasApi from '../api/gas';
 import * as paymentsApi from '../api/payments';
@@ -49,6 +49,8 @@ export default function BillingPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [paying, setPaying] = useState<BillRow | null>(null);
+  const [payPeriod, setPayPeriod] = useState('');
+  const [payNote, setPayNote] = useState<string | null>(null);
   const [editing, setEditing] = useState<BillRow | null>(null);
   const [askingReadings, setAskingReadings] = useState(false);
 
@@ -83,6 +85,35 @@ export default function BillingPage() {
     setYear(Math.floor(idx / 12));
     setMonth((idx % 12) + 1);
   };
+
+  // An older month's balance moves on into the flat's newest bill, so money is taken there - with the dues together.
+  async function startPay(b: BillRow) {
+    const here = `${MONTHS[month - 1]} ${year}`;
+    setPayNote(null);
+    setPayPeriod(here);
+    if (!b.newest_year || !b.newest_month) {
+      setPaying(b);
+      return;
+    }
+    try {
+      const rows = await billingApi.getBillingRegister(b.newest_year, b.newest_month);
+      const latest = rows.find((r) => r.flat_id === b.flat_id);
+      if (!latest) {
+        setPaying(b);
+        return;
+      }
+      const there = `${MONTHS[b.newest_month - 1]} ${b.newest_year}`;
+      setPayNote(
+        bn
+          ? `${here}-এর বাকি ${there}-এর বিলে যোগ হয়ে গেছে। তাই টাকা ${there}-এর বিলে নেওয়া হচ্ছে — আগের বকেয়া ও এই মাসের চাঁদা একসঙ্গে দেখানো আছে।`
+          : `The balance of ${here} has moved into the ${there} bill, so the payment is taken there - the earlier dues and this month's charge are shown together.`,
+      );
+      setPayPeriod(there);
+      setPaying(latest);
+    } catch (err) {
+      setMessage(apiError(err, t('somethingWrong')));
+    }
+  }
 
   async function generateNow(allowWithoutGas: boolean) {
     setLoading(true);
@@ -238,6 +269,11 @@ export default function BillingPage() {
                     <td className="px-3 py-2 text-right">{money(b.paid_amount)}</td>
                     <td className="px-3 py-2 text-right font-medium">
                       {money(b.due)}
+                      {b.newest_month && b.due > 0 && (
+                        <span className="block text-xs font-normal text-navy-700">
+                          ↪ {bn ? `${MONTHS[b.newest_month - 1]}-এর বিলে যোগ` : `moved to ${MONTHS[b.newest_month - 1]} bill`}
+                        </span>
+                      )}
                       {Number(b.pending_amount) > 0 && (
                         <span className="block text-xs font-normal text-status-partial">
                           {money(b.pending_amount)} {t('billing.pendingNote')}
@@ -254,7 +290,7 @@ export default function BillingPage() {
                         </button>
                       )}
                       {can('payment.create') && collectable(b) > 0 && (
-                        <button className="font-medium text-brand-700 hover:underline" onClick={() => setPaying(b)}>
+                        <button className="font-medium text-brand-700 hover:underline" onClick={() => startPay(b)}>
                           {t('billing.pay')}
                         </button>
                       )}
@@ -329,7 +365,8 @@ export default function BillingPage() {
       {paying && (
         <PayModal
           bill={paying}
-          period={`${MONTHS[month - 1]} ${year}`}
+          period={payPeriod || `${MONTHS[month - 1]} ${year}`}
+          notice={payNote}
           canApprove={can('payment.approve')}
           onClose={() => setPaying(null)}
           onDone={() => {
@@ -365,7 +402,7 @@ const PROVIDERS: { value: string; label: string; tone: string }[] = [
  * how it was paid (cash / bank / mobile banking, each with the reference the books need), the date and an optional note.
  * The bill's breakdown folds away until asked for.
  */
-function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow; period: string; canApprove: boolean; onClose: () => void; onDone: () => void }) {
+function PayModal({ bill, period, notice, canApprove, onClose, onDone }: { bill: BillRow; period: string; notice?: string | null; canApprove: boolean; onClose: () => void; onDone: () => void }) {
   const { t, lang } = useLanguage();
   const bn = lang === 'bn';
   const L = (b: string, e: string) => (bn ? b : e);
@@ -381,12 +418,12 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
   const owing = work ? Number(work.due) : collectable(bill);
   // this month's own charges as far as they are still unpaid - the previous balance is only taken on request
   const thisMonth = work ? owing : Math.min(owing, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee));
-  const [amount, setAmount] = useState(String(thisMonth > 0 ? thisMonth : owing));
+  const [amount, setAmount] = useState(String(owing));
   const choosePurpose = (p: 'BILL' | number) => {
     setPurpose(p);
     const w = typeof p === 'number' ? collections.find((c) => c.work_id === p) : undefined;
     const o = w ? Number(w.due) : collectable(bill);
-    setAmount(String(w ? o : Math.min(o, Number(bill.service_charge) + Number(bill.gas_amount) + Number(bill.other_charges) + Number(bill.late_fee)) || o));
+    setAmount(String(o));
     setError(null);
   };
   const [kind, setKind] = useState<'CASH' | 'BANK' | 'MOBILE'>('CASH');
@@ -425,18 +462,25 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
         setResult({ id: 0, approved: true, receipt: r.receipt_no, special: work.title });
         return;
       }
-      let p = await paymentsApi.createPayment({
-        flat_id: bill.flat_id,
-        bill_id: bill.id,
-        amount,
-        payment_date: date,
-        method: kind === 'MOBILE' ? provider : kind,
-        reference_no: needsRef ? reference.trim() : undefined,
-        bank_name: kind === 'BANK' ? bankName.trim() : undefined,
-        remarks: remarks.trim() || undefined,
-      });
+      const take = async () => {
+        let p = await paymentsApi.createPayment({
+          flat_id: bill.flat_id,
+          bill_id: bill.id,
+          amount,
+          payment_date: date,
+          method: kind === 'MOBILE' ? provider : kind,
+          reference_no: needsRef ? reference.trim() : undefined,
+          bank_name: kind === 'BANK' ? bankName.trim() : undefined,
+          remarks: remarks.trim() || undefined,
+        });
       // whoever may approve (admin, president) posts it straight away; everyone else leaves it for them
-      if (canApprove) p = await paymentsApi.approvePayment(p.id);
+        if (canApprove) p = await paymentsApi.approvePayment(p.id);
+        return p;
+      };
+      // whoever may approve posts it straight away - and the money receipt opens at once, ready to print or save as PDF
+      const p = canApprove
+        ? await openPdfAfter(take, (x) => (x.receipt_no ? { path: `/payments/${x.id}/receipt`, filename: `receipt-${x.receipt_no}.pdf` } : null))
+        : await take();
       setResult({ id: p.id, approved: p.status === 'APPROVED', receipt: p.receipt_no });
     } catch (err) {
       setError(apiError(err, t('somethingWrong')));
@@ -517,6 +561,7 @@ function PayModal({ bill, period, canApprove, onClose, onDone }: { bill: BillRow
       }
     >
       <form onSubmit={submit} className="space-y-4">
+        {notice && <p className="rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">{notice}</p>}
         {collections.length > 0 && (
           <div>
             <p className="mb-1 text-xs font-medium text-navy-700">{L('কীসের জন্য টাকা?', 'What is this payment for?')}</p>

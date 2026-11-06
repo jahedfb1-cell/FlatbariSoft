@@ -331,6 +331,7 @@ Route::prefix('contributions')->middleware('auth:sanctum')->group(function () {
     Route::get('/flats/{flat}/ledgers', [$c, 'flatLedgers'])->middleware('permission:contribution.view');
     Route::get('/flats/{flat}/ledgers/pdf', [$c, 'ledgerPdf'])->middleware('permission:contribution.view');
     Route::post('/flats/{flat}/collections', [$c, 'store'])->middleware('permission:contribution.collect');
+    Route::get('/collections/{contribution}/receipt', [$c, 'receipt'])->middleware('permission:contribution.view|contribution.collect');
     Route::post('/collections/{contribution}/reverse', [$c, 'reverse'])->middleware('permission:contribution.manage');
 });
 Route::get('/me/contributions', [\App\Http\Controllers\Api\MyContributionController::class, 'index'])->middleware('auth:sanctum');

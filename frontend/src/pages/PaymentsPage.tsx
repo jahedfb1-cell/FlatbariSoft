@@ -6,6 +6,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import FlatLabel from '../components/FlatLabel';
 import Sheet from '../components/Sheet';
 import { apiError } from '../api/hall';
+import { openPdfAfter } from '../utils/download';
 import * as paymentsApi from '../api/payments';
 import type { PaymentRow, PaymentPage, PaymentReview } from '../api/payments';
 
@@ -214,7 +215,8 @@ function ReviewSheet({ payment, onClose, onApproved }: { payment: PaymentRow; on
     setBusy(true);
     setError(null);
     try {
-      await paymentsApi.approvePayment(payment.id);
+      // approving issues the receipt number: the receipt opens straight away, ready to print or save as PDF
+      await openPdfAfter(() => paymentsApi.approvePayment(payment.id), (p) => (p.receipt_no ? { path: `/payments/${p.id}/receipt`, filename: `receipt-${p.receipt_no}.pdf` } : null));
       onApproved();
     } catch (e) {
       setError(apiError(e, t('somethingWrong')));

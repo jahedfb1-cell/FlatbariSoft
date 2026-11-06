@@ -17,6 +17,9 @@ export interface BillRow {
   tenant?: string | null;
   due_date: string;
   status: 'UNPAID' | 'PARTIAL' | 'PAID';
+  /** set when the flat has a newer bill: the month its balance has moved on to */
+  newest_year?: number | null;
+  newest_month?: number | null;
 }
 
 export function generateBilling(year: number, month: number, allowWithoutGas = false) {
