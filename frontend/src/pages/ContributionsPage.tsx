@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import Modal from '../components/Modal';
+import ContributionHeadsModal from '../components/ContributionHeadsModal';
 import { localToday } from '../components/HallCalendar';
 import { apiError } from '../api/hall';
 import { blobErrorMessage, openPdfAfter } from '../utils/download';
@@ -34,6 +35,7 @@ export default function ContributionsPage() {
   const openFlat = Number(params.get('flat')) || null;
   const setOpenFlat = (id: number | null) => setParams(id ? { flat: String(id) } : {}, { replace: false });
   const [showImport, setShowImport] = useState(false);
+  const [showHeads, setShowHeads] = useState(false);
   const [editingDefault, setEditingDefault] = useState(false);
   const [defaultTarget, setDefaultTarget] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +124,11 @@ export default function ContributionsPage() {
                   {t('contrib.editTarget')}
                 </button>
               )}
+              {canManage && (
+                <button className="ml-auto rounded-lg border border-brand-200 px-3 py-1 text-sm text-brand-700 hover:bg-brand-100" onClick={() => setShowHeads(true)}>
+                  ⚙ {lang === 'bn' ? 'খাত পরিচালনা (নতুন / মুছুন)' : 'Manage heads (add / delete)'}
+                </button>
+              )}
             </>
           )}
           <div className="ml-auto flex flex-wrap gap-2">
@@ -189,6 +196,17 @@ export default function ContributionsPage() {
 
       {openFlat !== null && data && (
         <LedgerModal flatId={openFlat} books={books} startBook={bookCode} canCollect={canCollect} canManage={canManage} focusCollect={focusCollect} onClose={() => setOpenFlat(null)} onChanged={load} />
+      )}
+      {showHeads && book && (
+        <ContributionHeadsModal
+          bookCode={bookCode}
+          bookName={bookName(book)}
+          onClose={() => setShowHeads(false)}
+          onChanged={() => {
+            api.listBooks().then(setBooks).catch(() => undefined);
+            load();
+          }}
+        />
       )}
       {showImport && (
         <ImportModal
@@ -262,8 +280,7 @@ function LedgerModal({
   const [ledgers, setLedgers] = useState<FlatLedger[] | null>(null);
   const [bookCode, setBookCode] = useState(startBook);
   const [error, setError] = useState<string | null>(null);
-  const [headId, setHeadId] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amounts, setAmounts] = useState<Record<number, string>>({});
   const [method, setMethod] = useState('CASH');
   const [date, setDate] = useState(localToday());
   const [reference, setReference] = useState('');
@@ -288,7 +305,7 @@ function LedgerModal({
 
   // keep the form in step with the book on screen
   useEffect(() => {
-    setHeadId(String(book?.heads[0]?.id ?? ''));
+    setAmounts({});
     setTarget(ledger?.target ? String(Number(ledger.target)) : '');
     setReversing(null);
     setError(null);
@@ -417,16 +434,22 @@ function LedgerModal({
             className="space-y-2 rounded-lg border border-brand-200 p-3"
             onSubmit={(e) => {
               e.preventDefault();
+              const lines = book.heads.filter((h) => Number(amounts[h.id]) > 0).map((h) => ({ contribution_head_id: h.id, amount: amounts[h.id] }));
+              if (lines.length === 0) {
+                setError(lang === 'bn' ? 'অন্তত একটি খাতে টাকার পরিমাণ লিখুন।' : 'Enter an amount for at least one head.');
+                return;
+              }
+              const before = Math.max(0, ...ledgers.flatMap((l) => l.entries.map((x) => x.id)));
               act(async () => {
-                // the money receipt opens at once, ready to print or save as PDF
+                // one receipt for the whole payment opens at once, ready to print or save as PDF
                 await openPdfAfter(
-                  () => api.collect(flatId, { contribution_head_id: Number(headId), amount, received_on: date, method, reference_no: reference || undefined }),
+                  () => api.collectLines(flatId, { lines, received_on: date, method, reference_no: reference || undefined }),
                   (all: FlatLedger[]) => {
-                    const e = all.flatMap((l) => l.entries).filter((x) => !x.is_reversal && x.method !== 'OPENING').sort((a, b) => b.id - a.id)[0];
-                    return e?.receipt_no ? { path: `/contributions/collections/${e.id}/receipt`, filename: `receipt-${e.receipt_no}.pdf` } : null;
+                    const fresh = all.flatMap((l) => l.entries).filter((x) => x.id > before && !x.is_reversal && x.method !== 'OPENING').sort((a, b) => a.id - b.id);
+                    return fresh.length ? { path: `/contributions/receipt?${fresh.map((x) => `ids[]=${x.id}`).join('&')}`, filename: `receipt-${fresh[0].receipt_no}.pdf` } : null;
                   },
                 );
-                setAmount('');
+                setAmounts({});
                 setReference('');
               });
             }}
@@ -434,15 +457,28 @@ function LedgerModal({
             <p className="font-medium">
               {t('contrib.collect')} — {nameOf(book)}
             </p>
+            <p className="text-xs text-navy-700">{lang === 'bn' ? 'যে খাতে যত টাকা দিয়েছেন সেখানে লিখুন — একটি রসিদেই সব আসবে।' : 'Type the amount under each head paid - one receipt covers them all.'}</p>
+            <div className="space-y-1.5">
+              {book.heads.map((h) => (
+                <label key={h.id} className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate">{nameOf(h)}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className={`${input} w-36 text-right`}
+                    placeholder="0"
+                    value={amounts[h.id] ?? ''}
+                    onChange={(e) => setAmounts((a) => ({ ...a, [h.id]: e.target.value }))}
+                  />
+                </label>
+              ))}
+              <p className="flex justify-between border-t border-brand-100 pt-1.5 font-semibold">
+                <span>{lang === 'bn' ? 'মোট' : 'Total'}</span>
+                <span>৳{money(book.heads.reduce((c, h) => c + (Number(amounts[h.id]) || 0), 0))}</span>
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-2">
-              <select className={input} value={headId} onChange={(e) => setHeadId(e.target.value)}>
-                {book.heads.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {nameOf(h)}
-                  </option>
-                ))}
-              </select>
-              <input required type="number" min="0.01" step="0.01" className={input} placeholder={t('contrib.amount')} value={amount} onChange={(e) => setAmount(e.target.value)} />
               <select className={input} value={method} onChange={(e) => setMethod(e.target.value)}>
                 {['CASH', 'BANK', 'BKASH', 'NAGAD'].map((m) => (
                   <option key={m}>{m}</option>

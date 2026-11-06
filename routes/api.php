@@ -332,6 +332,12 @@ Route::prefix('contributions')->middleware('auth:sanctum')->group(function () {
     Route::get('/flats/{flat}/ledgers/pdf', [$c, 'ledgerPdf'])->middleware('permission:contribution.view');
     Route::post('/flats/{flat}/collections', [$c, 'store'])->middleware('permission:contribution.collect');
     Route::get('/collections/{contribution}/receipt', [$c, 'receipt'])->middleware('permission:contribution.view|contribution.collect');
+    Route::get('/receipt', [$c, 'receipts'])->middleware('permission:contribution.view|contribution.collect');
+    // the heads money is collected for: add, rename, switch off, delete (only while nothing was collected under it)
+    Route::get('/books/{book}/heads', [$c, 'heads'])->middleware('permission:contribution.view|contribution.collect');
+    Route::post('/books/{book}/heads', [$c, 'storeHead'])->middleware('permission:contribution.manage');
+    Route::put('/heads/{head}', [$c, 'updateHead'])->middleware('permission:contribution.manage');
+    Route::delete('/heads/{head}', [$c, 'destroyHead'])->middleware('permission:contribution.manage');
     Route::post('/collections/{contribution}/reverse', [$c, 'reverse'])->middleware('permission:contribution.manage');
 });
 Route::get('/me/contributions', [\App\Http\Controllers\Api\MyContributionController::class, 'index'])->middleware('auth:sanctum');

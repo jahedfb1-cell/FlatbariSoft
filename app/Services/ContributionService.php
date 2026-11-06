@@ -105,6 +105,114 @@ class ContributionService
         });
     }
 
+    /**
+     * One payment that covers several heads at once (subscription + gas line + ...): one row per head with an amount,
+     * all saved together or not at all. $data: lines[] of [contribution_head_id, amount], received_on, method, reference_no?, notes?
+     *
+     * @return \Illuminate\Support\Collection<int, Contribution>
+     */
+    public function recordMany(Flat $flat, array $data, int $by)
+    {
+        $lines = collect($data['lines'] ?? [])->filter(fn ($l) => bccomp((string) ($l['amount'] ?? 0), '0', 4) > 0)->values();
+        if ($lines->isEmpty()) {
+            throw ValidationException::withMessages(['lines' => 'কোনো খাতে টাকার পরিমাণ লেখা হয়নি।']);
+        }
+        if ($lines->pluck('contribution_head_id')->duplicates()->isNotEmpty()) {
+            throw ValidationException::withMessages(['lines' => 'একই খাত দুবার আছে।']);
+        }
+        $books = ContributionHead::whereIn('id', $lines->pluck('contribution_head_id'))->pluck('contribution_book_id')->unique();
+        if ($books->count() > 1) {
+            throw ValidationException::withMessages(['lines' => 'এক রসিদে একই খাতার খাতগুলোই নেওয়া যায়।']);
+        }
+
+        return DB::transaction(fn () => $lines->map(fn ($l) => $this->record($flat, [
+            'contribution_head_id' => $l['contribution_head_id'], 'amount' => $l['amount'],
+            'received_on' => $data['received_on'], 'method' => $data['method'],
+            'reference_no' => $data['reference_no'] ?? null, 'notes' => $data['notes'] ?? null,
+        ], $by)));
+    }
+
+    // ---- the heads of a book (what money is collected for)
+
+    /** A new head. It starts counting toward the target unless said otherwise. */
+    public function createHead(ContributionBook $book, array $data, int $by): ContributionHead
+    {
+        $bn = trim((string) $data['name_bn']);
+        $en = trim((string) ($data['name_en'] ?? '')) ?: $bn;
+        if (ContributionHead::where('contribution_book_id', $book->id)->where(fn ($q) => $q->where('name_bn', $bn)->orWhere('name_en', $en))->exists()) {
+            throw ValidationException::withMessages(['name_bn' => 'এই নামে এই খাতায় আগেই একটি খাত আছে।']);
+        }
+
+        $base = strtoupper(trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $en), '_')) ?: 'HEAD';
+        $code = $base;
+        for ($i = 2; ContributionHead::where('code', $code)->exists(); $i++) {
+            $code = "{$base}_{$i}";
+        }
+
+        $head = ContributionHead::create([
+            'contribution_book_id' => $book->id, 'code' => $code, 'name_bn' => $bn, 'name_en' => $en,
+            'counts_toward_target' => (bool) ($data['counts_toward_target'] ?? true),
+            'sort_order' => (int) ContributionHead::where('contribution_book_id', $book->id)->max('sort_order') + 1,
+            'is_active' => true,
+        ]);
+        $this->audit('head_created', $head, $by, null, $head->only(['code', 'name_bn', 'name_en', 'counts_toward_target']));
+
+        return $head;
+    }
+
+    /**
+     * Rename a head, or switch it off for new payments (what was collected under it stays in every statement and ledger).
+     * Whether it counts toward the target can only change while nothing has been collected under it: otherwise every
+     * balance already worked out would silently move.
+     */
+    public function updateHead(ContributionHead $head, array $data, int $by): ContributionHead
+    {
+        $old = $head->only(['name_bn', 'name_en', 'counts_toward_target', 'is_active']);
+        $used = Contribution::where('contribution_head_id', $head->id)->exists();
+
+        if (array_key_exists('counts_toward_target', $data) && (bool) $data['counts_toward_target'] !== $head->counts_toward_target && $used) {
+            throw ValidationException::withMessages(['counts_toward_target' => 'এই খাতে টাকা আদায় হয়ে গেছে — টার্গেটে গোনা হবে কি না এখন বদলানো যায় না, নইলে সবার বাকি বদলে যাবে।']);
+        }
+        if (($data['is_active'] ?? true) === false && $head->is_active
+            && ContributionHead::where('contribution_book_id', $head->contribution_book_id)->where('is_active', true)->count() <= 1) {
+            throw ValidationException::withMessages(['is_active' => 'খাতায় অন্তত একটি চালু খাত থাকতে হবে।']);
+        }
+
+        $head->update(array_filter([
+            'name_bn' => isset($data['name_bn']) ? trim((string) $data['name_bn']) : null,
+            'name_en' => isset($data['name_en']) ? trim((string) $data['name_en']) : null,
+            'counts_toward_target' => $data['counts_toward_target'] ?? null,
+            'is_active' => $data['is_active'] ?? null,
+        ], fn ($v) => $v !== null));
+        $this->audit('head_updated', $head, $by, $old, $head->only(['name_bn', 'name_en', 'counts_toward_target', 'is_active']));
+
+        return $head->fresh();
+    }
+
+    /** A head can be deleted only if no money was ever collected under it; otherwise it can only be switched off. */
+    public function deleteHead(ContributionHead $head, int $by): void
+    {
+        if (Contribution::where('contribution_head_id', $head->id)->exists()) {
+            throw ValidationException::withMessages(['head' => 'এই খাতে টাকা আদায় হয়েছে — মুছলে হিসাব ভুল হয়ে যাবে। এর বদলে "বন্ধ করুন" দিন: নতুন আদায় নেওয়া যাবে না, কিন্তু আগের হিসাব থেকে যাবে।']);
+        }
+        if ($head->is_active && ContributionHead::where('contribution_book_id', $head->contribution_book_id)->where('is_active', true)->count() <= 1) {
+            throw ValidationException::withMessages(['head' => 'খাতায় অন্তত একটি চালু খাত থাকতে হবে।']);
+        }
+
+        $this->audit('head_deleted', $head, $by, $head->only(['code', 'name_bn', 'name_en']), null);
+        $head->delete();
+    }
+
+    private function audit(string $event, ContributionHead $head, int $by, ?array $old, ?array $new): void
+    {
+        if (\Illuminate\Support\Facades\Schema::hasTable('audit_logs')) {
+            \App\Models\AuditLog::create([
+                'user_id' => $by, 'event' => $event, 'auditable_type' => 'ContributionHead', 'auditable_id' => $head->id,
+                'old_values' => $old, 'new_values' => $new, 'ip' => request()?->ip(),
+            ]);
+        }
+    }
+
     /** Undoes a receipt with an opposite row (and opposite ledger lines); the original is never touched. */
     public function reverse(Contribution $contribution, string $reason, int $by): Contribution
     {
@@ -214,7 +322,10 @@ class ContributionService
      */
     public function statement(ContributionBook $book): array
     {
-        $heads = ContributionHead::where('contribution_book_id', $book->id)->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
+        // a head switched off for new payments still shows while money stands under it: the sheet must add up
+        $heads = ContributionHead::where('contribution_book_id', $book->id)
+            ->where(fn ($q) => $q->where('is_active', true)->orWhereIn('id', Contribution::select('contribution_head_id')))
+            ->orderBy('sort_order')->orderBy('id')->get();
         $sums = Contribution::whereIn('contribution_head_id', $heads->pluck('id'))
             ->selectRaw('flat_id, contribution_head_id, SUM(amount) as total')
             ->groupBy('flat_id', 'contribution_head_id')->get()->groupBy('flat_id');
@@ -263,7 +374,7 @@ class ContributionService
         return [
             'book' => $this->bookRow($book),
             'default_target' => bcadd((string) $book->default_target, '0', 4),
-            'heads' => $heads->map(fn ($h) => ['code' => $h->code, 'name_bn' => $h->name_bn, 'name_en' => $h->name_en, 'id' => $h->id, 'counts_toward_target' => $h->counts_toward_target])->values()->all(),
+            'heads' => $heads->map(fn ($h) => ['code' => $h->code, 'name_bn' => $h->name_bn, 'name_en' => $h->name_en, 'id' => $h->id, 'counts_toward_target' => $h->counts_toward_target, 'is_active' => $h->is_active])->values()->all(),
             'rows' => $rows,
             'totals' => $totals,
         ];

@@ -111,3 +111,26 @@ export const printMyLedger = () => openPdf('/me/contributions/pdf', undefined, '
 
 /** The money receipt of one collection, opened for printing / saving. */
 export const printCollectionReceipt = (id: number, receiptNo: string) => openPdf(`/contributions/collections/${id}/receipt`, undefined, `receipt-${receiptNo}.pdf`);
+
+// ---- the heads money is collected for
+export interface HeadRow {
+  id: number;
+  code: string;
+  name_bn: string;
+  name_en: string;
+  counts_toward_target: boolean;
+  is_active: boolean;
+  used: boolean;
+}
+export const listHeads = (book: string) => client.get<HeadRow[]>(`/contributions/books/${book}/heads`).then((r) => r.data);
+export const createHead = (book: string, d: { name_bn: string; name_en?: string; counts_toward_target?: boolean }) =>
+  client.post<HeadRow[]>(`/contributions/books/${book}/heads`, d).then((r) => r.data);
+export const updateHead = (id: number, d: { name_bn?: string; name_en?: string; counts_toward_target?: boolean; is_active?: boolean }) =>
+  client.put<HeadRow[]>(`/contributions/heads/${id}`, d).then((r) => r.data);
+export const deleteHead = (id: number) => client.delete<HeadRow[]>(`/contributions/heads/${id}`).then((r) => r.data);
+
+/** One payment that covers several heads at once; the receipt of all of them is one PDF. */
+export const collectLines = (
+  flatId: number,
+  d: { lines: { contribution_head_id: number; amount: string }[]; received_on: string; method: string; reference_no?: string; notes?: string },
+) => client.post(`/contributions/flats/${flatId}/collections`, d).then((r) => r.data);
