@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { NAV_GROUPS, canOpen, type NavItem } from '../config/nav';
+import { ShellContext } from '../context/ShellContext';
+import NotificationBell from './NotificationBell';
+import { LanguageButton } from './LanguageToggle';
 
 const KEY = 'gv.sidebar.collapsed';
 const read = () => {
@@ -19,8 +22,10 @@ const read = () => {
  */
 export default function AppShell() {
   const { user, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const location = useLocation();
+  const [userMenu, setUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(read);
   const [open, setOpen] = useState(false); // the phone drawer
 
@@ -28,8 +33,25 @@ export default function AppShell() {
   const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => canOpen(i, can)) })).filter((g) => g.items.length > 0);
   const isResident = !!user && user.roles.some((r) => r === 'flat_owner' || r === 'tenant');
 
-  // the drawer closes whenever you go somewhere
-  useEffect(() => setOpen(false), [location.pathname, location.search]);
+  // the drawer and the user menu close whenever you go somewhere
+  useEffect(() => {
+    setOpen(false);
+    setUserMenu(false);
+  }, [location.pathname, location.search]);
+  // the user menu also closes on a tap anywhere else or Escape
+  useEffect(() => {
+    if (!userMenu) return;
+    const away = (e: MouseEvent | TouchEvent) => userMenuRef.current && !userMenuRef.current.contains(e.target as Node) && setUserMenu(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setUserMenu(false);
+    document.addEventListener('mousedown', away);
+    document.addEventListener('touchstart', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('touchstart', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [userMenu]);
   useEffect(() => {
     try {
       localStorage.setItem(KEY, collapsed ? '1' : '0');
@@ -118,15 +140,7 @@ export default function AppShell() {
         </button>
       </aside>
 
-      {/* phone: a bar with the menu button, and the drawer */}
-      <div className="sticky top-0 z-30 flex items-center gap-3 bg-brand-800 px-3 py-2 text-white lg:hidden">
-        <button onClick={() => setOpen(true)} aria-label="open menu" className="flex h-10 w-10 items-center justify-center rounded-lg text-2xl hover:bg-white/10">
-          ☰
-        </button>
-        <Link to="/" className="text-base font-semibold">
-          {t('appName')}
-        </Link>
-      </div>
+      {/* the drawer on a phone */}
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-navy-900/50" onClick={() => setOpen(false)} />
@@ -143,9 +157,65 @@ export default function AppShell() {
         </div>
       )}
 
-      <main className={`transition-[padding] ${collapsed ? 'lg:pl-16' : 'lg:pl-60'}`}>
-        <Outlet />
-      </main>
+      <div className={`transition-[padding] ${collapsed ? 'lg:pl-16' : 'lg:pl-60'}`}>
+        {/* the top bar: the menu on the left; on the right the bell, the language and the signed-in person - on a phone and on a computer */}
+        <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-white/10 bg-brand-800 px-3 py-2 text-white shadow-sm">
+          <button onClick={() => setOpen(true)} aria-label="open menu" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-2xl hover:bg-white/10 lg:hidden">
+            ☰
+          </button>
+          <Link to="/" className="min-w-0 truncate text-base font-semibold lg:hidden">
+            {t('appName')}
+          </Link>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <NotificationBell />
+            <LanguageButton compact />
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenu((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={userMenu}
+                aria-label={lang === 'bn' ? 'আমার অ্যাকাউন্ট' : 'My account'}
+                className="flex h-10 items-center gap-2 rounded-full bg-white/10 pl-1 pr-1 text-sm hover:bg-white/20 sm:pr-3"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">{(user?.mobile ?? '?').slice(-2)}</span>
+                <span className="hidden max-w-32 truncate sm:inline">{user?.mobile}</span>
+                <span className="hidden text-xs sm:inline" aria-hidden>
+                  ▾
+                </span>
+              </button>
+              {userMenu && (
+                <div role="menu" className="absolute right-0 top-12 z-40 w-64 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-brand-200 bg-white text-navy-900 shadow-xl">
+                  <div className="border-b border-brand-100 bg-brand-50 px-4 py-3">
+                    <p className="truncate text-sm font-semibold">{user?.mobile}</p>
+                    <p className="truncate text-xs capitalize text-navy-700">{user?.roles.map((r) => r.replace(/_/g, ' ')).join(', ')}</p>
+                  </div>
+                  <div className="p-1.5 text-sm">
+                    {isResident && (
+                      <Link role="menuitem" to="/owner" className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-brand-100">
+                        <span aria-hidden>👤</span> {t('users.openPortal')}
+                      </Link>
+                    )}
+                    <Link role="menuitem" to="/notifications" className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-brand-100">
+                      <span aria-hidden>🔔</span> {lang === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}
+                    </Link>
+                    <Link role="menuitem" to="/change-password" className="flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 hover:bg-brand-100">
+                      <span aria-hidden>🔒</span> {t('password.change')}
+                    </Link>
+                    <button role="menuitem" onClick={() => logout()} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-status-due hover:bg-status-due/10">
+                      <span aria-hidden>⏻</span> {t('home.logout')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+        <ShellContext.Provider value={true}>
+          <main>
+            <Outlet />
+          </main>
+        </ShellContext.Provider>
+      </div>
     </div>
   );
 }
