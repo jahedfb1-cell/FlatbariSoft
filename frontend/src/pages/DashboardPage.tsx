@@ -303,8 +303,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* everything else lives behind these tiles */}
-        <div>
+        {/* The same screens as the menu: shown only where the menu is folded away (phone, tablet). On a computer the
+            menu is always on the left, so repeating it here would just be a second copy. */}
+        <div className="lg:hidden">
           <h2 className="mb-3 text-sm font-semibold text-navy-900">{t('dash.quickAccess')}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             {visibleItems.map((item) => (
