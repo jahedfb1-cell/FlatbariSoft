@@ -411,7 +411,7 @@ function BookingDetailModal({
 
   return (
     <Modal title={`${b.booking_no} — ${b.customer_name}`} onClose={onClose}>
-      <div className="max-h-[70vh] space-y-4 overflow-y-auto text-sm text-navy-900">
+      <div className="space-y-4 text-sm text-navy-900">
         <div className="flex items-center justify-between">
           <span>
             {b.booking_date} · {t(`hall.slot.${b.slot}` as TranslationKey)} ({b.start_time}–{b.end_time})

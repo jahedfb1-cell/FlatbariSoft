@@ -286,7 +286,7 @@ function NewUserModal({ roles, onClose, onDone }: { roles: RoleInfo[]; onClose: 
 
   return (
     <Modal title={t('users.newUser')} onClose={onClose}>
-      <form onSubmit={submit} className="max-h-[70vh] space-y-3 overflow-y-auto">
+      <form onSubmit={submit} className="space-y-3">
         <input required className={input} placeholder={t('users.name')} value={name} onChange={(e) => setName(e.target.value)} />
         <input required className={input} placeholder={`${t('users.mobile')} (01XXXXXXXXX)`} value={mobile} onChange={(e) => setMobile(e.target.value)} />
         <div>
@@ -339,7 +339,7 @@ function EditUserModal({ user, roles, onClose, onDone }: { user: ManagedUser; ro
 
   return (
     <Modal title={`${t('users.edit')} — ${user.name ?? user.mobile}`} onClose={onClose}>
-      <div className="max-h-[70vh] space-y-4 overflow-y-auto">
+      <div className="space-y-4">
         <form onSubmit={save} className="space-y-3">
           <input required className={input} placeholder={t('users.name')} value={name} onChange={(e) => setName(e.target.value)} />
           <input required className={input} placeholder={`${t('users.mobile')} (01XXXXXXXXX)`} value={mobile} onChange={(e) => setMobile(e.target.value)} />

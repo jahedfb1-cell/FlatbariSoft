@@ -168,7 +168,7 @@ export default function BillingPage() {
         </div>
 
         <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
-          <div className="flex items-end gap-1">
+          <div className="flex flex-wrap items-end gap-1">
             <button onClick={() => step(-1)} className={btnGhost} aria-label="previous month">‹</button>
             <div>
               <label className="mb-1 block text-sm text-navy-900">{t('common.month')}</label>

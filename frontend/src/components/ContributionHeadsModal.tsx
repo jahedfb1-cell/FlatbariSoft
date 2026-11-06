@@ -56,7 +56,7 @@ export default function ContributionHeadsModal({ bookCode, bookName, onClose, on
 
   return (
     <Modal title={`${L('খাত পরিচালনা', 'Manage heads')} — ${bookName}`} onClose={onClose}>
-      <div className="max-h-[70vh] space-y-4 overflow-y-auto text-sm text-navy-900">
+      <div className="space-y-4 text-sm text-navy-900">
         <form onSubmit={add} className="space-y-2 rounded-lg border border-brand-200 p-3">
           <p className="font-medium">+ {L('নতুন খাত', 'New head')}</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

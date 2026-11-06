@@ -138,3 +138,29 @@ a {
     overflow-x: visible;
   }
 }
+
+/* ------------------------------------------------------------------
+ * A thumb needs room: on a phone the small things that are tapped (back links, month arrows, text-style buttons) get a
+ * 40px target without changing how they look.
+ * ----------------------------------------------------------------- */
+@media (max-width: 639px) {
+  main a[href='/'],
+  main a[href='/owner'],
+  header a[href='/'],
+  header a[href='/owner'] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+
+  button[aria-label='previous month'],
+  button[aria-label='next month'] {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  button[class*='hover:underline'] {
+    min-height: 36px;
+    padding-block: 6px;
+  }
+}

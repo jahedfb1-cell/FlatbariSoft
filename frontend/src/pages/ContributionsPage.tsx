@@ -5,10 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import Modal from '../components/Modal';
+import Sheet from '../components/Sheet';
+import CollectSheet from '../components/CollectSheet';
 import ContributionHeadsModal from '../components/ContributionHeadsModal';
 import { localToday } from '../components/HallCalendar';
 import { apiError } from '../api/hall';
-import { blobErrorMessage, openPdfAfter } from '../utils/download';
+import { blobErrorMessage } from '../utils/download';
 import * as api from '../api/contributions';
 import type { Book, FlatLedger, ImportRow, Statement, StatementRow } from '../api/contributions';
 
@@ -280,11 +282,8 @@ function LedgerModal({
   const [ledgers, setLedgers] = useState<FlatLedger[] | null>(null);
   const [bookCode, setBookCode] = useState(startBook);
   const [error, setError] = useState<string | null>(null);
-  // one row per head being paid: the head is picked from a drop-down, the amount typed beside it
-  const [payLines, setPayLines] = useState<{ headId: string; amount: string }[]>([{ headId: '', amount: '' }]);
-  const [method, setMethod] = useState('CASH');
-  const [date, setDate] = useState(localToday());
-  const [reference, setReference] = useState('');
+  // the payment sheet opens on top of the ledger; the row button "Take payment" opens it straight away
+  const [collecting, setCollecting] = useState(!!focusCollect);
   const [reversing, setReversing] = useState<number | null>(null);
   const [reason, setReason] = useState('');
   const [target, setTarget] = useState('');
@@ -297,16 +296,11 @@ function LedgerModal({
   }, [flatId, t]);
   useEffect(load, [load]);
 
-  const collectForm = useRef<HTMLFormElement>(null);
   const ledger = ledgers?.find((l) => l.book.code === bookCode);
-  useEffect(() => {
-    if (focusCollect && ledger) collectForm.current?.scrollIntoView({ block: 'center' });
-  }, [focusCollect, ledger?.flat_id]);
   const book = books.find((b) => b.code === bookCode);
 
   // keep the form in step with the book on screen
   useEffect(() => {
-    setPayLines([{ headId: String(book?.heads[0]?.id ?? ''), amount: '' }]);
     setTarget(ledger?.target ? String(Number(ledger.target)) : '');
     setReversing(null);
     setError(null);
@@ -330,8 +324,21 @@ function LedgerModal({
   const headName = (e: { head_name_bn: string; head_name_en: string }) => (lang === 'bn' ? e.head_name_bn : e.head_name_en);
 
   return (
-    <Modal title={`${t('contrib.ledger')} — ${ledger.flat_no}${ledger.owner ? ` (${ledger.owner})` : ''}`} onClose={onClose}>
-      <div className="max-h-[70vh] space-y-4 overflow-y-auto text-sm text-navy-900">
+    <>
+    <Sheet
+      wide
+      title={`${t('contrib.ledger')} — ${ledger.flat_no}`}
+      sub={ledger.owner ?? undefined}
+      onClose={() => (collecting ? undefined : onClose())}
+      footer={
+        canCollect ? (
+          <button type="button" onClick={() => setCollecting(true)} className="w-full rounded-xl bg-brand-600 py-3.5 text-base font-semibold text-white shadow transition hover:bg-brand-700">
+            💰 {t('contrib.collect')} — {nameOf(book)}
+          </button>
+        ) : undefined
+      }
+    >
+      <div className="space-y-4 text-sm text-navy-900">
         <div className="flex flex-wrap gap-2">
           {ledgers.map((l) => (
             <button key={l.book.code} className={l.book.code === bookCode ? btn : btnGhost} onClick={() => setBookCode(l.book.code)}>
@@ -429,104 +436,6 @@ function LedgerModal({
           </div>
         )}
 
-        {canCollect && (
-          <form
-            ref={collectForm}
-            className="space-y-2 rounded-lg border border-brand-200 p-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const lines = payLines.filter((l) => l.headId && Number(l.amount) > 0).map((l) => ({ contribution_head_id: Number(l.headId), amount: l.amount }));
-              if (lines.length === 0) {
-                setError(lang === 'bn' ? 'অন্তত একটি খাত বেছে টাকার পরিমাণ লিখুন।' : 'Pick a head and enter an amount.');
-                return;
-              }
-              const before = Math.max(0, ...ledgers.flatMap((l) => l.entries.map((x) => x.id)));
-              act(async () => {
-                // one receipt for the whole payment opens at once, ready to print or save as PDF
-                await openPdfAfter(
-                  () => api.collectLines(flatId, { lines, received_on: date, method, reference_no: reference || undefined }),
-                  (all: FlatLedger[]) => {
-                    const fresh = all.flatMap((l) => l.entries).filter((x) => x.id > before && !x.is_reversal && x.method !== 'OPENING').sort((a, b) => a.id - b.id);
-                    return fresh.length ? { path: `/contributions/receipt?${fresh.map((x) => `ids[]=${x.id}`).join('&')}`, filename: `receipt-${fresh[0].receipt_no}.pdf` } : null;
-                  },
-                );
-                setPayLines([{ headId: String(book.heads[0]?.id ?? ''), amount: '' }]);
-                setReference('');
-              });
-            }}
-          >
-            <p className="font-medium">
-              {t('contrib.collect')} — {nameOf(book)}
-            </p>
-            <p className="text-xs text-navy-700">{lang === 'bn' ? 'খাত বেছে টাকা লিখুন। একাধিক খাতে দিলে "+ আরেকটি খাত" চাপুন — একটি রসিদেই সব আসবে।' : 'Pick a head and type the amount. To pay for more heads press "+ Another head" - one receipt covers them all.'}</p>
-            <div className="space-y-1.5">
-              {payLines.map((line, idx) => {
-                // a head already picked in another row is not offered again
-                const taken = new Set(payLines.filter((_, k) => k !== idx).map((l) => l.headId));
-                return (
-                  <div key={idx} className="flex items-center gap-2">
-                    <select
-                      className={`${input} min-w-0 flex-1`}
-                      value={line.headId}
-                      onChange={(e) => setPayLines((rows) => rows.map((r, k) => (k === idx ? { ...r, headId: e.target.value } : r)))}
-                    >
-                      {book.heads
-                        .filter((h) => !taken.has(String(h.id)))
-                        .map((h) => (
-                          <option key={h.id} value={h.id}>
-                            {nameOf(h)}
-                          </option>
-                        ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className={`${input} w-32 text-right`}
-                      placeholder={t('contrib.amount')}
-                      value={line.amount}
-                      onChange={(e) => setPayLines((rows) => rows.map((r, k) => (k === idx ? { ...r, amount: e.target.value } : r)))}
-                    />
-                    {payLines.length > 1 && (
-                      <button type="button" className="px-1 text-status-due hover:underline" aria-label="remove" onClick={() => setPayLines((rows) => rows.filter((_, k) => k !== idx))}>
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-              {payLines.length < book.heads.length && (
-                <button
-                  type="button"
-                  className="text-sm text-brand-700 hover:underline"
-                  onClick={() => {
-                    const used = new Set(payLines.map((l) => l.headId));
-                    const next = book.heads.find((h) => !used.has(String(h.id)));
-                    if (next) setPayLines((rows) => [...rows, { headId: String(next.id), amount: '' }]);
-                  }}
-                >
-                  + {lang === 'bn' ? 'আরেকটি খাত' : 'Another head'}
-                </button>
-              )}
-              <p className="flex justify-between border-t border-brand-100 pt-1.5 font-semibold">
-                <span>{lang === 'bn' ? 'মোট' : 'Total'}</span>
-                <span>৳{money(payLines.reduce((c, l) => c + (Number(l.amount) || 0), 0))}</span>
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <select className={input} value={method} onChange={(e) => setMethod(e.target.value)}>
-                {['CASH', 'BANK', 'BKASH', 'NAGAD'].map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
-              <input required type="date" className={input} value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <input className={input} placeholder={t('contrib.refNo')} value={reference} onChange={(e) => setReference(e.target.value)} />
-            <button type="submit" className={`${btn} w-full`}>
-              {t('contrib.collect')}
-            </button>
-          </form>
-        )}
 
         {canManage && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 p-3">
@@ -543,7 +452,23 @@ function LedgerModal({
 
         {error && <p className="text-status-due">{error}</p>}
       </div>
-    </Modal>
+    </Sheet>
+    {collecting && (
+      <CollectSheet
+        flatId={flatId}
+        flatNo={ledger.flat_no}
+        owner={ledger.owner}
+        book={book}
+        ledger={ledger}
+        lastEntryId={Math.max(0, ...ledgers.flatMap((l) => l.entries.map((x) => x.id)))}
+        onClose={() => setCollecting(false)}
+        onDone={() => {
+          load();
+          onChanged();
+        }}
+      />
+    )}
+    </>
   );
 }
 

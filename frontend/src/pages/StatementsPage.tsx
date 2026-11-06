@@ -480,7 +480,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
 
   return (
     <Modal title={t('stmt.entries')} onClose={onClose}>
-      <div className="max-h-[72vh] space-y-4 overflow-y-auto text-sm text-navy-900">
+      <div className="space-y-4 text-sm text-navy-900">
         <p className="text-navy-700">{t('stmt.entriesHelp')}</p>
 
         <form onSubmit={submit} className="space-y-2 rounded-lg border border-brand-200 p-3">
