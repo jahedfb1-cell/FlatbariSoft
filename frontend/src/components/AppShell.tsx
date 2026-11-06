@@ -101,26 +101,6 @@ export default function AppShell() {
     </nav>
   );
 
-  const footer = (compact: boolean) => (
-    <div className="border-t border-white/10 p-2 text-sm text-brand-100">
-      {isResident && (
-        <Link to="/owner" title={t('users.openPortal')} className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10 ${compact ? 'justify-center px-2' : ''}`}>
-          <span className="text-lg leading-none">👤</span>
-          {!compact && <span>{t('users.openPortal')}</span>}
-        </Link>
-      )}
-      <Link to="/change-password" title={t('password.change')} className={`flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/10 ${compact ? 'justify-center px-2' : ''}`}>
-        <span className="text-lg leading-none">🔒</span>
-        {!compact && <span>{t('password.change')}</span>}
-      </Link>
-      <button onClick={() => logout()} title={t('home.logout')} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-white/10 ${compact ? 'justify-center px-2' : ''}`}>
-        <span className="text-lg leading-none">⏻</span>
-        {!compact && <span>{t('home.logout')}</span>}
-      </button>
-      {!compact && user && <p className="mt-1 truncate px-3 text-[11px] text-brand-300">{user.mobile}</p>}
-    </div>
-  );
-
   const brand = (compact: boolean) => (
     <Link to="/" className={`flex items-center gap-2 px-4 py-4 ${compact ? 'justify-center px-2' : ''}`}>
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-lg">🌿</span>
@@ -134,7 +114,6 @@ export default function AppShell() {
       <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col bg-gradient-to-b from-brand-800 to-brand-900 transition-[width] lg:flex ${collapsed ? 'w-16' : 'w-60'}`}>
         {brand(collapsed)}
         {menu(collapsed)}
-        {footer(collapsed)}
         <button onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? 'expand menu' : 'collapse menu'} className="absolute -right-3 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-brand-200 bg-white text-xs text-navy-700 shadow hover:bg-brand-100">
           {collapsed ? '›' : '‹'}
         </button>
@@ -152,7 +131,6 @@ export default function AppShell() {
               </button>
             </div>
             {menu(false)}
-            {footer(false)}
           </aside>
         </div>
       )}
@@ -163,8 +141,9 @@ export default function AppShell() {
           <button onClick={() => setOpen(true)} aria-label="open menu" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-2xl hover:bg-white/10 lg:hidden">
             ☰
           </button>
-          <Link to="/" className="min-w-0 truncate text-base font-semibold lg:hidden">
-            {t('appName')}
+          <Link to="/" className="flex min-w-0 items-center gap-2 lg:hidden" aria-label={t('appName')}>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-base">🌿</span>
+            {location.pathname !== '/' && <span className="min-w-0 truncate text-base font-semibold">{t('appName')}</span>}
           </Link>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <NotificationBell />

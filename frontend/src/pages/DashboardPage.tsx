@@ -13,7 +13,7 @@ const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
 const MONTHS_BN = ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'];
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { t, lang } = useLanguage();
   const bn = lang === 'bn';
   const monthName = (m: number) => (bn ? MONTHS_BN : MONTHS_EN)[m - 1];
@@ -90,12 +90,6 @@ export default function DashboardPage() {
                 {t('users.openPortal')}
               </Link>
             )}
-            <Link to="/change-password" className="rounded-lg border border-white/30 px-3 py-1.5 hover:bg-white/10">
-              {t('password.change')}
-            </Link>
-            <button onClick={() => logout()} className="rounded-lg border border-white/30 px-3 py-1.5 hover:bg-white/10">
-              {t('home.logout')}
-            </button>
           </div>
         </div>
       </div>
