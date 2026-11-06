@@ -280,7 +280,8 @@ function LedgerModal({
   const [ledgers, setLedgers] = useState<FlatLedger[] | null>(null);
   const [bookCode, setBookCode] = useState(startBook);
   const [error, setError] = useState<string | null>(null);
-  const [amounts, setAmounts] = useState<Record<number, string>>({});
+  // one row per head being paid: the head is picked from a drop-down, the amount typed beside it
+  const [payLines, setPayLines] = useState<{ headId: string; amount: string }[]>([{ headId: '', amount: '' }]);
   const [method, setMethod] = useState('CASH');
   const [date, setDate] = useState(localToday());
   const [reference, setReference] = useState('');
@@ -305,7 +306,7 @@ function LedgerModal({
 
   // keep the form in step with the book on screen
   useEffect(() => {
-    setAmounts({});
+    setPayLines([{ headId: String(book?.heads[0]?.id ?? ''), amount: '' }]);
     setTarget(ledger?.target ? String(Number(ledger.target)) : '');
     setReversing(null);
     setError(null);
@@ -434,9 +435,9 @@ function LedgerModal({
             className="space-y-2 rounded-lg border border-brand-200 p-3"
             onSubmit={(e) => {
               e.preventDefault();
-              const lines = book.heads.filter((h) => Number(amounts[h.id]) > 0).map((h) => ({ contribution_head_id: h.id, amount: amounts[h.id] }));
+              const lines = payLines.filter((l) => l.headId && Number(l.amount) > 0).map((l) => ({ contribution_head_id: Number(l.headId), amount: l.amount }));
               if (lines.length === 0) {
-                setError(lang === 'bn' ? 'অন্তত একটি খাতে টাকার পরিমাণ লিখুন।' : 'Enter an amount for at least one head.');
+                setError(lang === 'bn' ? 'অন্তত একটি খাত বেছে টাকার পরিমাণ লিখুন।' : 'Pick a head and enter an amount.');
                 return;
               }
               const before = Math.max(0, ...ledgers.flatMap((l) => l.entries.map((x) => x.id)));
@@ -449,7 +450,7 @@ function LedgerModal({
                     return fresh.length ? { path: `/contributions/receipt?${fresh.map((x) => `ids[]=${x.id}`).join('&')}`, filename: `receipt-${fresh[0].receipt_no}.pdf` } : null;
                   },
                 );
-                setAmounts({});
+                setPayLines([{ headId: String(book.heads[0]?.id ?? ''), amount: '' }]);
                 setReference('');
               });
             }}
@@ -457,25 +458,59 @@ function LedgerModal({
             <p className="font-medium">
               {t('contrib.collect')} — {nameOf(book)}
             </p>
-            <p className="text-xs text-navy-700">{lang === 'bn' ? 'যে খাতে যত টাকা দিয়েছেন সেখানে লিখুন — একটি রসিদেই সব আসবে।' : 'Type the amount under each head paid - one receipt covers them all.'}</p>
+            <p className="text-xs text-navy-700">{lang === 'bn' ? 'খাত বেছে টাকা লিখুন। একাধিক খাতে দিলে "+ আরেকটি খাত" চাপুন — একটি রসিদেই সব আসবে।' : 'Pick a head and type the amount. To pay for more heads press "+ Another head" - one receipt covers them all.'}</p>
             <div className="space-y-1.5">
-              {book.heads.map((h) => (
-                <label key={h.id} className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate">{nameOf(h)}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className={`${input} w-36 text-right`}
-                    placeholder="0"
-                    value={amounts[h.id] ?? ''}
-                    onChange={(e) => setAmounts((a) => ({ ...a, [h.id]: e.target.value }))}
-                  />
-                </label>
-              ))}
+              {payLines.map((line, idx) => {
+                // a head already picked in another row is not offered again
+                const taken = new Set(payLines.filter((_, k) => k !== idx).map((l) => l.headId));
+                return (
+                  <div key={idx} className="flex items-center gap-2">
+                    <select
+                      className={`${input} min-w-0 flex-1`}
+                      value={line.headId}
+                      onChange={(e) => setPayLines((rows) => rows.map((r, k) => (k === idx ? { ...r, headId: e.target.value } : r)))}
+                    >
+                      {book.heads
+                        .filter((h) => !taken.has(String(h.id)))
+                        .map((h) => (
+                          <option key={h.id} value={h.id}>
+                            {nameOf(h)}
+                          </option>
+                        ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={`${input} w-32 text-right`}
+                      placeholder={t('contrib.amount')}
+                      value={line.amount}
+                      onChange={(e) => setPayLines((rows) => rows.map((r, k) => (k === idx ? { ...r, amount: e.target.value } : r)))}
+                    />
+                    {payLines.length > 1 && (
+                      <button type="button" className="px-1 text-status-due hover:underline" aria-label="remove" onClick={() => setPayLines((rows) => rows.filter((_, k) => k !== idx))}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {payLines.length < book.heads.length && (
+                <button
+                  type="button"
+                  className="text-sm text-brand-700 hover:underline"
+                  onClick={() => {
+                    const used = new Set(payLines.map((l) => l.headId));
+                    const next = book.heads.find((h) => !used.has(String(h.id)));
+                    if (next) setPayLines((rows) => [...rows, { headId: String(next.id), amount: '' }]);
+                  }}
+                >
+                  + {lang === 'bn' ? 'আরেকটি খাত' : 'Another head'}
+                </button>
+              )}
               <p className="flex justify-between border-t border-brand-100 pt-1.5 font-semibold">
                 <span>{lang === 'bn' ? 'মোট' : 'Total'}</span>
-                <span>৳{money(book.heads.reduce((c, h) => c + (Number(amounts[h.id]) || 0), 0))}</span>
+                <span>৳{money(payLines.reduce((c, l) => c + (Number(l.amount) || 0), 0))}</span>
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
