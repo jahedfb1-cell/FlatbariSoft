@@ -60,6 +60,21 @@ class BillSlipsTest extends TestCase
         $this->assertEquals(103 * 325, $first['gas_amount']);
     }
 
+    public function test_the_gas_page_lists_every_month_of_the_year_with_its_readings(): void
+    {
+        $this->september(2);
+        $r = $this->actingAs($this->admin, 'sanctum')->getJson('/api/gas/months?fiscal_year=2026')->assertOk();
+
+        $this->assertSame('2026-27', $r->json('label'));
+        $this->assertCount(12, $r->json('months'));
+        $this->assertSame([7, 8, 9], array_slice(array_column($r->json('months'), 'month'), 0, 3));
+        $sep = $r->json('months.2');
+        $this->assertSame(2, $sep['flats_read']);
+        $this->assertSame(2, $sep['flats_total']);
+        $this->assertEquals(108, $sep['used_m3']); // 103 + 5
+        $this->assertSame(0, $r->json('months.0.flats_read')); // July: nothing read
+    }
+
     public function test_flats_come_in_building_order_on_the_register_and_on_paper(): void
     {
         // typed in a jumbled order, with 10A after 9B: text order would put 10A before 2A

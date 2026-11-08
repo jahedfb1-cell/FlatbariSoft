@@ -7,7 +7,7 @@ import InvoiceCell from '../components/InvoiceCell';
 import * as gasApi from '../api/gas';
 import * as billingApi from '../api/billing';
 import { listFlats, type Flat } from '../api/flats';
-import type { GasConsumer, GasPurchase, GasSummary } from '../api/gas';
+import type { GasConsumer, GasMonth, GasPurchase, GasSummary } from '../api/gas';
 import SupplierPicker from '../components/SupplierPicker';
 import GasReadingSheet from '../components/GasReadingSheet';
 import { localToday } from '../components/HallCalendar';
@@ -21,10 +21,19 @@ export default function GasPage() {
   const [month] = useState(now.getMonth() + 1);
   // the readings sheet has its own month: usually last month's meters are read at the start of this month
   const [sheetYM, setSheetYM] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
-  const stepSheet = (by: number) => setSheetYM((v) => {
-    const idx = v.year * 12 + (v.month - 1) + by;
-    return { year: Math.floor(idx / 12), month: (idx % 12) + 1 };
-  });
+  // every month of the July-June year as a strip: click one to open that month's meter readings
+  const fyOf = (y: number, m: number) => (m >= 7 ? y : y - 1);
+  const [fyMonths, setFyMonths] = useState<{ label: string; months: GasMonth[] } | null>(null);
+  const [sheetVersion, setSheetVersion] = useState(0);
+  const sheetFy = fyOf(sheetYM.year, sheetYM.month);
+  useEffect(() => {
+    let current = true;
+    gasApi.getGasMonths(sheetFy).then((d) => current && setFyMonths(d)).catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [sheetFy, sheetVersion]);
+  const goFy = (by: number) => setSheetYM(({ year, month }) => ({ year: year + by, month }));
   const [consumers, setConsumers] = useState<GasConsumer[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [summary, setSummary] = useState<GasSummary | null>(null);
@@ -346,13 +355,38 @@ export default function GasPage() {
         </div>
 
         <h2 className="mb-3 mt-8 text-lg font-semibold text-navy-900">{t('gas.readingsTitle')}</h2>
-        <div className="mb-3 flex items-center gap-2">
-          <button onClick={() => stepSheet(-1)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-navy-700 hover:bg-brand-100" aria-label="previous month">‹</button>
-          <span className="text-sm text-navy-900">{sheetYM.month}/{sheetYM.year}</span>
-          <button onClick={() => stepSheet(1)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-navy-700 hover:bg-brand-100" aria-label="next month">›</button>
+        <div className="mb-3 rounded-xl border border-brand-200 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-medium text-navy-700">{lang === 'bn' ? 'অর্থবছর' : 'Fiscal year'} {fyMonths?.label ?? ''} {lang === 'bn' ? '(জুলাই–জুন) — মাসে ক্লিক করুন' : '(July–June) — click a month'}</p>
+            <div className="flex gap-1">
+              <button onClick={() => goFy(-1)} className="rounded-lg border border-brand-200 px-2.5 py-1 text-sm text-navy-700 hover:bg-brand-100" aria-label="previous year">‹</button>
+              <button onClick={() => goFy(1)} className="rounded-lg border border-brand-200 px-2.5 py-1 text-sm text-navy-700 hover:bg-brand-100" aria-label="next year">›</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {(fyMonths?.months ?? []).map((m) => {
+              const selected = m.year === sheetYM.year && m.month === sheetYM.month;
+              const done = m.flats_total > 0 && m.flats_read >= m.flats_total;
+              const some = m.flats_read > 0;
+              const names = lang === 'bn' ? ['জানু', 'ফেব্রু', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টে', 'অক্টো', 'নভে', 'ডিসে'] : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              return (
+                <button
+                  key={`${m.year}-${m.month}`}
+                  onClick={() => setSheetYM({ year: m.year, month: m.month })}
+                  className={`rounded-lg border px-2 py-2 text-left text-xs transition ${selected ? 'border-brand-600 bg-brand-600 text-white' : 'border-brand-200 hover:bg-brand-100'}`}
+                >
+                  <span className="block font-medium">{names[m.month - 1]} {String(m.year).slice(2)}</span>
+                  <span className={`block ${selected ? 'text-white/90' : done ? 'text-status-paid' : some ? 'text-status-partial' : 'text-navy-700'}`}>
+                    {some ? `${m.flats_read}/${m.flats_total} ${lang === 'bn' ? 'রিডিং' : 'read'}` : lang === 'bn' ? 'রিডিং নেই' : 'No readings'}
+                  </span>
+                  {some && <span className={`block ${selected ? 'text-white/90' : 'text-navy-700'}`}>{Number(m.used_m3).toLocaleString('en-BD', { maximumFractionDigits: 0 })} {lang === 'bn' ? 'ইউনিট' : 'units'}</span>}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="mb-6">
-          <GasReadingSheet year={sheetYM.year} month={sheetYM.month} onSaved={() => load()} />
+          <GasReadingSheet year={sheetYM.year} month={sheetYM.month} onSaved={() => { load(); setSheetVersion((v) => v + 1); }} />
         </div>
         <div className="mb-3">
           <button onClick={() => setShowAdd((v) => !v)} className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">

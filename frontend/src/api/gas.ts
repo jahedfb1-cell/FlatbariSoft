@@ -111,6 +111,18 @@ export interface GasSummary {
   bill_rate_source?: 'PURCHASE' | 'EARLIER_PURCHASE' | 'FIXED' | 'NONE';
 }
 
+export interface GasMonth {
+  year: number;
+  month: number;
+  flats_read: number;
+  flats_total: number;
+  used_m3: string;
+  bought_kg: string;
+}
+export function getGasMonths(fiscalYear: number) {
+  return client.get<{ fiscal_year: number; label: string; months: GasMonth[] }>('/gas/months', { params: { fiscal_year: fiscalYear } }).then((r) => r.data);
+}
+
 export function getGasSummary(year: number, month: number) {
   return client.get<GasSummary>('/gas/summary', { params: { year, month } }).then((r) => r.data);
 }
