@@ -17,6 +17,7 @@ import * as paymentsApi from '../api/payments';
 import * as workApi from '../api/workBudgets';
 import type { FlatCollection } from '../api/workBudgets';
 import type { BillRow } from '../api/billing';
+import type { GasSummary } from '../api/gas';
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 })}`;
 const input = 'w-full rounded-lg border border-brand-200 px-3 py-2';
@@ -55,6 +56,7 @@ export default function BillingPage() {
   const [payNote, setPayNote] = useState<string | null>(null);
   const [editing, setEditing] = useState<BillRow | null>(null);
   const [askingReadings, setAskingReadings] = useState(false);
+  const [gas, setGas] = useState<GasSummary | null>(null);
 
   const loadRegister = useCallback(async () => {
     try {
@@ -66,6 +68,16 @@ export default function BillingPage() {
   useEffect(() => {
     loadRegister();
   }, [loadRegister]);
+
+  // the month's gas at a glance: bought, units, cost per unit, used by the flats, lost on the way. Hidden for people who may not see gas.
+  useEffect(() => {
+    let current = true;
+    setGas(null);
+    gasApi.getGasSummary(year, month).then((g) => current && setGas(g)).catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [year, month, bills.length]);
 
   // the strip of twelve months for the July-June year the chosen month falls in
   const fy = fiscalYearOf(year, month);
@@ -249,6 +261,28 @@ export default function BillingPage() {
           </div>
         )}
 
+        {gas && (Number(gas.month_kg) > 0 || Number(gas.total_used_m3) > 0) && (
+          <div className="mb-4 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+            <p className="mb-3 text-sm font-semibold text-navy-900">🔥 {bn ? 'গ্যাসের হিসাব' : 'Gas this month'} — {MONTHS[month - 1]} {year}</p>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <GasStat label={bn ? 'গ্যাস ক্রয়' : 'Gas purchase'} value={money(gas.month_cost)} sub={`${Number(gas.month_kg).toLocaleString('en-BD', { maximumFractionDigits: 2 })} kg · ${gas.month_purchases} ${bn ? 'বার' : 'purchases'}`} />
+              <GasStat label={bn ? 'মোট ইউনিট' : 'Total units'} value={Number(gas.month_bought_m3).toLocaleString('en-BD', { maximumFractionDigits: 2 })} sub={bn ? 'কেনা গ্যাসের ইউনিট (m³)' : 'bought, in units (m³)'} />
+              <GasStat
+                label={bn ? 'প্রতি ইউনিট টাকা' : 'Per unit (৳)'}
+                value={Number(gas.month_bought_m3) > 0 ? money(Number(gas.month_cost) / Number(gas.month_bought_m3)) : '—'}
+                sub={bills.find((b) => b.gas_rate)?.gas_rate ? `${bn ? 'ফ্ল্যাটকে বিল' : 'flats billed'} ৳${Number(bills.find((b) => b.gas_rate)!.gas_rate).toLocaleString('en-BD', { maximumFractionDigits: 2 })}` : (bn ? 'কেনা দাম' : 'purchase cost')}
+              />
+              <GasStat label={bn ? 'এই মাসে সব ফ্ল্যাটের ব্যবহার' : 'All flats used this month'} value={Number(gas.flats_used_m3).toLocaleString('en-BD', { maximumFractionDigits: 2 })} sub={`${gas.flats_read}/${gas.flats_total} ${bn ? 'ফ্ল্যাটের রিডিং' : 'flats read'}${Number(gas.office_used_m3) > 0 ? ` · ${bn ? 'অফিস' : 'office'} ${Number(gas.office_used_m3).toLocaleString('en-BD', { maximumFractionDigits: 2 })}` : ''}`} />
+              <GasStat
+                label={bn ? 'সিস্টেম লস' : 'System loss'}
+                value={gas.loss_percent === null ? '—' : `${gas.loss_percent}%`}
+                sub={gas.loss_percent === null ? (bn ? 'এই মাসে গ্যাস কেনা নেই' : 'no purchase this month') : `${Number(gas.loss_m3).toLocaleString('en-BD', { maximumFractionDigits: 2 })} ${bn ? 'ইউনিট' : 'units'}`}
+                tone={gas.loss_percent !== null && gas.loss_percent < 0 ? 'due' : undefined}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto rounded-xl border border-brand-200 bg-white shadow-sm">
           {bills.length === 0 ? (
             <p className="p-4 text-sm text-navy-700">{t('billing.noBills')}</p>
@@ -401,6 +435,16 @@ export default function BillingPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function GasStat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'due' }) {
+  return (
+    <div className="rounded-lg bg-brand-50 p-3">
+      <p className="text-xs text-navy-700">{label}</p>
+      <p className={`text-lg font-semibold ${tone === 'due' ? 'text-status-due' : 'text-navy-900'}`}>{value}</p>
+      {sub && <p className="text-[11px] text-navy-700">{sub}</p>}
     </div>
   );
 }
