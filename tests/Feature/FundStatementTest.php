@@ -320,6 +320,60 @@ class FundStatementTest extends TestCase
         $this->assertSame('6125.0000', $oct['loans'][0]['owed']);
     }
 
+    public function test_a_debt_from_before_the_system_started_is_recorded_without_moving_cash(): void
+    {
+        // the funds already hold the cash they hold today; gas still owes the service charge 40,000 from before
+        $this->opening('OPERATING', '100000', '0');
+        $this->opening('GAS', '5000', '0');
+
+        $this->treasury->openingLoan('OPERATING', 'GAS', '40000', '2026-09-01', 'from before the system', $this->admin->id);
+
+        $this->assertSame('100000.0000', $this->treasury->cashBalance('OPERATING')); // no cash moved
+        $this->assertSame('5000.0000', $this->treasury->cashBalance('GAS'));
+        $this->assertSame('40000.0000', $this->treasury->owed('GAS', 'OPERATING'));
+        $this->assertSame([['lender' => 'OPERATING', 'borrower' => 'GAS', 'owed' => '40000.0000']], $this->treasury->loanPositions());
+        $entry = TreasuryEntry::where('kind', 'OPENING_LOAN')->first();
+        $lines = JournalLine::where('journal_entry_id', $entry->journal_entry_id)->get();
+        $this->assertEquals($lines->sum('debit'), $lines->sum('credit'));
+
+        // it is repaid like any other loan, never above what is owed
+        $this->treasury->repay('GAS', 'OPERATING', 'CASH', '5000', '2026-09-20', null, $this->admin->id);
+        $this->assertSame('35000.0000', $this->treasury->owed('GAS', 'OPERATING'));
+
+    }
+
+    public function test_a_fund_short_of_cash_borrows_exactly_the_shortfall_from_the_service_charge(): void
+    {
+        $this->opening('OPERATING', '100000', '0');
+        $this->opening('GAS', '5000', '0');
+        $svc = app(ExpenseService::class);
+        $e = $svc->create([
+            'date' => '2026-09-20', 'expense_head_id' => \App\Models\ExpenseHead::where('code', 'UTILITY')->value('id'), 'payee' => 'Gas Shop 1',
+            'amount' => '14700', 'description' => 'Cylinders', 'treasury_medium' => 'CASH', 'fund_type' => 'GAS',
+        ], $this->admin->id);
+        $approver = $this->user('admin');
+
+        $this->assertSame('9700.0000', $svc->funding($e)['shortfall']); // 14,700 needed, 5,000 held
+        try {
+            $svc->approve($e, $approver->id);
+            $this->fail('approval needs the cash first');
+        } catch (ValidationException) {
+        }
+
+        $svc->borrowShortfall($e, $this->admin->id);
+
+        $this->assertSame('90300.0000', $this->treasury->cashBalance('OPERATING'));
+        $this->assertSame('14700.0000', $this->treasury->cashBalance('GAS'));
+        $this->assertSame('9700.0000', $this->treasury->owed('GAS', 'OPERATING'));
+        $svc->approve($e->fresh(), $approver->id);
+        $this->assertSame('0.0000', $this->treasury->cashBalance('GAS'));
+
+        // an expense of the service charge fund itself has nobody to borrow from
+        $own = $svc->create(['date' => '2026-09-21', 'expense_head_id' => \App\Models\ExpenseHead::where('code', 'UTILITY')->value('id'), 'payee' => 'X', 'amount' => '10', 'description' => 'x', 'treasury_medium' => 'CASH', 'fund_type' => 'OPERATING'], $this->admin->id);
+        $this->expectException(ValidationException::class);
+        $svc->borrowShortfall($own, $this->admin->id);
+    }
+
     public function test_a_fund_cannot_lend_to_itself(): void
     {
         $this->opening('OPERATING', '1000', '0');

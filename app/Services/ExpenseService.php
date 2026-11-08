@@ -156,6 +156,41 @@ class ExpenseService
         return User::where('id', '!=', $except)->get()->contains(fn (User $u) => $u->hasRole('super_admin') || $u->can('expense.approve'));
     }
 
+    /**
+     * What the expense's fund holds against what the expense needs (in the medium it is paid from). A shortfall is what
+     * the fund would have to borrow before this can be approved.
+     *
+     * @return array{fund: string, medium: string, held: string, needed: string, shortfall: string}
+     */
+    public function funding(Expense $expense): array
+    {
+        $held = $expense->treasury_medium === 'CASH' ? $this->treasury->cashBalance($expense->fund_type) : $this->treasury->bankBalance($expense->fund_type);
+        $needed = bcadd((string) $expense->amount, '0', 4);
+        $short = bccomp($needed, $held, 4) > 0 ? bcsub($needed, $held, 4) : '0.0000';
+
+        return ['fund' => $expense->fund_type, 'medium' => $expense->treasury_medium, 'held' => $held, 'needed' => $needed, 'shortfall' => $short];
+    }
+
+    /**
+     * The fund is short: the service charge (OPERATING) fund lends it exactly what is missing, so the expense can be
+     * approved. Recorded as an ordinary loan between funds - the gas / project fund repays it later.
+     */
+    public function borrowShortfall(Expense $expense, int $by): \App\Models\TreasuryEntry
+    {
+        if ($expense->status !== 'PENDING') {
+            throw ValidationException::withMessages(['status' => 'এই খরচ অনুমোদনের অপেক্ষায় নেই।']);
+        }
+        if ($expense->fund_type === 'OPERATING') {
+            throw ValidationException::withMessages(['fund' => 'এটি সার্ভিস চার্জ তহবিলেরই খরচ — অন্য তহবিল থেকে ধার নেওয়ার প্রশ্ন নেই।']);
+        }
+        $f = $this->funding($expense);
+        if (bccomp($f['shortfall'], '0', 4) <= 0) {
+            throw ValidationException::withMessages(['amount' => 'এই তহবিলে খরচের জন্য টাকা আছে — ধার লাগবে না।']);
+        }
+
+        return $this->treasury->lend('OPERATING', $expense->fund_type, $expense->treasury_medium, $f['shortfall'], \Carbon\Carbon::now('Asia/Dhaka')->toDateString(), 'খরচের জন্য ধার: '.$expense->payee, $by);
+    }
+
     public function approve(Expense $expense, int $approvedBy, ?string $note = null): Expense
     {
         if ($expense->status === 'APPROVED') {

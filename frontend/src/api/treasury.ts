@@ -60,7 +60,7 @@ export interface Summary {
 export interface Entry {
   id: number;
   receipt_no: string | null;
-  kind: 'OPENING' | 'DEPOSIT_TO_BANK' | 'WITHDRAW_FROM_BANK' | 'BANK_PROFIT' | 'FUND_LOAN' | 'LOAN_REPAYMENT';
+  kind: 'OPENING' | 'DEPOSIT_TO_BANK' | 'WITHDRAW_FROM_BANK' | 'BANK_PROFIT' | 'FUND_LOAN' | 'LOAN_REPAYMENT' | 'OPENING_LOAN';
   fund: FundCode;
   to_fund: FundCode | null;
   medium: 'CASH' | 'BANK' | null;
@@ -91,4 +91,7 @@ export const lend = (d: { from_fund: FundCode; to_fund: FundCode; medium: 'CASH'
   client.post('/treasury/loans', d).then((r) => r.data);
 export const repay = (d: { from_fund: FundCode; to_fund: FundCode; medium: 'CASH' | 'BANK'; amount: string; date: string; notes?: string }) =>
   client.post('/treasury/loan-repayments', d).then((r) => r.data);
+/** A debt between two funds that already existed when the system started: no cash moves. */
+export const openingLoan = (d: { lender_fund: FundCode; borrower_fund: FundCode; amount: string; date: string; notes?: string }) =>
+  client.post('/treasury/opening-loans', d).then((r) => r.data);
 export const reverseEntry = (id: number, reason: string) => client.post(`/treasury/entries/${id}/reverse`, { reason }).then((r) => r.data);

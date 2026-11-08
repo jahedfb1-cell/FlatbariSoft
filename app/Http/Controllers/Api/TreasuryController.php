@@ -137,6 +137,15 @@ class TreasuryController extends Controller
         return response()->json(['ok' => true], 201);
     }
 
+    /** A debt that already existed when the system started: lender_fund is owed by borrower_fund. */
+    public function openingLoan(TreasuryActionRequest $request)
+    {
+        $v = $request->validated();
+        $this->treasury->openingLoan($v['lender_fund'], $v['borrower_fund'], (string) $v['amount'], $v['date'], $v['notes'] ?? null, $request->user()->id);
+
+        return response()->json(['ok' => true], 201);
+    }
+
     /** from_fund is the borrower paying back, to_fund the lender receiving. */
     public function repay(TreasuryActionRequest $request)
     {

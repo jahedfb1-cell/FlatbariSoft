@@ -405,7 +405,7 @@ function AllFunds({ s, fundName, onPick }: { s: Summary; fundName: (c: FundCode)
   );
 }
 
-type Action = 'OPENING' | 'DEPOSIT' | 'WITHDRAW' | 'PROFIT' | 'LOAN' | 'REPAY';
+type Action = 'OPENING' | 'DEPOSIT' | 'WITHDRAW' | 'PROFIT' | 'LOAN' | 'REPAY' | 'OPENING_LOAN';
 
 /** Record the entries no other screen creates, and undo a wrong one. */
 function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
@@ -448,6 +448,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
       else if (action === 'DEPOSIT') await api.bankDeposit({ fund, amount, ...common });
       else if (action === 'WITHDRAW') await api.bankWithdrawal({ fund, amount, ...common });
       else if (action === 'PROFIT') await api.bankProfit({ fund, amount, ...common });
+      else if (action === 'OPENING_LOAN') await api.openingLoan({ lender_fund: to, borrower_fund: fund, amount, ...common });
       else if (action === 'LOAN') await api.lend({ from_fund: fund, to_fund: to, medium, amount, ...common });
       else await api.repay({ from_fund: fund, to_fund: to, medium, amount, ...common });
       setMsg(t('stmt.saved'));
@@ -481,7 +482,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
     }
   }
 
-  const twoFunds = action === 'LOAN' || action === 'REPAY';
+  const twoFunds = action === 'LOAN' || action === 'REPAY' || action === 'OPENING_LOAN';
   const actionLabels: Record<Action, string> = {
     OPENING: t('stmt.kind.OPENING'),
     DEPOSIT: t('stmt.kind.DEPOSIT_TO_BANK'),
@@ -489,6 +490,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
     PROFIT: t('stmt.kind.BANK_PROFIT'),
     LOAN: t('stmt.kind.FUND_LOAN'),
     REPAY: t('stmt.kind.LOAN_REPAYMENT'),
+    OPENING_LOAN: t('stmt.kind.OPENING_LOAN'),
   };
 
   return (
@@ -528,7 +530,7 @@ function EntriesModal({ onClose, onChanged }: { onClose: () => void; onChanged: 
                 </select>
               </label>
             )}
-            {twoFunds && (
+            {twoFunds && action !== 'OPENING_LOAN' && (
               <label className="text-navy-700">
                 {t('stmt.medium')}
                 <select className={`${input} mt-1`} value={medium} onChange={(e) => setMedium(e.target.value as 'CASH' | 'BANK')}>

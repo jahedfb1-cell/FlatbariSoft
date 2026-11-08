@@ -50,6 +50,8 @@ class ExpenseDetailService
                 'id' => $f->id, 'name' => $f->original_name, 'mime' => $f->mime, 'size' => $f->size,
             ])->values(),
             'source' => $this->source($expense),
+            // pending expenses only: what the fund holds against what is needed (a shortfall can be borrowed from the service charge)
+            'funding' => $expense->status === 'PENDING' ? $this->expenses->funding($expense) : null,
         ];
     }
 

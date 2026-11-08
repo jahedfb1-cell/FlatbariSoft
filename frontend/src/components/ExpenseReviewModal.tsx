@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { blobErrorMessage } from '../utils/download';
 import { fetchInvoiceImageUrl } from '../api/invoices';
 import * as api from '../api/expenses';
@@ -55,6 +56,8 @@ function FileCard({ file, onOpen, onRemove }: { file: ExpenseFile; onOpen: () =>
  */
 export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose, onChanged }: { id: number; canApprove: boolean; canUpload: boolean; onClose: () => void; onChanged: () => void }) {
   const { t, lang } = useLanguage();
+  const { user } = useAuth();
+  const canBorrow = !!user && (user.roles.includes('super_admin') || user.permissions.includes('treasury.manage'));
   const [d, setD] = useState<ExpenseDetail | null>(null);
   const [note, setNote] = useState('');
   const [rejecting, setRejecting] = useState(false);
@@ -112,6 +115,22 @@ export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose,
       onChanged();
     } catch (e: any) {
       setError(e?.response?.data?.message ?? t('somethingWrong'));
+    }
+  }
+
+  // the fund cannot pay: the service charge fund lends what is missing, then the expense can be approved
+  async function borrow() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setD(await api.borrowForExpense(id));
+      onChanged();
+    } catch (err: any) {
+      const errs = err?.response?.data?.errors;
+      setError(errs ? (Object.values(errs) as string[][]).flat().join(' ') : (err?.response?.data?.message ?? t('somethingWrong')));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -239,6 +258,30 @@ export default function ExpenseReviewModal({ id, canApprove, canUpload, onClose,
                 ))}
               </div>
             </div>
+
+            {pending && d.funding && Number(d.funding.shortfall) > 0 && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-navy-900">
+                <p className="font-medium">
+                  ⚠ {lang === 'bn' ? 'এই তহবিলে খরচের টাকা নেই' : 'This fund does not hold enough for the expense'}
+                </p>
+                <p className="mt-1 text-navy-700">
+                  {lang === 'bn'
+                    ? `${d.funding.medium === 'CASH' ? 'ক্যাশে' : 'ব্যাংকে'} আছে ${money(d.funding.held)}, খরচ ${money(d.funding.needed)} — ${money(d.funding.shortfall)} কম।`
+                    : `${d.funding.medium === 'CASH' ? 'Cash' : 'Bank'} holds ${money(d.funding.held)}, the expense is ${money(d.funding.needed)} - ${money(d.funding.shortfall)} short.`}
+                </p>
+                {d.funding.fund !== 'OPERATING' && canBorrow && (
+                  <button type="button" disabled={busy} onClick={borrow} className="mt-3 w-full rounded-xl bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+                    {lang === 'bn' ? `সার্ভিস চার্জ তহবিল থেকে ${money(d.funding.shortfall)} ধার নিন` : `Borrow ${money(d.funding.shortfall)} from the service charge fund`}
+                  </button>
+                )}
+                {d.funding.fund !== 'OPERATING' && !canBorrow && (
+                  <p className="mt-2 text-xs text-navy-700">{lang === 'bn' ? 'ধার নেওয়ার এন্ট্রি দিতে পারেন কোষাধ্যক্ষ/অ্যাডমিন।' : 'The treasurer or an admin can record the loan.'}</p>
+                )}
+                {d.funding.fund === 'OPERATING' && (
+                  <p className="mt-2 text-xs text-navy-700">{lang === 'bn' ? 'আগে ওপেনিং ব্যালেন্স বা জমা এন্ট্রি করুন (মাসিক তহবিল বিবরণী → এন্ট্রি)।' : 'Record an opening balance or a deposit first (Fund statements → Entries).'}</p>
+                )}
+              </div>
+            )}
 
             {pending && canApprove && (
               <form onSubmit={approve} className="space-y-2 rounded-xl border border-brand-200 p-4">

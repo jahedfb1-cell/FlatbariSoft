@@ -52,6 +52,8 @@ export interface ExpenseDetail {
   approvals: { by: string | null; at: string | null; note: string | null }[];
   attachments: ExpenseFile[];
   source: { type: 'gas' | 'materials'; purchase_id: number; has_invoice: boolean; item?: string } | null;
+  /** pending expenses: what the fund holds against what the expense needs (shortfall > 0 means it must borrow before approval) */
+  funding: { fund: string; medium: 'CASH' | 'BANK'; held: string; needed: string; shortfall: string } | null;
 }
 
 export function listExpenses(status?: string) {
@@ -102,6 +104,11 @@ export const rejectExpense = (id: number, reason: string) => client.post(`/expen
 export const getExpense = (id: number) => client.get<ExpenseDetail>(`/expenses/${id}`).then((r) => r.data);
 
 /** An approval always carries the approver's written note. */
+/** The expense's fund is short: the service charge fund lends exactly the shortfall. Returns the refreshed expense. */
+export function borrowForExpense(id: number) {
+  return client.post<ExpenseDetail>(`/expenses/${id}/borrow`).then((r) => r.data);
+}
+
 export function approveExpense(id: number, note: string) {
   return client.post<ExpenseRow>(`/expenses/${id}/approve`, { note }).then((r) => r.data);
 }

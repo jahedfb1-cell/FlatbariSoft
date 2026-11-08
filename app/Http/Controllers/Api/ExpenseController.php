@@ -57,6 +57,14 @@ class ExpenseController extends Controller
         return new ExpenseResource($expense);
     }
 
+    /** The fund is short of cash for this expense: the service charge fund lends exactly what is missing. */
+    public function borrow(Expense $expense)
+    {
+        $this->service->borrowShortfall($expense, Auth::id());
+
+        return response()->json($this->detail->present($expense->fresh()));
+    }
+
     /** Correct an expense nobody has approved yet. */
     public function update(StoreExpenseRequest $request, Expense $expense)
     {

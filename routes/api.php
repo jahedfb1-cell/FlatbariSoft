@@ -127,6 +127,7 @@ Route::prefix('expenses')->middleware('auth:sanctum')->group(function () {
     Route::post('/{expense}/attachments', [ExpenseController::class, 'attach'])->middleware('permission:expense.create');
     Route::put('/{expense}', [ExpenseController::class, 'update'])->middleware('permission:expense.create');
     Route::post('/{expense}/approve', [ExpenseController::class, 'approve'])->middleware('permission:expense.approve');
+    Route::post('/{expense}/borrow', [ExpenseController::class, 'borrow'])->middleware('permission:treasury.manage');
     Route::post('/{expense}/reject', [ExpenseController::class, 'reject'])->middleware('permission:expense.approve');
 });
 
@@ -367,6 +368,7 @@ Route::prefix('treasury')->middleware('auth:sanctum')->group(function () {
     Route::post('/bank-withdrawal', [$c, 'withdraw'])->middleware('permission:treasury.manage');
     Route::post('/bank-profit', [$c, 'profit'])->middleware('permission:treasury.manage');
     Route::post('/loans', [$c, 'lend'])->middleware('permission:treasury.manage');
+    Route::post('/opening-loans', [$c, 'openingLoan'])->middleware('permission:treasury.manage');
     Route::post('/loan-repayments', [$c, 'repay'])->middleware('permission:treasury.manage');
     Route::post('/entries/{entry}/reverse', [$c, 'reverse'])->middleware('permission:treasury.manage');
 });
