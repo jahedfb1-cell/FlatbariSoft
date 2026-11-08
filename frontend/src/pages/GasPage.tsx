@@ -17,8 +17,6 @@ const kgFmt = (v: string | number) => Number(v).toLocaleString('en-BD', { maximu
 export default function GasPage() {
   const { t, lang } = useLanguage();
   const now = new Date();
-  const [year] = useState(now.getFullYear());
-  const [month] = useState(now.getMonth() + 1);
   // the readings sheet has its own month: usually last month's meters are read at the start of this month
   const [sheetYM, setSheetYM] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
   // every month of the July-June year as a strip: click one to open that month's meter readings
@@ -33,6 +31,15 @@ export default function GasPage() {
       current = false;
     };
   }, [sheetFy, sheetVersion]);
+  // the figures at the top follow the month chosen in the strip
+  useEffect(() => {
+    let current = true;
+    setSummary(null);
+    gasApi.getGasSummary(sheetYM.year, sheetYM.month).then((d) => current && setSummary(d)).catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [sheetYM, sheetVersion]);
   const goFy = (by: number) => setSheetYM(({ year, month }) => ({ year: year + by, month }));
   const [consumers, setConsumers] = useState<GasConsumer[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -112,7 +119,6 @@ export default function GasPage() {
   function load() {
     gasApi.listGasConsumers().then(setConsumers).catch(() => undefined);
     gasApi.listGasPurchases().then(setPurchases).catch(() => undefined);
-    gasApi.getGasSummary(year, month).then(setSummary).catch(() => undefined);
     listFlats().then(setFlats).catch(() => undefined);
   }
 
@@ -222,6 +228,14 @@ export default function GasPage() {
 
         {message && <p className="mb-4 text-sm text-navy-900">{message}</p>}
 
+        {summary && (
+          <p className="mb-2 text-sm font-semibold text-navy-900">
+            📅 {(lang === 'bn'
+              ? ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর']
+              : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'])[sheetYM.month - 1]} {sheetYM.year}
+            <span className="ml-2 text-xs font-normal text-navy-700">{lang === 'bn' ? '— নিচের তালিকা থেকে মাস বদলান' : '— change the month in the list below'}</span>
+          </p>
+        )}
         {summary && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
