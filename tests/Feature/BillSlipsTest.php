@@ -49,6 +49,20 @@ class BillSlipsTest extends TestCase
         return $flats;
     }
 
+    public function test_flats_come_in_building_order_on_the_register_and_on_paper(): void
+    {
+        // typed in a jumbled order, with 10A after 9B: text order would put 10A before 2A
+        $nos = ['10A', '2B', '3A', '2A', '9B', '1C'];
+        $flats = collect($nos)->map(fn ($no) => Flat::factory()->create(['flat_no' => $no, 'occupancy_status' => 'OWNER_OCCUPIED', 'service_charge_rate' => 3500]));
+        app(GasReadingSheetService::class)->save(2026, 9, $flats->map(fn ($f) => ['flat_no' => $f->flat_no, 'previous_reading' => 0, 'current_reading' => 5])->all(), '2026-09-30', $this->admin->id);
+        app(BillGenerationService::class)->generate(2026, 9, $this->admin->id, notify: false);
+        $expected = ['1C', '2A', '2B', '3A', '9B', '10A'];
+
+        $register = $this->actingAs($this->admin, 'sanctum')->getJson('/api/billing/2026/9')->assertOk()->json();
+        $this->assertSame($expected, array_column($register, 'flat_no'));
+        $this->assertSame($expected, app(BillPrintService::class)->slips(2026, 9)->pluck('flat_no')->all());
+    }
+
     public function test_every_slip_carries_the_service_charge_and_the_meter_figures(): void
     {
         $flats = $this->september(2);
