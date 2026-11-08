@@ -10,6 +10,7 @@ use Illuminate\Validation\Rule;
  *  openingBalance            fund, cash, bank, date, notes
  *  deposit/withdraw/profit   fund, amount, date, notes
  *  lend / repay              from_fund (the one that pays out), to_fund, medium, amount, date, notes
+ *  openingLoan               lender_fund, borrower_fund, amount, date, notes
  *  reverse                   reason
  */
 class TreasuryActionRequest extends FormRequest
@@ -38,6 +39,11 @@ class TreasuryActionRequest extends FormRequest
                 'from_fund' => ['required', Rule::in(self::FUNDS)],
                 'to_fund' => ['required', Rule::in(self::FUNDS), 'different:from_fund'],
                 'medium' => ['required', Rule::in(['CASH', 'BANK'])],
+                'amount' => ['required', 'numeric', 'min:0.01'],
+            ],
+            'openingLoan' => $common + [
+                'lender_fund' => ['required', Rule::in(self::FUNDS)],
+                'borrower_fund' => ['required', Rule::in(self::FUNDS), 'different:lender_fund'],
                 'amount' => ['required', 'numeric', 'min:0.01'],
             ],
             'reverse' => ['reason' => ['required', 'string', 'max:300']],

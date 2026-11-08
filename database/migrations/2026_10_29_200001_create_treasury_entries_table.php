@@ -13,7 +13,7 @@ return new class extends Migration
         // mistake is undone with a reversal row that points back at the original.
         Schema::create('treasury_entries', function (Blueprint $table) {
             $table->id();
-            $table->enum('kind', ['OPENING', 'DEPOSIT_TO_BANK', 'WITHDRAW_FROM_BANK', 'BANK_PROFIT', 'FUND_LOAN', 'LOAN_REPAYMENT']);
+            $table->enum('kind', ['OPENING', 'DEPOSIT_TO_BANK', 'WITHDRAW_FROM_BANK', 'BANK_PROFIT', 'FUND_LOAN', 'LOAN_REPAYMENT', 'OPENING_LOAN']);
             $table->enum('fund', ['OPERATING', 'GAS', 'CAPITAL', 'SINKING']);
             // a loan or repayment moves money from `fund` to `to_fund`
             $table->enum('to_fund', ['OPERATING', 'GAS', 'CAPITAL', 'SINKING'])->nullable();

@@ -20,6 +20,8 @@ use Illuminate\Validation\ValidationException;
  *   BANK_PROFIT         interest / profit the bank paid
  *   FUND_LOAN           one fund lends to another       (service charge -> gas, -> project, ...)
  *   LOAN_REPAYMENT      the borrowing fund pays back
+ *   OPENING_LOAN        a loan between funds that already existed when the system started (the cash had moved
+ *                       before: only the debt is recorded, no cash or bank row)
  *
  * Every entry writes its cash/bank rows and a balanced journal entry atomically. Entries are never edited
  * or deleted; reverse() adds an opposite entry. A fund can never spend or lend more cash (or bank money)
@@ -39,6 +41,7 @@ class TreasuryService
             'BANK_PROFIT' => ['rows' => [['BANK', 'fund', 'IN']], 'debit' => '1100', 'credit' => '4900'],
             'FUND_LOAN' => ['rows' => [[$medium, 'fund', 'OUT'], [$medium, 'to_fund', 'IN']], 'debit' => '1400', 'credit' => '2400'],
             'LOAN_REPAYMENT' => ['rows' => [[$medium, 'fund', 'OUT'], [$medium, 'to_fund', 'IN']], 'debit' => '2400', 'credit' => '1400'],
+            'OPENING_LOAN' => ['rows' => [], 'debit' => '1400', 'credit' => '2400'],
         };
     }
 
@@ -94,6 +97,14 @@ class TreasuryService
         return DB::transaction(fn () => $this->create('FUND_LOAN', $from, $to, $medium, $amount, $date, $notes, $by));
     }
 
+    /** A debt between two funds from before the system started: $lender is owed $amount by $borrower. No cash moves. */
+    public function openingLoan(string $lender, string $borrower, string $amount, string $date, ?string $notes, int $by): TreasuryEntry
+    {
+        $this->assertPair($lender, $borrower);
+
+        return DB::transaction(fn () => $this->create('OPENING_LOAN', $lender, $borrower, null, $amount, $date, $notes, $by));
+    }
+
     /** $borrower pays $lender back. */
     public function repay(string $borrower, string $lender, string $medium, string $amount, string $date, ?string $notes, int $by): TreasuryEntry
     {
@@ -121,7 +132,7 @@ class TreasuryService
             if (TreasuryEntry::where('reverses_id', $original->id)->exists()) {
                 throw ValidationException::withMessages(['entry' => 'এই এন্ট্রি ইতিমধ্যে বাতিল করা হয়েছে।']);
             }
-            if ($original->kind === 'FUND_LOAN' && bccomp($this->owed($original->to_fund, $original->fund), (string) $original->amount, 4) < 0) {
+            if (in_array($original->kind, ['FUND_LOAN', 'OPENING_LOAN'], true) && bccomp($this->owed($original->to_fund, $original->fund), (string) $original->amount, 4) < 0) {
                 throw ValidationException::withMessages(['entry' => 'এই ধারের কিছু অংশ আগেই শোধ হয়েছে — আগে শোধ বাতিল করুন।']);
             }
 
@@ -168,7 +179,7 @@ class TreasuryService
         };
 
         // the loan row is stored lender -> borrower; the repayment row borrower -> lender
-        return bcsub($net('FUND_LOAN', $lender, $borrower), $net('LOAN_REPAYMENT', $borrower, $lender), 4);
+        return bcsub(bcadd($net('FUND_LOAN', $lender, $borrower), $net('OPENING_LOAN', $lender, $borrower), 4), $net('LOAN_REPAYMENT', $borrower, $lender), 4);
     }
 
     /** @return list<array{lender:string, borrower:string, owed:string}> only the pairs that still owe something */
@@ -255,6 +266,7 @@ class TreasuryService
             'BANK_PROFIT' => 'ব্যাংক মুনাফা',
             'FUND_LOAN' => "ধার প্রদান — {$to}",
             'LOAN_REPAYMENT' => "ধার শোধ — {$to}",
+            'OPENING_LOAN' => "শুরুর ধার — {$to}",
         };
 
         return $base.($row->reverses_id ? ' (বাতিল)' : '').($row->notes ? " — {$row->notes}" : '')." ({$row->receipt_no})";
