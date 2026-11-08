@@ -17,7 +17,7 @@ import * as paymentsApi from '../api/payments';
 import * as workApi from '../api/workBudgets';
 import type { FlatCollection } from '../api/workBudgets';
 import type { BillRow } from '../api/billing';
-import type { GasSummary } from '../api/gas';
+import type { GasSummary, ReadingSheetRow } from '../api/gas';
 
 const money = (v: string | number) => `৳${Number(v).toLocaleString('en-BD', { maximumFractionDigits: 2 })}`;
 const input = 'w-full rounded-lg border border-brand-200 px-3 py-2';
@@ -57,6 +57,7 @@ export default function BillingPage() {
   const [editing, setEditing] = useState<BillRow | null>(null);
   const [askingReadings, setAskingReadings] = useState(false);
   const [gas, setGas] = useState<GasSummary | null>(null);
+  const [office, setOffice] = useState<ReadingSheetRow[]>([]); // the project office's own meter: used gas, never billed
 
   const loadRegister = useCallback(async () => {
     try {
@@ -73,7 +74,9 @@ export default function BillingPage() {
   useEffect(() => {
     let current = true;
     setGas(null);
+    setOffice([]);
     gasApi.getGasSummary(year, month).then((g) => current && setGas(g)).catch(() => undefined);
+    gasApi.getReadingSheet(year, month).then((sh) => current && setOffice(sh.rows.filter((r) => r.is_office && r.units_used !== null))).catch(() => undefined);
     return () => {
       current = false;
     };
@@ -357,6 +360,37 @@ export default function BillingPage() {
                     </td>
                   </tr>
                 ))}
+                {/* the project office uses gas too: its units and what they cost at this month's rate, shown with the flats but never billed */}
+                {!onlyDue &&
+                  office.map((o) => {
+                    const rate = bills.find((b) => b.gas_rate)?.gas_rate;
+                    const units = Number(o.units_used);
+                    return (
+                      <tr key={o.consumer_id} className="border-t-2 border-brand-200 bg-brand-50/60">
+                        <td className="px-3 py-2">
+                          <span className="font-semibold text-navy-900">🏢 {bn ? 'প্রজেক্ট অফিস' : 'Project office'}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right text-navy-700">—</td>
+                        <td className="px-3 py-2 text-right text-navy-700">—</td>
+                        <td className="px-3 py-2 text-right">
+                          {rate ? money(units * Number(rate)) : '—'}
+                          <span className="block whitespace-nowrap text-xs font-normal text-navy-700">
+                            {units.toLocaleString('en-BD', { maximumFractionDigits: 2 })} {bn ? 'ইউনিট' : 'units'}
+                            {rate ? ` × ৳${Number(rate).toLocaleString('en-BD', { maximumFractionDigits: 2 })}` : ''}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right text-navy-700">—</td>
+                        <td className="px-3 py-2 text-right text-navy-700">—</td>
+                        <td className="px-3 py-2 text-right text-navy-700">—</td>
+                        <td className="px-3 py-2" colSpan={2}>
+                          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs text-navy-700">{bn ? 'অভ্যন্তরীণ — বিল হয় না' : 'Internal — not billed'}</span>
+                          <span className="block text-[11px] text-navy-700">
+                            {Number(o.previous_reading)} → {Number(o.current_reading)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           )}
