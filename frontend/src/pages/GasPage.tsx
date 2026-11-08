@@ -371,14 +371,21 @@ export default function GasPage() {
         <h2 className="mb-3 mt-8 text-lg font-semibold text-navy-900">{t('gas.readingsTitle')}</h2>
         <div className="mb-3 rounded-xl border border-brand-200 bg-white p-3 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-navy-700">{lang === 'bn' ? 'অর্থবছর' : 'Fiscal year'} {fyMonths?.label ?? ''} {lang === 'bn' ? '(জুলাই–জুন) — মাসে ক্লিক করুন' : '(July–June) — click a month'}</p>
+            <p className="text-sm font-semibold text-navy-900">
+              {lang === 'bn' ? 'অর্থবছর' : 'Fiscal year'} {sheetFy}-{String(sheetFy + 1).slice(2)} <span className="font-normal text-navy-700">{lang === 'bn' ? '(জুলাই–জুন)' : '(July–June)'}</span>
+              <span className="ml-2 text-xs font-normal text-navy-700">{lang === 'bn' ? '— মাসে ক্লিক করুন' : '— click a month'}</span>
+            </p>
             <div className="flex gap-1">
               <button onClick={() => goFy(-1)} className="rounded-lg border border-brand-200 px-2.5 py-1 text-sm text-navy-700 hover:bg-brand-100" aria-label="previous year">‹</button>
               <button onClick={() => goFy(1)} className="rounded-lg border border-brand-200 px-2.5 py-1 text-sm text-navy-700 hover:bg-brand-100" aria-label="next year">›</button>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {(fyMonths?.months ?? []).map((m) => {
+            {Array.from({ length: 12 }, (_, i) => {
+              const mo = ((i + 6) % 12) + 1;
+              const yr = mo >= 7 ? sheetFy : sheetFy + 1;
+              return fyMonths?.months.find((x) => x.year === yr && x.month === mo) ?? { year: yr, month: mo, flats_read: 0, flats_total: 0, used_m3: '0', bought_kg: '0' };
+            }).map((m) => {
               const selected = m.year === sheetYM.year && m.month === sheetYM.month;
               const done = m.flats_total > 0 && m.flats_read >= m.flats_total;
               const some = m.flats_read > 0;
