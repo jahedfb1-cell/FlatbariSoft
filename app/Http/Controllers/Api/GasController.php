@@ -137,6 +137,26 @@ class GasController extends Controller
         ));
     }
 
+    /** The twelve months of a July-June year with what the meters show in each: how many flats are read, the units used, and the gas bought. */
+    public function months(Request $request)
+    {
+        $fy = (int) ($request->query('fiscal_year') ?: (now('Asia/Dhaka')->month >= 7 ? now('Asia/Dhaka')->year : now('Asia/Dhaka')->year - 1));
+        $flatsTotal = \App\Models\GasConsumer::where('active', true)->where('is_internal', false)->whereNotNull('flat_id')->count();
+        $out = [];
+        for ($i = 0; $i < 12; $i++) {
+            $m = (($i + 6) % 12) + 1;
+            $y = $m >= 7 ? $fy : $fy + 1;
+            $s = $this->service->summary($y, $m);
+            $out[] = [
+                'year' => $y, 'month' => $m,
+                'flats_read' => $s['flats_read'], 'flats_total' => $flatsTotal,
+                'used_m3' => bcadd($s['total_used_m3'], '0', 2), 'bought_kg' => bcadd($s['month_kg'], '0', 2),
+            ];
+        }
+
+        return response()->json(['fiscal_year' => $fy, 'label' => $fy.'-'.substr((string) ($fy + 1), 2), 'months' => $out]);
+    }
+
     public function systemLoss(int $year, int $month, int $billingPeriodId)
     {
         return response()->json(['system_loss_percent' => $this->service->systemLossPercent($year, $month, $billingPeriodId)]);
