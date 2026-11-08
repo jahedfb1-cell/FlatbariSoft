@@ -18,3 +18,11 @@ RewriteRule ^ - [L]
 
 # anything else is a React route (/flats, /reports, ...) - the app renders it
 RewriteRule ^ index.html [L]
+
+# the page shell (index.html) is never kept in a browser's memory: after every update the newest screens load at once.
+# The built JS/CSS carry a new name each time, so those can safely stay cached.
+<IfModule mod_headers.c>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+</IfModule>
