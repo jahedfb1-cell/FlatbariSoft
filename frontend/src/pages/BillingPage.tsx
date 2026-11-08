@@ -276,7 +276,7 @@ export default function BillingPage() {
                 sub={
                   gas.bill_rate
                     ? `${bn ? 'ফ্ল্যাটকে বিল' : 'flats billed'} ৳${Number(gas.bill_rate).toLocaleString('en-BD', { maximumFractionDigits: 2 })}${
-                        gas.bill_rate_source === 'EARLIER_PURCHASE' ? (bn ? ' (আগের মাসের কেনা দামে)' : ' (earlier month’s purchase price)') : gas.bill_rate_source === 'FIXED' ? (bn ? ' (নির্দিষ্ট রেট)' : ' (fixed rate)') : ''
+                        gas.bill_rate_source === 'PURCHASE' ? (bn ? ' — লসসহ' : ' — loss included') : gas.bill_rate_source === 'EARLIER_PURCHASE' ? (bn ? ' (আগের মাসের কেনা দামে)' : ' (earlier month’s purchase price)') : gas.bill_rate_source === 'FIXED' ? (bn ? ' (নির্দিষ্ট রেট)' : ' (fixed rate)') : ''
                       }`
                     : bn ? 'কেনা দাম' : 'purchase cost'
                 }

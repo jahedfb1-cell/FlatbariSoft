@@ -129,18 +129,32 @@ class Phase15GasBillingTest extends TestCase
         $this->assertSame(['rate' => '330.0000', 'source' => 'FIXED'], $this->service->ratePerUnit(2026, 8));
     }
 
-    public function test_bills_take_the_months_purchase_price_per_unit(): void
+    public function test_bills_share_the_months_gas_cost_over_the_units_the_flats_used(): void
     {
         $user = User::factory()->create();
-        $flat = Flat::factory()->create(['service_charge_rate' => 3500]);
-        $consumer = GasConsumer::create(['flat_id' => $flat->id, 'name' => 'Test', 'is_internal' => false, 'active' => true]);
         $period = BillingPeriod::create(['year' => 2026, 'month' => 9, 'status' => 'DRAFT']);
+        // 1000 kg = 540 units bought for 171,000; the flats read 100 + 80 = 180 units, the office 60: 300 of the 540 are lost on the way
         GasPurchase::create(['date' => '2026-09-10', 'supplier_name' => 'S', 'quantity_kg' => 1000, 'unit_price' => 160, 'total_cost' => 171000]);
-        $this->service->recordReading($consumer, $period->id, 100, '2026-09-30', $user->id, null, '0');
-        $bill = Bill::create(['billing_period_id' => $period->id, 'flat_id' => $flat->id, 'service_charge' => 3500, 'gas_amount' => 0, 'other_charges' => 0, 'late_fee' => 0, 'previous_due' => 0, 'total_payable' => 3500, 'paid_amount' => 0, 'due_date' => '2026-10-10', 'status' => 'UNPAID']);
+
+        $bills = [];
+        foreach ([100, 80] as $units) {
+            $flat = Flat::factory()->create(['service_charge_rate' => 3500]);
+            $consumer = GasConsumer::create(['flat_id' => $flat->id, 'name' => 'F', 'is_internal' => false, 'active' => true]);
+            $this->service->recordReading($consumer, $period->id, $units, '2026-09-30', $user->id, null, '0');
+            $bills[$units] = Bill::create(['billing_period_id' => $period->id, 'flat_id' => $flat->id, 'service_charge' => 3500, 'gas_amount' => 0, 'other_charges' => 0, 'late_fee' => 0, 'previous_due' => 0, 'total_payable' => 3500, 'paid_amount' => 0, 'due_date' => '2026-10-10', 'status' => 'UNPAID']);
+        }
+        $office = GasConsumer::create(['name' => 'Office', 'is_internal' => true, 'active' => true]);
+        $this->service->recordReading($office, $period->id, 60, '2026-09-30', $user->id, null, '0');
 
         $this->service->applyToBills($period->id);
 
-        $this->assertEquals(31667, $bill->fresh()->gas_amount); // 100 units x 316.67
+        // 171,000 / 180 = 950 a unit: the flats carry the loss and the office's use, so the whole cost is covered
+        $this->assertEquals(95000, $bills[100]->fresh()->gas_amount);
+        $this->assertEquals(76000, $bills[80]->fresh()->gas_amount);
+        $this->assertEquals(171000, $bills[100]->fresh()->gas_amount + $bills[80]->fresh()->gas_amount);
+        // 540 bought, 240 used by flats and office: 300 lost (55.56%)
+        $summary = $this->service->summary(2026, 9);
+        $this->assertSame(55.56, $summary['loss_percent']);
+        $this->assertSame('950.00', $summary['bill_rate']);
     }
 }

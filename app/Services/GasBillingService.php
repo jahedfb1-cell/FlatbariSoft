@@ -179,33 +179,25 @@ class GasBillingService
     }
 
     /**
-     * What one unit of gas costs the flats for a month: the price the gas was actually bought at that month
-     * (everything paid for it, transport included, over the units it came to), not a number typed once and left.
-     * A month with no purchase of its own uses the latest earlier month that had one; only if gas was never bought
-     * does the fixed rate from the settings apply.
+     * What one unit of gas costs the flats for a month: the gas bought that month (everything paid for it, transport
+     * included) shared over the units the flats used - so the gas lost on the way, and the office's own use, are
+     * carried by the flats and the gas fund does not run short. When no flat has been read yet it is the price per unit
+     * bought. A month with no purchase of its own uses the latest earlier month that had one; only if gas was never
+     * bought does the fixed rate from the settings apply.
      *
      * @return array{rate: string, source: string}  source: PURCHASE | EARLIER_PURCHASE | FIXED
      */
     public function ratePerUnit(int $year, int $month): array
     {
-        $m3PerKg = (string) ($this->settingFor($year, $month)?->m3_per_kg ?? 0.54);
-
-        $perUnit = function (string $from, string $to) use ($m3PerKg): ?string {
-            $row = GasPurchase::whereBetween('date', [$from, $to])->selectRaw('COALESCE(SUM(quantity_kg),0) kg, COALESCE(SUM(total_cost),0) cost')->first();
-            $units = bcmul((string) $row->kg, $m3PerKg, 4);
-
-            return bccomp($units, '0', 4) > 0 ? number_format((float) bcdiv((string) $row->cost, $units, 6), 2, '.', '') : null;
-        };
-
         $first = \Carbon\Carbon::create($year, $month, 1);
-        if ($own = $perUnit($first->toDateString(), $first->copy()->endOfMonth()->toDateString())) {
+        if ($own = $this->monthRate($year, $month)) {
             return ['rate' => $own, 'source' => 'PURCHASE'];
         }
 
         $lastEarlier = GasPurchase::where('date', '<', $first->toDateString())->where('quantity_kg', '>', 0)->max('date');
         if ($lastEarlier) {
-            $m = \Carbon\Carbon::parse($lastEarlier)->startOfMonth();
-            if ($earlier = $perUnit($m->toDateString(), $m->copy()->endOfMonth()->toDateString())) {
+            $m = \Carbon\Carbon::parse($lastEarlier);
+            if ($earlier = $this->monthRate((int) $m->year, (int) $m->month)) {
                 return ['rate' => $earlier, 'source' => 'EARLIER_PURCHASE'];
             }
         }
@@ -216,6 +208,27 @@ class GasBillingService
         }
 
         return ['rate' => (string) $fixed->rate, 'source' => 'FIXED'];
+    }
+
+    /** One month's cost per unit: what was paid for the gas bought in it over the flats' units (or the units bought, before any reading); null if none was bought. */
+    private function monthRate(int $year, int $month): ?string
+    {
+        $from = \Carbon\Carbon::create($year, $month, 1);
+        $row = GasPurchase::whereBetween('date', [$from->toDateString(), $from->copy()->endOfMonth()->toDateString()])
+            ->selectRaw('COALESCE(SUM(quantity_kg),0) kg, COALESCE(SUM(total_cost),0) cost')->first();
+        $bought = bcmul((string) $row->kg, (string) ($this->settingFor($year, $month)?->m3_per_kg ?? 0.54), 4);
+        if (bccomp($bought, '0', 4) <= 0) {
+            return null;
+        }
+
+        $flatUnits = '0';
+        if ($period = \App\Models\BillingPeriod::where('year', $year)->where('month', $month)->first()) {
+            $flatUnits = (string) GasMeterReading::where('billing_period_id', $period->id)
+                ->whereHas('consumer', fn ($q) => $q->where('is_internal', false)->whereNotNull('flat_id'))->sum('units_used');
+        }
+        $over = bccomp($flatUnits, '0', 4) > 0 ? $flatUnits : $bought;
+
+        return number_format((float) bcdiv((string) $row->cost, $over, 6), 2, '.', '');
     }
 
     /**
