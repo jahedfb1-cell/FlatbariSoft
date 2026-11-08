@@ -94,7 +94,9 @@ class BillingController extends Controller
 
         $bills = $period->bills()->with('flat.currentOwners.person', 'flat.currentTenant.person')
             ->withSum(['payments as pending_amount' => fn ($q) => $q->where('status', 'PENDING')], 'amount')
-            ->orderBy('flat_id')->get();
+            ->get()
+            // flat order as the building reads it (1A, 1B, 2A ... 10A), not the order the flats were typed in
+            ->sort(fn ($a, $b) => strnatcasecmp((string) $a->flat?->flat_no, (string) $b->flat?->flat_no))->values();
 
         // a flat's balance moves forward into its newest bill, so money is taken there: tell the screen which bill that is
         $key = $year * 100 + $month;

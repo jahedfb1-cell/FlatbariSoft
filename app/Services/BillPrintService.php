@@ -36,7 +36,8 @@ class BillPrintService
         $readings = GasMeterReading::where('billing_period_id', $period->id)->with('consumer')->get()
             ->filter(fn ($r) => $r->consumer?->flat_id)->keyBy(fn ($r) => $r->consumer->flat_id);
 
-        return $bills->sortBy(fn (Bill $b) => [(int) $b->flat->flat_no, (string) $b->flat->flat_no])->values()
+        // flat order: 1A, 1B, 2A ... 9B, 10A - numbers as numbers, not as text
+        return $bills->sort(fn (Bill $a, Bill $b) => strnatcasecmp((string) $a->flat->flat_no, (string) $b->flat->flat_no))->values()
             ->map(fn (Bill $b) => $this->slip($b, $readings->get($b->flat_id), $period));
     }
 
