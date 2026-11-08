@@ -116,6 +116,11 @@ class GasBillingService
         }
         $flatCount = GasConsumer::where('active', true)->where('is_internal', false)->whereNotNull('flat_id')->count();
         $totalUse = bcadd($flatUse, $officeUse, 4);
+        try {
+            $billRate = $this->ratePerUnit($year, $month);
+        } catch (ValidationException) {
+            $billRate = ['rate' => null, 'source' => 'NONE'];
+        }
         $boughtM3 = bcmul((string) $mon->kg, $m3PerKg, 4);
 
         return [
@@ -133,6 +138,8 @@ class GasBillingService
             'total_used_m3' => $totalUse,
             'flats_read' => $flatsRead,
             'flats_total' => $flatCount,
+            'bill_rate' => $billRate['rate'],
+            'bill_rate_source' => $billRate['source'],
             'loss_m3' => bcsub($boughtM3, $totalUse, 4),
             'loss_percent' => bccomp($boughtM3, '0', 4) > 0 ? round(((float) bcsub($boughtM3, $totalUse, 4) / (float) $boughtM3) * 100, 2) : null,
         ];
@@ -162,6 +169,55 @@ class GasBillingService
         return round(((float) $loss / (float) $purchasedM3) * 100, 2);
     }
 
+    /** The rate setting in force for a month (the one that began on or before its last day). */
+    private function settingFor(int $year, int $month): ?GasRateSetting
+    {
+        $end = \Carbon\Carbon::create($year, $month, 1)->endOfMonth();
+
+        return GasRateSetting::where('effective_from', '<=', $end)->latest('effective_from')->first()
+            ?? GasRateSetting::latest('effective_from')->first();
+    }
+
+    /**
+     * What one unit of gas costs the flats for a month: the price the gas was actually bought at that month
+     * (everything paid for it, transport included, over the units it came to), not a number typed once and left.
+     * A month with no purchase of its own uses the latest earlier month that had one; only if gas was never bought
+     * does the fixed rate from the settings apply.
+     *
+     * @return array{rate: string, source: string}  source: PURCHASE | EARLIER_PURCHASE | FIXED
+     */
+    public function ratePerUnit(int $year, int $month): array
+    {
+        $m3PerKg = (string) ($this->settingFor($year, $month)?->m3_per_kg ?? 0.54);
+
+        $perUnit = function (string $from, string $to) use ($m3PerKg): ?string {
+            $row = GasPurchase::whereBetween('date', [$from, $to])->selectRaw('COALESCE(SUM(quantity_kg),0) kg, COALESCE(SUM(total_cost),0) cost')->first();
+            $units = bcmul((string) $row->kg, $m3PerKg, 4);
+
+            return bccomp($units, '0', 4) > 0 ? number_format((float) bcdiv((string) $row->cost, $units, 6), 2, '.', '') : null;
+        };
+
+        $first = \Carbon\Carbon::create($year, $month, 1);
+        if ($own = $perUnit($first->toDateString(), $first->copy()->endOfMonth()->toDateString())) {
+            return ['rate' => $own, 'source' => 'PURCHASE'];
+        }
+
+        $lastEarlier = GasPurchase::where('date', '<', $first->toDateString())->where('quantity_kg', '>', 0)->max('date');
+        if ($lastEarlier) {
+            $m = \Carbon\Carbon::parse($lastEarlier)->startOfMonth();
+            if ($earlier = $perUnit($m->toDateString(), $m->copy()->endOfMonth()->toDateString())) {
+                return ['rate' => $earlier, 'source' => 'EARLIER_PURCHASE'];
+            }
+        }
+
+        $fixed = $this->settingFor($year, $month);
+        if (! $fixed) {
+            throw ValidationException::withMessages(['rate' => 'কোনো গ্যাস রেট সেটিং পাওয়া যায়নি, আর কোনো গ্যাস কেনাও নেই।']);
+        }
+
+        return ['rate' => (string) $fixed->rate, 'source' => 'FIXED'];
+    }
+
     /**
      * Confirmed rule #6: the project office is a consumer too, but its
      * reading is never billed to a flat — it's an internal expense
@@ -170,11 +226,10 @@ class GasBillingService
      */
     public function applyToBills(int $billingPeriodId): void
     {
-        $rate = GasRateSetting::where('effective_from', '<=', now())->latest('effective_from')->first();
-
-        if (! $rate) {
-            throw ValidationException::withMessages(['rate' => 'কোনো গ্যাস রেট সেটিং পাওয়া যায়নি।']);
-        }
+        $period = \App\Models\BillingPeriod::findOrFail($billingPeriodId);
+        $setting = $this->settingFor($period->year, $period->month);
+        $perUnit = $this->ratePerUnit($period->year, $period->month);
+        $rate = (object) ['rate' => $perUnit['rate'], 'minimum_charge' => $setting?->minimum_charge ?? 0];
 
         $readings = GasMeterReading::where('billing_period_id', $billingPeriodId)
             ->whereHas('consumer', fn ($q) => $q->where('is_internal', false)->whereNotNull('flat_id'))
