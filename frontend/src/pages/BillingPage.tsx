@@ -275,7 +275,15 @@ export default function BillingPage() {
                     </td>
                     <td className="px-3 py-2 text-right text-navy-700">{money(b.previous_due)}</td>
                     <td className="px-3 py-2 text-right">{money(b.service_charge)}</td>
-                    <td className="px-3 py-2 text-right">{Number(b.gas_amount) > 0 ? money(b.gas_amount) : <span className="text-navy-700" title={lang === 'bn' ? 'গ্যাস বিল এখনো যোগ হয়নি' : 'Gas not added yet'}>—</span>}</td>
+                    <td className="px-3 py-2 text-right">
+                      {Number(b.gas_amount) > 0 ? money(b.gas_amount) : <span className="text-navy-700" title={lang === 'bn' ? 'গ্যাস বিল এখনো যোগ হয়নি' : 'Gas not added yet'}>—</span>}
+                      {b.gas_units != null && Number(b.gas_units) > 0 && (
+                        <span className="block whitespace-nowrap text-xs font-normal text-navy-700">
+                          {Number(b.gas_units).toLocaleString('en-BD', { maximumFractionDigits: 2 })} {lang === 'bn' ? 'ইউনিট' : 'units'}
+                          {b.gas_rate ? ` × ৳${Number(b.gas_rate).toLocaleString('en-BD', { maximumFractionDigits: 2 })}` : ''}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-right font-medium">{money(b.total_payable)}</td>
                     <td className="px-3 py-2 text-right">{money(b.paid_amount)}</td>
                     <td className="px-3 py-2 text-right font-medium">

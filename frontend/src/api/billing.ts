@@ -17,6 +17,9 @@ export interface BillRow {
   owner?: string | null;
   tenant?: string | null;
   due_date: string;
+  /** units on the gas meter this month and the per-unit rate (৳) the gas amount was made with */
+  gas_units?: string | null;
+  gas_rate?: string | null;
   status: 'UNPAID' | 'PARTIAL' | 'PAID';
   /** set when the flat has a newer bill: the month its balance has moved on to */
   newest_year?: number | null;

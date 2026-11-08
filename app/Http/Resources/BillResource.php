@@ -28,6 +28,9 @@ class BillResource extends JsonResource
             'due_date' => $this->due_date?->toDateString(),
             'status' => $this->status,
             // set only when the flat has a newer bill: where this month's balance has moved to
+            // the month's meter figures behind the gas amount: units used and the per-unit rate the bill was made with
+            'gas_units' => $this->gas_units ?? null,
+            'gas_rate' => $this->gas_rate ?? null,
             'newest_year' => $this->newest_year ?? null,
             'newest_month' => $this->newest_month ?? null,
         ];

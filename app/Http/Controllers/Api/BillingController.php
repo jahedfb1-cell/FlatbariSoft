@@ -98,6 +98,17 @@ class BillingController extends Controller
             // flat order as the building reads it (1A, 1B, 2A ... 10A), not the order the flats were typed in
             ->sort(fn ($a, $b) => strnatcasecmp((string) $a->flat?->flat_no, (string) $b->flat?->flat_no))->values();
 
+        // the meter reading of each flat this month: units used, and the per-unit rate worked back from the bill's own gas amount
+        $readings = \App\Models\GasMeterReading::where('billing_period_id', $period->id)->with('consumer')->get()
+            ->filter(fn ($r) => $r->consumer?->flat_id)->keyBy(fn ($r) => $r->consumer->flat_id);
+        $bills->each(function ($bill) use ($readings) {
+            $units = $readings->get($bill->flat_id)?->units_used;
+            if ($units !== null) {
+                $bill->setAttribute('gas_units', (string) $units);
+                $bill->setAttribute('gas_rate', bccomp((string) $units, '0', 4) > 0 ? bcdiv((string) $bill->gas_amount, (string) $units, 2) : null);
+            }
+        });
+
         // a flat's balance moves forward into its newest bill, so money is taken there: tell the screen which bill that is
         $key = $year * 100 + $month;
         $latest = \Illuminate\Support\Facades\DB::table('bills')

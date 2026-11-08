@@ -49,6 +49,17 @@ class BillSlipsTest extends TestCase
         return $flats;
     }
 
+    public function test_the_register_shows_units_and_per_unit_rate_beside_the_gas_amount(): void
+    {
+        $flats = $this->september(2); // first flat: 219 -> 322 = 103 units at 325
+        $rows = collect($this->actingAs($this->admin, 'sanctum')->getJson('/api/billing/2026/9')->assertOk()->json());
+        $first = $rows->firstWhere('flat_no', $flats[0]->flat_no);
+
+        $this->assertEquals(103, $first['gas_units']);
+        $this->assertEquals(325, $first['gas_rate']);
+        $this->assertEquals(103 * 325, $first['gas_amount']);
+    }
+
     public function test_flats_come_in_building_order_on_the_register_and_on_paper(): void
     {
         // typed in a jumbled order, with 10A after 9B: text order would put 10A before 2A
