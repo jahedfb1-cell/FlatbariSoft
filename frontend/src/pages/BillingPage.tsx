@@ -273,7 +273,13 @@ export default function BillingPage() {
               <GasStat
                 label={bn ? 'প্রতি ইউনিট টাকা' : 'Per unit (৳)'}
                 value={Number(gas.month_bought_m3) > 0 ? money(Number(gas.month_cost) / Number(gas.month_bought_m3)) : '—'}
-                sub={bills.find((b) => b.gas_rate)?.gas_rate ? `${bn ? 'ফ্ল্যাটকে বিল' : 'flats billed'} ৳${Number(bills.find((b) => b.gas_rate)!.gas_rate).toLocaleString('en-BD', { maximumFractionDigits: 2 })}` : (bn ? 'কেনা দাম' : 'purchase cost')}
+                sub={
+                  gas.bill_rate
+                    ? `${bn ? 'ফ্ল্যাটকে বিল' : 'flats billed'} ৳${Number(gas.bill_rate).toLocaleString('en-BD', { maximumFractionDigits: 2 })}${
+                        gas.bill_rate_source === 'EARLIER_PURCHASE' ? (bn ? ' (আগের মাসের কেনা দামে)' : ' (earlier month’s purchase price)') : gas.bill_rate_source === 'FIXED' ? (bn ? ' (নির্দিষ্ট রেট)' : ' (fixed rate)') : ''
+                      }`
+                    : bn ? 'কেনা দাম' : 'purchase cost'
+                }
               />
               <GasStat label={bn ? 'এই মাসে সব ফ্ল্যাটের ব্যবহার' : 'All flats used this month'} value={Number(gas.flats_used_m3).toLocaleString('en-BD', { maximumFractionDigits: 2 })} sub={`${gas.flats_read}/${gas.flats_total} ${bn ? 'ফ্ল্যাটের রিডিং' : 'flats read'}${Number(gas.office_used_m3) > 0 ? ` · ${bn ? 'অফিস' : 'office'} ${Number(gas.office_used_m3).toLocaleString('en-BD', { maximumFractionDigits: 2 })}` : ''}`} />
               <GasStat

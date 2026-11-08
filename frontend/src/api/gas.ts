@@ -106,6 +106,9 @@ export interface GasSummary {
   flats_total: number;
   loss_m3: string;
   loss_percent: number | null;
+  /** the per-unit rate flats are billed this month, and where it comes from: this month's purchase, an earlier month's, or the fixed setting */
+  bill_rate?: string | null;
+  bill_rate_source?: 'PURCHASE' | 'EARLIER_PURCHASE' | 'FIXED' | 'NONE';
 }
 
 export function getGasSummary(year: number, month: number) {

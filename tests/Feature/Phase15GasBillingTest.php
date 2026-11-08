@@ -115,4 +115,32 @@ class Phase15GasBillingTest extends TestCase
 
         $this->assertSame(7.41, $loss);
     }
+    public function test_the_unit_rate_is_the_price_the_gas_was_bought_at_that_month(): void
+    {
+        // September: 1000 kg = 540 units for 171,000 (transport included) -> 316.67 a unit. Not the fixed 330.
+        GasPurchase::create(['date' => '2026-09-10', 'supplier_name' => 'S', 'quantity_kg' => 1000, 'unit_price' => 160, 'total_cost' => 171000]);
+        // October is dearer: 1000 kg for 189,000 -> 350 a unit
+        GasPurchase::create(['date' => '2026-10-05', 'supplier_name' => 'S', 'quantity_kg' => 1000, 'unit_price' => 180, 'total_cost' => 189000]);
+
+        $this->assertSame(['rate' => '316.67', 'source' => 'PURCHASE'], $this->service->ratePerUnit(2026, 9));
+        $this->assertSame(['rate' => '350.00', 'source' => 'PURCHASE'], $this->service->ratePerUnit(2026, 10));
+        // a month with no purchase uses the latest earlier month's price; before any purchase the fixed setting stands in
+        $this->assertSame(['rate' => '350.00', 'source' => 'EARLIER_PURCHASE'], $this->service->ratePerUnit(2026, 11));
+        $this->assertSame(['rate' => '330.0000', 'source' => 'FIXED'], $this->service->ratePerUnit(2026, 8));
+    }
+
+    public function test_bills_take_the_months_purchase_price_per_unit(): void
+    {
+        $user = User::factory()->create();
+        $flat = Flat::factory()->create(['service_charge_rate' => 3500]);
+        $consumer = GasConsumer::create(['flat_id' => $flat->id, 'name' => 'Test', 'is_internal' => false, 'active' => true]);
+        $period = BillingPeriod::create(['year' => 2026, 'month' => 9, 'status' => 'DRAFT']);
+        GasPurchase::create(['date' => '2026-09-10', 'supplier_name' => 'S', 'quantity_kg' => 1000, 'unit_price' => 160, 'total_cost' => 171000]);
+        $this->service->recordReading($consumer, $period->id, 100, '2026-09-30', $user->id, null, '0');
+        $bill = Bill::create(['billing_period_id' => $period->id, 'flat_id' => $flat->id, 'service_charge' => 3500, 'gas_amount' => 0, 'other_charges' => 0, 'late_fee' => 0, 'previous_due' => 0, 'total_payable' => 3500, 'paid_amount' => 0, 'due_date' => '2026-10-10', 'status' => 'UNPAID']);
+
+        $this->service->applyToBills($period->id);
+
+        $this->assertEquals(31667, $bill->fresh()->gas_amount); // 100 units x 316.67
+    }
 }
