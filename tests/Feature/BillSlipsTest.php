@@ -117,6 +117,27 @@ class BillSlipsTest extends TestCase
         $this->assertSame(['2A', '2B', '2C', '2D', '2E', '3A', '3B', '3C', '3D'], app(BillPrintService::class)->slips(2026, 9)->pluck('flat_no')->all());
     }
 
+    public function test_the_project_offices_gas_is_printed_with_the_flats_but_never_payable(): void
+    {
+        $flats = $this->september(2); // flat 1: 219 -> 322 = 103 units
+        $office = \App\Models\GasConsumer::create(['name' => 'Project Office', 'is_internal' => true, 'active' => true]);
+        $period = \App\Models\BillingPeriod::where('year', 2026)->where('month', 9)->first();
+        app(\App\Services\GasBillingService::class)->recordReading($office, $period->id, 5, '2026-09-30', $this->admin->id, null, '0');
+
+        $slips = app(BillPrintService::class)->slips(2026, 9);
+
+        $this->assertSame(3, $slips->count()); // two flats and the office, the office last
+        $o = $slips->last();
+        $this->assertTrue($o['is_office']);
+        $this->assertSame('Project Office', $o['flat_no']);
+        $this->assertSame('5.0000', $o['gas_units']);
+        $this->assertSame('0.00', $o['due'] === '0' ? '0.00' : $o['due']);
+        $this->assertEquals(5 * (float) $o['gas_rate'], (float) $o['gas_amount']);
+        // one flat's own print never carries the office
+        $this->assertSame(1, app(BillPrintService::class)->slips(2026, 9, $flats[0]->id)->count());
+        $this->actingAs($this->admin, 'sanctum')->get('/api/billing/2026/9/pdf')->assertOk();
+    }
+
     public function test_one_flat_alone_is_named_flat_owner_and_bill_month(): void
     {
         $flats = $this->september(3);
