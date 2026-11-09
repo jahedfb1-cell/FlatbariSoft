@@ -56,6 +56,7 @@ export default function BillingPage() {
   const [payNote, setPayNote] = useState<string | null>(null);
   const [editing, setEditing] = useState<BillRow | null>(null);
   const [askingReadings, setAskingReadings] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [gas, setGas] = useState<GasSummary | null>(null);
   const [office, setOffice] = useState<ReadingSheetRow[]>([]); // the project office's own meter: used gas, never billed
 
@@ -215,11 +216,22 @@ export default function BillingPage() {
           )}
           {bills.length > 0 && (
             <button
-              onClick={() => billingApi.printMonthBills(year, month).catch(async (err) => setMessage(await blobErrorMessage(err, t('somethingWrong'))))}
-              className={btnGhost}
-              title={bn ? 'প্রতি A4 পাতায় ৪টি ফ্ল্যাটের বিল — সব ফ্ল্যাট এক ফাইলে' : 'Four flats\' bills to an A4 page - every flat in one file'}
+              disabled={printing}
+              onClick={async () => {
+                setPrinting(true);
+                setMessage(null);
+                try {
+                  await billingApi.printMonthBills(year, month);
+                } catch (err) {
+                  setMessage(await blobErrorMessage(err, t('somethingWrong')));
+                } finally {
+                  setPrinting(false);
+                }
+              }}
+              className="rounded-lg border-2 border-brand-600 bg-white px-4 py-2 font-medium text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
+              title={bn ? 'প্রতি A4 পাতায় ৪টি ফ্ল্যাটের বিল — সব ফ্ল্যাট এক ফাইলে' : 'Four flats' bills to an A4 page - every flat in one file'}
             >
-              🖨 {bn ? 'সব ফ্ল্যাটের বিল (PDF)' : 'All flat bills (PDF)'}
+              🖨 {printing ? '…' : bn ? `${MONTHS[month - 1]}-এর সব ফ্ল্যাটের বিল প্রিন্ট (৪টি / A4)` : `Print all flat bills — ${MONTHS[month - 1]} (4 per A4)`}
             </button>
           )}
           <label className="ml-auto flex items-center gap-1 text-sm text-navy-700">
