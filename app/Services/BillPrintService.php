@@ -37,8 +37,46 @@ class BillPrintService
             ->filter(fn ($r) => $r->consumer?->flat_id)->keyBy(fn ($r) => $r->consumer->flat_id);
 
         // flat order: 1A, 1B, 2A ... 9B, 10A - numbers as numbers, not as text
-        return $bills->sort(fn (Bill $a, Bill $b) => strnatcasecmp((string) $a->flat->flat_no, (string) $b->flat->flat_no))->values()
+        $slips = $bills->sort(fn (Bill $a, Bill $b) => strnatcasecmp((string) $a->flat->flat_no, (string) $b->flat->flat_no))->values()
             ->map(fn (Bill $b) => $this->slip($b, $readings->get($b->flat_id), $period));
+
+        // the whole month's print also carries the project office's own gas, last: not payable, but on paper with the rest
+        if (! $flatId) {
+            $first = $slips->first(fn ($s) => $s['gas_rate'] !== null);
+            $rate = $first['gas_rate'] ?? null;
+            foreach (GasMeterReading::where('billing_period_id', $period->id)->with('consumer')->get()->filter(fn ($r) => $r->consumer && ($r->consumer->is_internal || ! $r->consumer->flat_id)) as $r) {
+                $slips->push($this->officeSlip($r, $period, $rate));
+            }
+        }
+
+        return $slips->values();
+    }
+
+    /** The project office's gas for the month, laid out like a flat's slip but never payable. */
+    private function officeSlip(GasMeterReading $r, BillingPeriod $period, ?string $rate): array
+    {
+        $units = (string) $r->units_used;
+        $amount = $rate !== null ? bcmul($units, $rate, 2) : '0';
+
+        return [
+            'is_office' => true,
+            'bill_id' => null,
+            'flat_no' => 'Project Office',
+            'owner' => null,
+            'tenant' => null,
+            'year' => $period->year,
+            'month' => $period->month,
+            'month_label' => PdfName::month($period->year, $period->month),
+            'service_charge' => '0',
+            'gas_amount' => $amount,
+            'gas_previous' => (string) $r->previous_reading,
+            'gas_current' => (string) $r->current_reading,
+            'gas_units' => $units,
+            'gas_rate' => $rate,
+            'other_charges' => '0', 'late_fee' => '0', 'previous_due' => '0',
+            'total_payable' => $amount, 'paid_amount' => '0', 'due' => '0',
+            'due_date' => null, 'due_date_iso' => null, 'status' => 'INTERNAL',
+        ];
     }
 
     /** One bill's slip - for a resident looking at their own bill. */

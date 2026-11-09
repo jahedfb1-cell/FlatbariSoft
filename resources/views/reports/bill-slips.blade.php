@@ -42,16 +42,23 @@
                                 <h1>{{ $building->name ?? 'Green Valley' }}</h1>
                                 <div class="t">MONTHLY BILL &mdash; {{ $s['month_label'] }}</div>
                             </div>
-                            <div><span class="flat">Flat {{ $s['flat_no'] }}</span></div>
+                            @php($office = $s['is_office'] ?? false)
+                            <div><span class="flat">{{ $office ? $s['flat_no'] : 'Flat '.$s['flat_no'] }}</span></div>
                             <div class="who">
-                                Owner: <b>{{ $s['owner'] ?: '-' }}</b>@if ($s['tenant'])<br>Tenant: {{ $s['tenant'] }}@endif
+                                @if ($office)
+                                    Building's own gas use - not billed to any flat
+                                @else
+                                    Owner: <b>{{ $s['owner'] ?: '-' }}</b>@if ($s['tenant'])<br>Tenant: {{ $s['tenant'] }}@endif
+                                @endif
                             </div>
 
                             <table class="lines">
                                 @if ($has($s['previous_due']))
                                     <tr><th>Previous due</th><td class="num">{{ $f($s['previous_due']) }}</td></tr>
                                 @endif
-                                <tr><th>Service charge</th><td class="num">{{ $f($s['service_charge']) }}</td></tr>
+                                @if (! $office)
+                                    <tr><th>Service charge</th><td class="num">{{ $f($s['service_charge']) }}</td></tr>
+                                @endif
                                 <tr><th>Gas bill</th><td class="num">{{ $f($s['gas_amount']) }}</td></tr>
                                 @if ($s['gas_units'] !== null)
                                     <tr class="sub"><td colspan="2">Meter {{ rtrim(rtrim($f($s['gas_previous']), '0'), '.') }} &rarr; {{ rtrim(rtrim($f($s['gas_current']), '0'), '.') }}
@@ -65,22 +72,28 @@
                                 @if ($has($s['late_fee']))
                                     <tr><th>Late fee</th><td class="num">{{ $f($s['late_fee']) }}</td></tr>
                                 @endif
-                                <tr class="total"><th>Total payable (Tk)</th><td class="num">{{ $f($s['total_payable']) }}</td></tr>
+                                <tr class="total"><th>{{ $office ? 'Gas cost (Tk)' : 'Total payable (Tk)' }}</th><td class="num">{{ $f($s['total_payable']) }}</td></tr>
                                 @if ($has($s['paid_amount']))
                                     <tr><th>Paid so far</th><td class="num">{{ $f($s['paid_amount']) }}</td></tr>
                                 @endif
                             </table>
 
                             <div class="due-box">
-                                @if ($has($s['due']))
+                                @if ($office)
+                                    <b>OFFICE USE</b> &mdash; paid from the gas fund, nothing to collect
+                                @elseif ($has($s['due']))
                                     Balance due: <b>Tk {{ $f($s['due']) }}</b>
                                 @else
                                     <b>PAID</b> &mdash; thank you
                                 @endif
                             </div>
                             <div class="note">
+                                @if ($office)
+                                    Shown here with the flats so the month's gas adds up.
+                                @else
                                 @if ($s['due_date'] && $has($s['due']))Please pay by {{ $s['due_date'] }}. @endif
                                 A money receipt is given for every payment.
+                                @endif
                             </div>
                         </td>
                     @endforeach
