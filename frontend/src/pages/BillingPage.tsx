@@ -229,7 +229,7 @@ export default function BillingPage() {
                 }
               }}
               className="rounded-lg border-2 border-brand-600 bg-white px-4 py-2 font-medium text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
-              title={bn ? 'প্রতি A4 পাতায় ৪টি ফ্ল্যাটের বিল — সব ফ্ল্যাট এক ফাইলে' : 'Four flats' bills to an A4 page - every flat in one file'}
+              title={bn ? 'প্রতি A4 পাতায় ৪টি ফ্ল্যাটের বিল — সব ফ্ল্যাট এক ফাইলে' : 'Four flats’ bills to an A4 page - every flat in one file'}
             >
               🖨 {printing ? '…' : bn ? `${MONTHS[month - 1]}-এর সব ফ্ল্যাটের বিল প্রিন্ট (৪টি / A4)` : `Print all flat bills — ${MONTHS[month - 1]} (4 per A4)`}
             </button>
