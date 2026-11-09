@@ -163,6 +163,11 @@ export default function StatementsPage() {
               </button>
             </>
           )}
+          {fund === 'GAS' && (
+            <button className={btn} disabled={busy !== null} onClick={() => run('lpg', () => api.printLpgAccount(year, month))}>
+              🖨 {lang === 'bn' ? 'LPG গ্যাস ক্রয়ের হিসাব (Accounts of LPG Purchase)' : 'Accounts of LPG Purchase'}
+            </button>
+          )}
           <button className={fund === 'ALL' ? btn : btnGhost} disabled={busy !== null} onClick={() => run('combo', () => api.printCombinedStatement(['OPERATING', 'GAS'], year, month))}>
             {t('stmt.combined')}
           </button>

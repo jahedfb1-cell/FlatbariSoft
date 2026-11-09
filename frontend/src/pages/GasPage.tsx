@@ -6,6 +6,7 @@ import InvoicePicker from '../components/InvoicePicker';
 import InvoiceCell from '../components/InvoiceCell';
 import * as gasApi from '../api/gas';
 import * as billingApi from '../api/billing';
+import { printLpgAccount } from '../api/treasury';
 import { listFlats, type Flat } from '../api/flats';
 import type { GasConsumer, GasMonth, GasPurchase, GasSummary } from '../api/gas';
 import SupplierPicker from '../components/SupplierPicker';
@@ -258,6 +259,12 @@ export default function GasPage() {
           <Link to="/suppliers?kind=gas" className="ml-auto mr-2 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
             {t('suppliers.gas')}
           </Link>
+          <button
+            onClick={() => printLpgAccount(sheetYM.year, sheetYM.month).catch(() => setMessage(t('somethingWrong')))}
+            className="mr-2 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100"
+          >
+            🖨 Accounts of LPG Purchase — {sheetYM.month}/{sheetYM.year}
+          </button>
           <Link to="/gas/ledger" className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100">
             📒 {t('gasLedger.open')}
           </Link>

@@ -199,6 +199,25 @@ class FundStatementTest extends TestCase
         $this->assertSame('0.0000', $this->sept('OPERATING')['totals']['payments']); // not in the service charge account
     }
 
+    public function test_the_lpg_account_page_lists_deposits_and_cylinder_purchases_and_balances(): void
+    {
+        $this->opening('OPERATING', '100000', '0');
+        $this->treasury->lend('OPERATING', 'GAS', 'CASH', '30150', '2026-10-31', 'for the gas bill', $this->admin->id);
+        $p = app(GasPurchaseService::class)->record(['date' => '2026-10-02', 'supplier_name' => 'Gas Shop 1', 'cylinders' => 2, 'cylinder_kg' => 45, 'price_per_cylinder' => 7700, 'transport_cost' => 0, 'treasury_medium' => 'CASH'], $this->admin->id);
+        app(ExpenseService::class)->approve($p->expense, $this->user('admin')->id);
+
+        $html = view('reports.lpg-account', ['building' => (object) ['name' => 'Green Valley'], 'r' => $this->statements->statement('GAS', 2026, 10)])->render();
+
+        $this->assertStringContainsString('Accounts of LPG Purchase', $html);
+        $this->assertStringContainsString('Statement of Deposit and Expenditure for the Month of October 2026', $html);
+        $this->assertStringContainsString('2 Cylinders LPG Gas x Tk 7,700.00 (each cylinder 45 kg)', $html);
+        $this->assertStringContainsString('15,400.00', $html);
+        $this->assertStringContainsString('30,150.00', $html); // the loan taken, and the total of both sides
+        $this->assertStringContainsString('Loan taken from', $html);
+
+        $this->actingAs($this->admin, 'sanctum')->get('/api/treasury/lpg-account/pdf?year=2026&month=10')->assertOk()->assertHeader('content-type', 'application/pdf');
+    }
+
     // ---- bank
 
     public function test_cash_deposited_in_the_bank_is_not_a_receipt_or_a_payment(): void

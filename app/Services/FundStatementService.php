@@ -172,6 +172,7 @@ class FundStatementService
         $head = ['code' => 'OTHER', 'name_bn' => 'অন্যান্য', 'name_en' => 'Other'];
         $contra = false;
         $opening = false;
+        $gasInfo = null;
         $particulars = $r->particulars;
 
         switch ($r->ref_type) {
@@ -187,6 +188,7 @@ class FundStatementService
                 $head = ['code' => 'EXP_'.($h?->code ?? 'OTHER'), 'name_bn' => $h?->name_bn ?? 'খরচ', 'name_en' => $h?->name_en ?? 'Expense'];
                 $g = $ctx['gas'][$r->ref_id] ?? null;
                 if ($g) { // a gas purchase reads better with its quantity than with the voucher text
+                    $gasInfo = ['cylinders' => $g->cylinders, 'cylinder_kg' => $g->cylinder_kg, 'price_per_cylinder' => $g->price_per_cylinder, 'kg' => (string) $g->quantity_kg, 'transport' => (string) $g->transport_cost, 'supplier' => $g->supplier_name];
                     $particulars = sprintf('Gas purchase — %s kg @ %s%s%s', rtrim(rtrim(number_format((float) $g->quantity_kg, 2, '.', ''), '0'), '.'), rtrim(rtrim(number_format((float) $g->unit_price, 2, '.', ''), '0'), '.'), (float) $g->transport_cost > 0 ? ' + transport '.number_format((float) $g->transport_cost, 2) : '', $g->supplier_name ? ' ('.$g->supplier_name.')' : '');
                 } elseif ($e?->payee || $e?->description) {
                     $particulars = trim(($e->description ?: $h?->name_en ?: 'Expense').($e->payee ? ' — '.$e->payee : ''));
@@ -241,6 +243,7 @@ class FundStatementService
             'head' => $head,
             'contra' => $contra,
             'opening' => $opening,
+            'gas' => $gasInfo,
         ];
     }
 
@@ -265,7 +268,7 @@ class FundStatementService
     /** @return list<array{date:string, particulars:string, head:string, medium:string, amount:string}> */
     private function lines(array $items): array
     {
-        return array_map(fn ($i) => ['date' => $i['date'], 'particulars' => $i['particulars'], 'head_code' => $i['head']['code'], 'head_name_bn' => $i['head']['name_bn'], 'head_name_en' => $i['head']['name_en'], 'medium' => $i['medium'], 'amount' => $i['amount']], $items);
+        return array_map(fn ($i) => ['date' => $i['date'], 'particulars' => $i['particulars'], 'head_code' => $i['head']['code'], 'head_name_bn' => $i['head']['name_bn'], 'head_name_en' => $i['head']['name_en'], 'medium' => $i['medium'], 'amount' => $i['amount'], 'gas' => $i['gas'] ?? null], $items);
     }
 
     private function byHead(array $items): array

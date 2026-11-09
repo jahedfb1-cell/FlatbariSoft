@@ -49,6 +49,16 @@ class TreasuryController extends Controller
             ->setPaper('a4', 'portrait'), $name)->stream($name);
     }
 
+    /** "Accounts of LPG Purchase": the gas fund's month as one landscape page, deposits on the left, expenditure on the right. */
+    public function lpgAccount(FundStatementRequest $request)
+    {
+        $v = $request->validated();
+        $report = $this->statements->statement('GAS', (int) $v['year'], (int) $v['month']);
+        $name = PdfName::make('Accounts of LPG Purchase', PdfName::month((int) $v['year'], (int) $v['month']));
+
+        return PdfName::titled(Pdf::loadView('reports.lpg-account', ['building' => Building::first(), 'r' => $report])->setPaper('a4', 'landscape'), $name)->stream($name);
+    }
+
     /** Several funds in ONE document: an all-funds summary page, then each fund's full statement. Default: service charge + gas. */
     public function combinedPdf(FundStatementRequest $request)
     {
